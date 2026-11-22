@@ -177,6 +177,19 @@ export function Avatar({ name, size = 'sm', className }: { name?: string | null;
   );
 }
 
+const tileGrad = ['from-[#053F1A] to-[#0E5A2A]', 'from-[#0E5A2A] to-[#23B24A]', 'from-[#202E64] to-[#3B4C8F]', 'from-[#141614] to-[#2F3A33]', 'from-[#1A7F36] to-[#7CCB8E]'];
+
+/** Company / record tile: a gradient square with the first letter, colour picked from the name. */
+export function EntityTile({ name, size = 'md', className }: { name?: string | null; size?: 'sm' | 'md' | 'lg'; className?: string }) {
+  const h = [...(name ?? '?')].reduce((a, c) => a + c.charCodeAt(0), 0);
+  const s = size === 'sm' ? 'h-7 w-7 rounded-lg text-[11px]' : size === 'lg' ? 'h-14 w-14 rounded-2xl text-[22px]' : 'h-9 w-9 rounded-xl text-[13px]';
+  return (
+    <span className={cn('inline-flex shrink-0 items-center justify-center bg-gradient-to-br font-display font-semibold text-white shadow-[0_6px_14px_-8px_rgba(5,63,26,.7)]', tileGrad[h % tileGrad.length], s, className)}>
+      {(name ?? '?').trim().charAt(0).toUpperCase()}
+    </span>
+  );
+}
+
 export function Skeleton({ className }: { className?: string }) {
   return <div className={cn('animate-pulse rounded-md bg-black/[0.06]', className)} />;
 }

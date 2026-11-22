@@ -10,8 +10,9 @@ import { useCities } from '@/lib/queries';
 import { cn } from '@/lib/cn';
 import { fmtDate, inr, relTime } from '@/lib/format';
 import type { AccountRow, LifecycleStage, Page } from '@/lib/types';
-import { Avatar, Badge, Button, Card, Empty, Input, PageHeader, Segmented, Select, SkeletonRows } from '@/components/ui/ui';
-import { STAGES, StageBadge, StatusBadge, TemperatureBadge, stageLabel } from '@/components/ui/status';
+import { Avatar, Badge, Button, Card, Empty, EntityTile, Input, PageHeader, Segmented, Select, SkeletonRows } from '@/components/ui/ui';
+import { usePulse } from '@/features/dashboard/pulse';
+import { STAGES, StageBadge, StageMeter, StatusBadge, TemperatureBadge, stageLabel } from '@/components/ui/status';
 import { Modal } from '@/components/ui/overlay';
 import { AddAccountModal } from '@/features/accounts/AccountForms';
 
@@ -46,6 +47,10 @@ export default function AccountsPage() {
     queryKey: ['accounts', query], queryFn: () => api.get<Page<AccountRow>>('/api/accounts', query), placeholderData: (p) => p,
   });
   const views = useQuery({ queryKey: ['saved-views'], queryFn: () => api.get<SavedView[]>('/api/saved-views', { entity: 'ACCOUNT' }) });
+  const pulse = usePulse('30');
+  const mix = pulse.data?.stageMix ?? [];
+  const cnt = (...st: LifecycleStage[]) => mix.filter((m) => st.includes(m.stage)).reduce((a, m) => a + Number(m.count), 0);
+  const pipeMrr = mix.filter((m) => !['WON', 'LOST', 'PROSPECT'].includes(m.stage)).reduce((a, m) => a + Number(m.mrr), 0);
 
   const set = <K extends keyof Filters>(k: K, v: Filters[K]) => setF((x) => ({ ...x, [k]: v }));
   const activeCount = (Object.keys(DEFAULTS) as (keyof Filters)[]).filter((k) => k !== 'q' && k !== 'sort' && JSON.stringify(f[k]) !== JSON.stringify(DEFAULTS[k])).length;
@@ -54,7 +59,14 @@ export default function AccountsPage() {
 
   return (
     <div>
-      <PageHeader title="Accounts" subtitle={is('BDR') ? 'Your prospects and the pipeline accounts you sourced.' : is('AE') ? 'Accounts assigned to you.' : 'Every account across the team.'}
+      <PageHeader title="Accounts" icon={<Building2 />} eyebrow="Book of business"
+        stats={[
+          { label: 'Active accounts', value: cnt(...STAGES).toLocaleString('en-IN'), hint: 'Across every stage', onClick: () => setF({ ...DEFAULTS }) },
+          { label: 'Prospecting', value: cnt('PROSPECT'), hint: 'Not yet an SQL', onClick: () => setF({ ...DEFAULTS, stage: ['PROSPECT'] }) },
+          { label: 'In pipeline', value: cnt('SQL', 'L1', 'MULTITHREADING', 'L2', 'L3', 'NEGOTIATION'), hint: `${inr(pipeMrr)} expected MRR`, onClick: () => setF({ ...DEFAULTS, zone: 'PIPELINE' }) },
+          { label: 'Won', value: cnt('WON', 'IMPLEMENTATION'), hint: 'Closed and handed over', onClick: () => setF({ ...DEFAULTS, stage: ['WON'] }) },
+        ]}
+        subtitle={is('BDR') ? 'Your prospects and the pipeline accounts you sourced.' : is('AE') ? 'Accounts assigned to you.' : 'Every account across the team.'}
         actions={<>
           <Button icon={<Download className="h-3.5 w-3.5" />} onClick={() => api.download('/api/accounts', { ...query, format: 'csv', page: undefined, size: undefined }, 'accounts.csv').catch((e) => toast.error(e.message))}>Export</Button>
           {(is('BDR') || is('MANAGER', 'ADMIN')) && <Button variant="primary" icon={<Plus className="h-3.5 w-3.5" />} onClick={() => setAdding(true)}>New account</Button>}
@@ -73,10 +85,10 @@ export default function AccountsPage() {
       )}
 
       <Card>
-        <div className="flex flex-wrap items-center gap-2 border-b border-line p-3">
-          <div className="relative w-52">
-            <Search className="pointer-events-none absolute left-2.5 top-2 h-4 w-4 text-ink-muted" />
-            <Input value={f.q} onChange={(e) => set('q', e.target.value)} placeholder="Search accounts…" className="pl-8" />
+        <div className="flex flex-wrap items-center gap-2 border-b border-line/70 p-4">
+          <div className="relative w-full sm:w-64">
+            <Search className="pointer-events-none absolute left-3.5 top-2.5 h-4 w-4 text-ink-muted" />
+            <Input value={f.q} onChange={(e) => set('q', e.target.value)} placeholder="Search accounts…" className="rounded-full pl-10" />
           </div>
           <Segmented value={f.status} onChange={(v) => set('status', v)} options={[{ value: 'ACTIVE', label: 'Active' }, { value: 'INACTIVE', label: 'Inactive' }, { value: 'ALL', label: 'All' }]} />
           {!is('AE') && (
@@ -127,16 +139,16 @@ export default function AccountsPage() {
                     <tr key={a.id} onClick={() => navigate(`/accounts/${a.id}`)} className="group cursor-pointer border-b border-line/70 last:border-0 hover:bg-canvas">
                       <td className="px-4 py-2.5">
                         <div className="flex items-center gap-2.5">
-                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-canvas text-xs font-semibold text-ink-soft">{a.name[0]}</span>
+                          <EntityTile name={a.name} />
                           <div className="min-w-0">
-                            <p className="flex items-center gap-1.5 truncate font-medium group-hover:text-accent">
+                            <p className="flex items-center gap-1.5 truncate text-[13.5px] font-semibold transition-colors group-hover:text-brand-forest">
                               {a.name}{a.flaggedForReview && <Flag className="h-3 w-3 text-warning" />}
                             </p>
                             <p className="truncate text-2xs text-ink-muted">{[a.city, a.sizeBucket && a.sizeBucket.toLowerCase(), a.licensePotential && `${a.licensePotential} licenses`].filter(Boolean).join(' · ')}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-3"><div className="flex items-center gap-1.5"><StageBadge stage={a.stage} />{a.status === 'INACTIVE' && <StatusBadge status="INACTIVE" />}</div></td>
+                      <td className="px-3"><div className="flex flex-col gap-1.5"><div className="flex items-center gap-1.5"><StageBadge stage={a.stage} />{a.status === 'INACTIVE' && <StatusBadge status="INACTIVE" />}</div><StageMeter stage={a.stage} /></div></td>
                       <td className="px-3">
                         <div className="flex items-center -space-x-1" title={[a.aeOwner && `AE: ${a.aeOwner}`, a.bdrs && `BDR: ${a.bdrs}`].filter(Boolean).join('\n')}>
                           {a.aeOwner && <Avatar name={a.aeOwner} className="ring-2 ring-white" />}
@@ -145,13 +157,13 @@ export default function AccountsPage() {
                         </div>
                       </td>
                       <td className="px-3"><TemperatureBadge t={a.temperature} /></td>
-                      <td className="px-3 text-right tabular-nums">{a.expectedMrr ? inr(a.expectedMrr) : <span className="text-ink-muted">—</span>}</td>
+                      <td className="px-3 text-right">{a.expectedMrr ? <span className="font-display text-[15px] font-medium tabular-nums">{inr(a.expectedMrr)}</span> : <span className="text-ink-muted">—</span>}</td>
                       <td className="max-w-[220px] px-3">
                         {a.status === 'INACTIVE' ? <span className="text-xs text-ink-muted">{a.inactiveReason}{a.revisitOn && ` · revisit ${fmtDate(a.revisitOn)}`}</span>
                           : a.nextStep ? <p className="truncate text-xs"><span className={cn(overdue && 'text-danger')}>{fmtDate(a.nextStepDue)}</span> · {a.nextStep}</p>
                           : a.zone === 'PIPELINE' ? <Badge tone="warning">No next step</Badge> : <span className="text-ink-muted">—</span>}
                       </td>
-                      <td className="px-4 text-right text-xs text-ink-muted">{relTime(a.lastActivityAt)}</td>
+                      <td className="px-4 text-right text-xs text-ink-muted"><span className="inline-flex items-center gap-1.5"><span className={cn('h-1.5 w-1.5 rounded-full', !a.lastActivityAt ? 'bg-black/15' : Date.now() - new Date(a.lastActivityAt).getTime() < 3 * 864e5 ? 'bg-brand-mint' : Date.now() - new Date(a.lastActivityAt).getTime() < 14 * 864e5 ? 'bg-brand-forest/50' : 'bg-black/20')} />{relTime(a.lastActivityAt)}</span></td>
                     </tr>
                   );
                 })}

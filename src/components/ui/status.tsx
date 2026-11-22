@@ -48,3 +48,18 @@ export function SqlBadge({ status }: { status: SqlStatus }) {
 export function StatusBadge({ status }: { status: 'ACTIVE' | 'INACTIVE' }) {
   return <Badge tone={status === 'ACTIVE' ? 'success' : 'neutral'} dot>{humanize(status)}</Badge>;
 }
+
+const TRACK: LifecycleStage[] = ['PROSPECT', 'SQL', 'L1', 'L2', 'L3', 'NEGOTIATION', 'WON'];
+
+/** Seven-step progress meter from Prospect to Won (Multithreading counts as L1, Lost / Implementation as the end). */
+export function StageMeter({ stage }: { stage?: LifecycleStage | null }) {
+  if (!stage) return null;
+  const at = stage === 'MULTITHREADING' ? 2 : stage === 'IMPLEMENTATION' ? 6 : stage === 'LOST' ? -1 : TRACK.indexOf(stage);
+  return (
+    <span className="flex items-center gap-[3px]" title={stageLabel[stage]}>
+      {TRACK.map((s, i) => (
+        <span key={s} className={i <= at ? (stage === 'WON' || stage === 'IMPLEMENTATION' ? 'h-1.5 w-3 rounded-full bg-brand-mint' : 'h-1.5 w-3 rounded-full bg-brand-forest') : stage === 'LOST' ? 'h-1.5 w-3 rounded-full bg-black/10' : 'h-1.5 w-3 rounded-full bg-black/[0.07]'} />
+      ))}
+    </span>
+  );
+}
