@@ -135,8 +135,10 @@ function TopBar({ onSearch }: { onSearch: () => void }) {
         <span className="truncate font-display text-[16px] font-medium tracking-[-0.02em]">{title}</span>
       </div>
       <div className="flex items-center gap-2">
-        <button onClick={onSearch} className="hidden h-9 w-64 items-center gap-2 rounded-full border border-line bg-white px-3.5 text-[13px] text-ink-muted transition-colors hover:border-brand-forest/30 md:flex">
-          <Search className="h-4 w-4" /><span className="flex-1 text-left">Search accounts, people…</span><kbd className="kbd">Ctrl K</kbd>
+        <button onClick={onSearch} className="group hidden h-9 w-72 items-center gap-2.5 whitespace-nowrap rounded-full border border-brand-forest/15 bg-brand-forest-50/70 pl-3.5 pr-1.5 text-[13px] font-medium text-brand-forest transition-all hover:border-brand-forest/35 hover:bg-white hover:shadow-[0_8px_20px_-14px_rgba(5,63,26,.7)] md:flex">
+          <Search className="h-4 w-4 shrink-0 text-brand-forest/70 group-hover:text-brand-forest" />
+          <span className="min-w-0 flex-1 truncate text-left text-brand-forest/75 group-hover:text-brand-forest">Search accounts, people…</span>
+          <kbd className="shrink-0 rounded-full bg-brand-forest px-2 py-0.5 font-sans text-[10.5px] font-semibold tracking-wide text-white">{/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘ K' : 'Ctrl K'}</kbd>
         </button>
         <span className="hidden items-center gap-1.5 rounded-full bg-brand-forest-50 px-2.5 py-1 text-[11px] font-semibold text-brand-forest lg:inline-flex" title="Data refreshes automatically">
           <span className="relative flex h-1.5 w-1.5"><span className="absolute h-full w-full rounded-full bg-brand-mint motion-safe:animate-ping" /><span className="relative h-1.5 w-1.5 rounded-full bg-brand-mint" /></span>Live
