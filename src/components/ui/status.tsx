@@ -63,3 +63,20 @@ export function StageMeter({ stage }: { stage?: LifecycleStage | null }) {
     </span>
   );
 }
+
+/** Labelled stage journey for dark headers: done steps solid green, the current one glowing. */
+export function StageJourney({ stage }: { stage?: LifecycleStage | null }) {
+  if (!stage) return null;
+  const at = stage === 'MULTITHREADING' ? 2 : stage === 'IMPLEMENTATION' ? 6 : stage === 'LOST' ? -1 : TRACK.indexOf(stage);
+  return (
+    <div className="mt-6 grid grid-cols-7 gap-1.5">
+      {TRACK.map((s, i) => (
+        <div key={s} className="min-w-0">
+          <div className={i < at ? 'h-1.5 rounded-full bg-brand-mint' : i === at ? 'h-1.5 rounded-full bg-brand-mint shadow-[0_0_14px_rgba(35,178,74,.9)]' : 'h-1.5 rounded-full bg-white/10'} />
+          <p className={i === at ? 'mt-1.5 truncate text-[11px] font-semibold text-brand-mint' : i < at ? 'mt-1.5 truncate text-[11px] text-paper/70' : 'mt-1.5 truncate text-[11px] text-paper/35'}>{stageLabel[s]}</p>
+        </div>
+      ))}
+      {stage === 'LOST' && <p className="col-span-7 text-[11px] font-semibold text-paper/60">This deal was lost.</p>}
+    </div>
+  );
+}

@@ -82,3 +82,4 @@
 .app-main table tbody td { padding-top: 11px; padding-bottom: 11px; }
 .cmd-group [cmdk-group-heading] { color: rgba(239,239,239,.38); }
 .cmd-group .kbd, [cmdk-root] .kbd { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.12); color: rgba(239,239,239,.6); box-shadow: none; }
+.on-dark [data-badge="neutral"] { background: rgba(255,255,255,.1); color: rgba(239,239,239,.8); }

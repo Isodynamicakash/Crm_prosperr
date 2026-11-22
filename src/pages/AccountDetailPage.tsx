@@ -12,9 +12,10 @@ import { useCities, usePicklist } from '@/lib/queries';
 import { cn } from '@/lib/cn';
 import { fmtDate, fmtDateTime, fullName, humanize, num, relTime } from '@/lib/format';
 import type { AccountPage, ActivityType, Department, MeetingRow, StakeholderView, TimelineEvent } from '@/lib/types';
-import { Avatar, Badge, Button, Card, CardHeader, Empty, Field, Input, Select, Skeleton, Textarea } from '@/components/ui/ui';
+import { Avatar, Badge, Button, Card, CardHeader, Empty, EntityTile, Field, Input, Select, Skeleton, Textarea } from '@/components/ui/ui';
+import { TopoLines } from '@/components/brand/TopoLines';
 import { Confirm, Modal } from '@/components/ui/overlay';
-import { EngagementBadge, StageBadge, StatusBadge, TemperatureBadge } from '@/components/ui/status';
+import { EngagementBadge, StageBadge, StageJourney, StatusBadge, TemperatureBadge } from '@/components/ui/status';
 import { LogCallModal, type CallTarget } from '@/features/calls/LogCallModal';
 import { AddStakeholderModal, EditStakeholderModal } from '@/features/accounts/AccountForms';
 import { AssignModal, SubmitSqlModal } from '@/features/sql/SqlForms';
@@ -68,38 +69,57 @@ export default function AccountDetailPage() {
 
   return (
     <div>
-      <Link to="/accounts" className="mb-3 inline-flex items-center gap-1 text-xs text-ink-muted hover:text-ink"><ArrowLeft className="h-3.5 w-3.5" />Accounts</Link>
+      <Link to="/accounts" className="mb-3 inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium text-ink-muted transition-colors hover:bg-white hover:text-ink"><ArrowLeft className="h-3.5 w-3.5" />Accounts</Link>
 
-      {/* Header */}
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-start gap-3.5">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-line bg-white text-lg font-semibold text-accent shadow-card">{a.name[0]}</div>
-          <div>
-            <h1 className="text-[22px] font-semibold tracking-tight">{a.name}</h1>
-            <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-ink-muted">
-              {a.website && <a href={a.website.startsWith('http') ? a.website : `https://${a.website}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 hover:text-accent">{a.domain ?? a.website}<ExternalLink className="h-3 w-3" /></a>}
-              <StageBadge stage={a.stage} /><StatusBadge status={a.status} />
-              {a.sizeBucket && <Badge>{humanize(a.sizeBucket)}</Badge>}
-              {data.opportunity?.temperature && <TemperatureBadge t={data.opportunity.temperature} />}
-              {a.reviewFlaggedAt && a.status === 'ACTIVE' && <Badge tone="warning">Flagged — no activity</Badge>}
-              {a.icpFit === 'NO' && <Badge tone="danger">Not ICP</Badge>}
+      {/* Header: dark hero with the stage journey */}
+      <section className="on-dark relative isolate mb-5 overflow-hidden rounded-[28px] bg-[#141614] px-5 py-5 text-paper sm:px-7 sm:py-6">
+        <TopoLines levels={11} className="-z-10 opacity-70" />
+        <div className="absolute -left-20 bottom-[-40%] -z-10 h-64 w-[460px] rounded-full bg-brand-mint/[0.14] blur-[100px]" />
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex min-w-0 items-start gap-4">
+            <EntityTile name={a.name} size="lg" className="from-brand-mint to-[#0E5A2A] ring-4 ring-white/10" />
+            <div className="min-w-0">
+              <h1 className="font-display text-[28px] font-medium leading-tight tracking-[-0.04em] sm:text-[34px]">{a.name}</h1>
+              <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-paper/60">
+                {a.website && <a href={a.website.startsWith('http') ? a.website : `https://${a.website}`} target="_blank" rel="noreferrer" className="mr-1 inline-flex items-center gap-1 hover:text-brand-mint">{a.domain ?? a.website}<ExternalLink className="h-3 w-3" /></a>}
+                <StageBadge stage={a.stage} /><StatusBadge status={a.status} />
+                {a.sizeBucket && <Badge>{humanize(a.sizeBucket)}</Badge>}
+                {data.opportunity?.temperature && <TemperatureBadge t={data.opportunity.temperature} />}
+                {a.reviewFlaggedAt && a.status === 'ACTIVE' && <Badge tone="warning">Flagged — no activity</Badge>}
+                {a.icpFit === 'NO' && <Badge tone="danger">Not ICP</Badge>}
+              </div>
             </div>
           </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {canWorkProspect && <Button icon={<Plus className="h-3.5 w-3.5" />} onClick={() => setDialog('stakeholder')}>Stakeholder</Button>}
+            <Button icon={<StickyNote className="h-3.5 w-3.5" />} onClick={() => setDialog('activity')}>Log activity</Button>
+            {canWorkProspect && !inPipeline && a.status === 'ACTIVE' && <Button variant="primary" icon={<ClipboardCheck className="h-3.5 w-3.5" />} onClick={() => setDialog('sql')}>Submit SQL</Button>}
+            {canAeAct && inPipeline && a.status === 'ACTIVE' && <Button icon={<CalendarPlus className="h-3.5 w-3.5" />} onClick={() => setDialog('book')}>Book meeting</Button>}
+            {isLeadership(role) && inPipeline && <Button icon={<UserCog className="h-3.5 w-3.5" />} onClick={() => setDialog('assign')}>{ae ? 'Reassign AE' : 'Assign AE'}</Button>}
+            {canAeAct && a.reviewFlaggedAt && a.status === 'ACTIVE' && <Button variant="primary" onClick={() => setDialog('keep')}>Keep active</Button>}
+            {canAeAct && inPipeline && a.status === 'ACTIVE' && <Button variant="ghost" onClick={() => setDialog('inactive')}>Move to inactive</Button>}
+            {a.status === 'INACTIVE' && (canWorkProspect || canAeAct) && <Button variant="primary" icon={<RotateCcw className="h-3.5 w-3.5" />} onClick={() => setDialog('reactivate')}>Reactivate</Button>}
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {canWorkProspect && <Button icon={<Plus className="h-3.5 w-3.5" />} onClick={() => setDialog('stakeholder')}>Stakeholder</Button>}
-          <Button icon={<StickyNote className="h-3.5 w-3.5" />} onClick={() => setDialog('activity')}>Log activity</Button>
-          {canWorkProspect && !inPipeline && a.status === 'ACTIVE' && <Button variant="primary" icon={<ClipboardCheck className="h-3.5 w-3.5" />} onClick={() => setDialog('sql')}>Submit SQL</Button>}
-          {canAeAct && inPipeline && a.status === 'ACTIVE' && <Button icon={<CalendarPlus className="h-3.5 w-3.5" />} onClick={() => setDialog('book')}>Book meeting</Button>}
-          {isLeadership(role) && inPipeline && <Button icon={<UserCog className="h-3.5 w-3.5" />} onClick={() => setDialog('assign')}>{ae ? 'Reassign AE' : 'Assign AE'}</Button>}
-          {canAeAct && a.reviewFlaggedAt && a.status === 'ACTIVE' && <Button variant="primary" onClick={() => setDialog('keep')}>Keep active</Button>}
-          {canAeAct && inPipeline && a.status === 'ACTIVE' && <Button variant="ghost" onClick={() => setDialog('inactive')}>Move to inactive</Button>}
-          {a.status === 'INACTIVE' && (canWorkProspect || canAeAct) && <Button variant="primary" icon={<RotateCcw className="h-3.5 w-3.5" />} onClick={() => setDialog('reactivate')}>Reactivate</Button>}
+        <StageJourney stage={a.stage} />
+        <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {[
+            ['Expected MRR', data.opportunity?.expectedMrr ? `₹${num(data.opportunity.expectedMrr)}` : '—', data.opportunity?.licenseCount ? `${num(data.opportunity.licenseCount)} licences` : (a.licensePotential ? `${num(a.licensePotential)} licence potential` : undefined)],
+            ['Stakeholders', stakeholders.length, `${DEPT_ORDER.filter((d) => data.stakeholdersByDepartment[d]?.length).length} functions covered`],
+            ['Meetings', data.meetings.length, openMeetings.length ? `${openMeetings.length} upcoming` : 'None upcoming'],
+            ['Last activity', relTime(a.lastActivityAt) || '—', a.nextStep ? `Next: ${a.nextStep}` : 'No next step set'],
+          ].map(([l, v, h]) => (
+            <div key={l as string} className="rounded-[18px] border border-white/[0.08] bg-white/[0.04] px-4 py-3 backdrop-blur">
+              <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-paper/45">{l}</p>
+              <p className="mt-1.5 truncate font-display text-[24px] font-medium leading-none tracking-[-0.04em]">{v}</p>
+              {h && <p className="mt-1 truncate text-[11.5px] text-paper/45">{h}</p>}
+            </div>
+          ))}
         </div>
-      </div>
+      </section>
 
       {a.status === 'INACTIVE' && (
-        <div className="mb-4 rounded-xl border border-line bg-white p-3.5 text-[13px] shadow-card">
+        <div className="mb-4 rounded-[20px] border border-line bg-white p-4 text-[13px]">
           <b>Inactive</b> since {fmtDate(a.inactiveSince)}{a.inactiveRemark && <> — “{a.inactiveRemark}”</>}{a.revisitOn && <> · revisit on <b>{fmtDate(a.revisitOn)}</b></>}
         </div>
       )}
@@ -111,8 +131,8 @@ export default function AccountDetailPage() {
               {openMeetings.map((m) => {
                 const past = new Date(m.scheduledStart) < new Date();
                 return (
-                  <div key={m.id} className={cn('flex items-center gap-3 rounded-xl border p-3 shadow-card', past ? 'border-warning/40 bg-warning-soft/50' : 'border-accent/20 bg-accent-soft/40')}>
-                    <Video className={cn('h-4 w-4', past ? 'text-warning' : 'text-accent')} />
+                  <div key={m.id} className={cn('flex flex-wrap items-center gap-3 rounded-[20px] border p-3.5', past ? 'border-[#C98A1B]/30 bg-[#FCF4E6]' : 'border-brand-forest/15 bg-brand-forest-50/70')}>
+                    <span className={cn('flex h-9 w-9 items-center justify-center rounded-xl text-white', past ? 'bg-[#C98A1B]' : 'bg-brand-forest')}><Video className="h-4 w-4" /></span>
                     <p className="flex-1 text-[13px]"><b>{m.level}{m.alsoCompletesL2 ? ' + L2' : ''}</b> {past ? 'was' : 'is'} on {fmtDateTime(m.scheduledStart)}{m.ae && ` with ${m.ae}`}{m.attendees && ` · ${m.attendees}`}</p>
                     {m.meetingLink && !past && <a href={m.meetingLink} target="_blank" rel="noreferrer"><Button size="sm">Join</Button></a>}
                     {canReschedule && <Button size="sm" variant={past ? 'ghost' : 'secondary'} icon={<CalendarClock className="h-3.5 w-3.5" />} onClick={() => reschedule(m)}>Reschedule</Button>}
