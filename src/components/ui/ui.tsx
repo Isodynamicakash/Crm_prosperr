@@ -68,6 +68,33 @@ export function Field({ label, hint, error, required, children, className }: {
   );
 }
 
+/** iOS-style switch in the brand green. */
+export function Switch({ checked, onChange, disabled, label }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean; label?: string }) {
+  return (
+    <button type="button" role="switch" aria-checked={checked} aria-label={label} disabled={disabled} onClick={() => onChange(!checked)}
+      className={cn('relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 disabled:opacity-50',
+        checked ? 'bg-brand-forest shadow-[0_0_12px_rgba(35,178,74,.35)]' : 'bg-black/15')}>
+      <span className={cn('inline-block h-5 w-5 rounded-full bg-white shadow transition-transform duration-200', checked ? 'translate-x-[22px]' : 'translate-x-0.5')} />
+    </button>
+  );
+}
+
+/** Section heading used inside pages: icon tile, title, description and actions on one line. */
+export function SectionHead({ icon, title, subtitle, actions }: { icon?: ReactNode; title: ReactNode; subtitle?: ReactNode; actions?: ReactNode }) {
+  return (
+    <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+      <div className="flex items-center gap-3">
+        {icon && <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-forest text-white shadow-[0_10px_22px_-12px_rgba(5,63,26,.9)] [&_svg]:h-5 [&_svg]:w-5">{icon}</span>}
+        <div>
+          <h2 className="font-display text-[22px] font-medium leading-tight tracking-[-0.03em]">{title}</h2>
+          {subtitle && <p className="mt-0.5 max-w-2xl text-[13px] text-ink-muted">{subtitle}</p>}
+        </div>
+      </div>
+      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+    </div>
+  );
+}
+
 export function Checkbox({ checked, onChange, label, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: ReactNode; disabled?: boolean }) {
   return (
     <label className={cn('flex w-fit cursor-pointer items-center gap-2 text-[13px]', disabled && 'opacity-50')}>
