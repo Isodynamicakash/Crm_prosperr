@@ -15,8 +15,8 @@ export const duration = { app: 0.18, landing: 0.8, landingSlow: 1.2 };
 export const landingTransition: Transition = { duration: duration.landing, ease: ease.out };
 
 export const fadeUp: Variants = {
-  hidden: { opacity: 0, y: 24 },
-  show: { opacity: 1, y: 0, transition: landingTransition },
+  hidden: { opacity: 0, y: 28, filter: 'blur(8px)' },
+  show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.9, ease: ease.out } },
 };
 
 export const fadeIn: Variants = {

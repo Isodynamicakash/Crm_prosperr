@@ -3,7 +3,7 @@ import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScro
 import { BarChart3, Building2, CalendarClock, Gauge, KanbanSquare, PhoneCall, PieChart } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { ease } from '@/lib/animations';
-import { Reveal } from '@/lib/animations/components';
+import { TopoSurface } from '@/components/brand/TopoLines';
 import { AccountsPreview, AnalyticsPreview, DashboardPreview, MeetingsPreview, MyDayPreview, PipelinePreview, ReportsPreview } from './previews';
 
 const SCREENS = [
@@ -34,55 +34,60 @@ export function Showcase() {
   const Current = SCREENS[active].View;
 
   return (
-    <section id="product" className="relative bg-white">
-      <div className="mx-auto max-w-7xl px-5 pt-24 lg:px-8">
-        <Reveal className="max-w-2xl">
-          <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-brand-forest-600">The product</p>
-          <h2 className="mt-3 text-[34px] font-semibold leading-[1.05] tracking-[-0.03em] sm:text-[48px]">Built around how your sales team actually works.</h2>
-        </Reveal>
-      </div>
-
+    <section id="product" className="relative bg-canvas pt-4 lg:pt-0">
       <div ref={track} className="relative lg:h-[420vh]">
-        <div className="mx-auto grid max-w-7xl gap-10 px-5 py-12 lg:sticky lg:top-0 lg:h-screen lg:grid-cols-[0.8fr_1.2fr] lg:items-center lg:px-8 lg:py-0">
-          <ol className="flex gap-2 overflow-x-auto pb-2 lg:block lg:space-y-1 lg:overflow-visible lg:pb-0" role="tablist" aria-label="Product screens">
-            {SCREENS.map((s, i) => (
-              <li key={s.key} className="shrink-0">
-                <button role="tab" aria-selected={i === active} onClick={() => jump(i)}
-                  className={cn('group relative w-full rounded-2xl px-4 py-3 text-left transition-colors lg:py-3.5', i === active ? 'bg-brand-forest-50' : 'hover:bg-canvas')}>
-                  {i === active && <motion.span layoutId="showcase-bar" className="absolute inset-y-3 left-0 hidden w-[3px] rounded-full bg-brand-forest lg:block" />}
-                  <span className="flex items-center gap-3">
-                    <s.icon className={cn('h-[18px] w-[18px] transition-colors', i === active ? 'text-brand-forest' : 'text-ink-muted')} />
-                    <span className={cn('whitespace-nowrap text-[15px] font-semibold', i === active ? 'text-ink' : 'text-ink-soft')}>{s.title}</span>
-                  </span>
-                  <AnimatePresence initial={false}>
-                    {i === active && (
-                      <motion.p initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.35, ease: ease.out }} className="hidden overflow-hidden pl-[30px] text-[13.5px] leading-relaxed text-ink-muted lg:block">
-                        <span className="block pt-1.5">{s.body}</span>
-                      </motion.p>
-                    )}
-                  </AnimatePresence>
-                </button>
-              </li>
-            ))}
-          </ol>
+        <div className="px-5 lg:sticky lg:top-0 lg:h-screen lg:px-8 lg:pb-6 lg:pt-[88px]">
+          <div className="relative isolate mx-auto grid max-w-7xl gap-8 overflow-hidden rounded-[32px] px-5 py-10 text-paper sm:px-8 lg:h-full lg:grid-cols-[0.82fr_1.18fr] lg:items-center lg:gap-12 lg:rounded-[40px] lg:px-12 lg:py-0">
+            <TopoSurface pattern="b" className="-z-20" />
+            <div className="absolute right-[10%] top-1/2 -z-10 h-[560px] w-[680px] -translate-y-1/2 rounded-full bg-brand-mint/[0.13] blur-[130px]" />
 
-          <div className="relative [perspective:1600px]">
-            <div className="absolute -inset-10 -z-10 rounded-[40px] bg-[radial-gradient(60%_60%_at_60%_40%,rgba(139,195,74,.22),transparent_70%)]" />
-            <p className="mb-3 text-[14px] text-ink-muted lg:hidden">{SCREENS[active].body}</p>
-            <motion.div style={{ rotateX: tilt }} className="[transform-style:preserve-3d]">
-              <AnimatePresence mode="wait">
-                <motion.div key={SCREENS[active].key}
-                  initial={{ opacity: 0, y: reduce ? 0 : 30, rotateY: reduce ? 0 : -8, scale: reduce ? 1 : 0.97 }}
-                  animate={{ opacity: 1, y: 0, rotateY: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: reduce ? 0 : -20, rotateY: reduce ? 0 : 6, scale: reduce ? 1 : 0.98 }}
-                  transition={{ duration: 0.55, ease: ease.out }}>
-                  <Current />
-                </motion.div>
-              </AnimatePresence>
-            </motion.div>
-            <div className="mt-5 hidden gap-1.5 lg:flex" aria-hidden>
-              {SCREENS.map((s, i) => <span key={s.key} className={cn('h-1 flex-1 rounded-full transition-colors duration-500', i <= active ? 'bg-brand-forest' : 'bg-line')} />)}
+            <div className="min-w-0">
+              <p className="eyebrow-dark">The product</p>
+              <h2 className="mt-4 text-[34px] font-medium leading-[1.02] tracking-[-0.045em] lg:text-[44px]">Built around how your team <span className="dim-dark">actually works.</span></h2>
+              <ol className="mt-6 flex gap-2 overflow-x-auto pb-2 lg:block lg:space-y-1 lg:overflow-visible lg:pb-0" role="tablist" aria-label="Product screens">
+                {SCREENS.map((s, i) => (
+                  <li key={s.key} className="shrink-0">
+                    <button role="tab" aria-selected={i === active} onClick={() => jump(i)}
+                      className={cn('group relative w-full rounded-2xl px-4 py-2.5 text-left transition-colors lg:py-3',
+                        i === active ? 'bg-white/[0.07] ring-1 ring-white/10 backdrop-blur' : 'hover:bg-white/[0.04]')}>
+                      {i === active && <motion.span layoutId="showcase-bar" className="absolute inset-y-3 left-0 hidden w-[3px] rounded-full bg-brand-mint shadow-[0_0_12px_rgba(35,178,74,.8)] lg:block" />}
+                      <span className="flex items-center gap-3">
+                        <s.icon className={cn('h-[18px] w-[18px] transition-colors', i === active ? 'text-brand-mint' : 'text-paper/45')} />
+                        <span className={cn('whitespace-nowrap text-[15px] font-semibold', i === active ? 'text-paper' : 'text-paper/60')}>{s.title}</span>
+                        <span className={cn('ml-auto hidden font-mono text-[11px] tabular-nums lg:inline', i === active ? 'text-brand-mint' : 'text-paper/30')}>0{i + 1}</span>
+                      </span>
+                      <AnimatePresence initial={false}>
+                        {i === active && (
+                          <motion.p initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.35, ease: ease.out }} className="hidden overflow-hidden pl-[30px] text-[13.5px] leading-relaxed text-paper/60 lg:block">
+                            <span className="block pt-1.5">{s.body}</span>
+                          </motion.p>
+                        )}
+                      </AnimatePresence>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            </div>
+
+            <div className="relative min-w-0 [perspective:1600px]">
+              <p className="mb-3 text-[14px] text-paper/60 lg:hidden">{SCREENS[active].body}</p>
+              <motion.div style={{ rotateX: tilt }} className="[transform-style:preserve-3d]">
+                <AnimatePresence mode="wait">
+                  <motion.div key={SCREENS[active].key}
+                    initial={{ opacity: 0, y: reduce ? 0 : 30, rotateY: reduce ? 0 : -8, scale: reduce ? 1 : 0.97 }}
+                    animate={{ opacity: 1, y: 0, rotateY: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: reduce ? 0 : -20, rotateY: reduce ? 0 : 6, scale: reduce ? 1 : 0.98 }}
+                    transition={{ duration: 0.55, ease: ease.out }}
+                    className="rounded-[22px] shadow-[0_50px_100px_-30px_rgba(0,0,0,.8),0_0_60px_-10px_rgba(35,178,74,.25)]">
+                    <Current />
+                  </motion.div>
+                </AnimatePresence>
+              </motion.div>
+              <div className="mt-5 hidden items-center gap-1.5 lg:flex" aria-hidden>
+                {SCREENS.map((s, i) => <span key={s.key} className={cn('h-1 flex-1 rounded-full transition-colors duration-500', i <= active ? 'bg-brand-mint' : 'bg-white/10')} />)}
+                <span className="ml-3 font-mono text-[11px] tabular-nums text-paper/50">{String(active + 1).padStart(2, '0')} / {String(SCREENS.length).padStart(2, '0')}</span>
+              </div>
             </div>
           </div>
         </div>

@@ -32,3 +32,29 @@
 @keyframes row-out { to { opacity: 0; transform: translateX(8px); } }
 @keyframes strike { from { background-size: 0% 1.5px; } to { background-size: 100% 1.5px; } }
 .strike-through { background-image: linear-gradient(currentColor, currentColor); background-repeat: no-repeat; background-position: 0 55%; background-size: 100% 1.5px; animation: strike 320ms ease-out; }
+
+/* ---- Prosperr brand surface helpers ---- */
+/* Topographic contour lines, as on prosperr.io's service cards. */
+.contours {
+  background-color: #F1F2F1;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='320' viewBox='0 0 420 320' fill='none' stroke='%23151B19' stroke-opacity='.09' stroke-width='1.2'%3E%3Cpath d='M-20 60C60 20 120 90 200 60s150-70 240-20'/%3E%3Cpath d='M-20 300C40 220 20 120 110 90s180 10 220 80 30 130 110 150'/%3E%3Cpath d='M70 330c-20-80 10-160 90-180s170 30 180 110'/%3E%3Cpath d='M130 330c0-60 30-110 80-115s100 40 95 115'/%3E%3Cpath d='M300-20c-10 60 30 110 90 120'/%3E%3Cpath d='M-20 180c50-30 70-90 40-200'/%3E%3C/svg%3E");
+  background-size: cover;
+  background-position: center;
+}
+.text-shine {
+  background: linear-gradient(100deg, #fff 20%, #B5DB88 40%, #fff 60%) 0 0 / 200% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.preserve-3d { transform-style: preserve-3d; }
+.backface-hidden { backface-visibility: hidden; }
+
+/* prosperr.io section label: outlined uppercase pill */
+.eyebrow { @apply inline-flex items-center gap-2 rounded-full border border-ink/15 px-4 py-1.5 text-[12px] font-semibold uppercase tracking-[0.14em] text-ink; }
+.eyebrow-dark { @apply inline-flex items-center gap-2 rounded-full border border-paper/25 px-4 py-1.5 text-[12px] font-semibold uppercase tracking-[0.14em] text-paper/90; }
+/* Two-tone headline: the second phrase in soft grey, as on prosperr.io */
+.dim { color: #1FA645; }
+.dim-dark { color: #23B24A; }
+@keyframes sweep { 0% { transform: translateX(0) skewX(-20deg); } 60%, 100% { transform: translateX(480%) skewX(-20deg); } }
+@keyframes topo-drift { from { transform: scale(1.04) translate3d(-1%, 0, 0); } to { transform: scale(1.08) translate3d(1%, -1.5%, 0); } }
+@keyframes vs-travel { 0% { offset-distance: 0%; opacity: 0; } 8% { opacity: 1; } 92% { opacity: 1; } 100% { offset-distance: 100%; opacity: 0; } }
+@keyframes wave { 0%, 100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }

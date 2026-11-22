@@ -50,10 +50,10 @@ export function AppShell() {
 
   return (
     <div className="flex h-full">
-      <aside className={cn('flex shrink-0 flex-col border-r border-line bg-white transition-[width] duration-200', collapsed ? 'w-[60px]' : 'w-[240px]')}>
-        <div className={cn('flex h-14 items-center gap-2.5 px-4', collapsed && 'justify-center px-0')}>
-          <LogoMark size={28} />
-          {!collapsed && <div className="min-w-0"><p className="text-[14px] font-semibold leading-4">Prosperr</p><p className="text-2xs text-ink-muted">Sales CRM</p></div>}
+      <aside className={cn('relative flex shrink-0 flex-col border-r border-line bg-white transition-[width] duration-200', collapsed ? 'w-[60px]' : 'w-[240px]')}>
+        <div className={cn('flex h-16 items-center gap-2.5 px-4', collapsed && 'justify-center px-0')}>
+          <LogoMark size={30} />
+          {!collapsed && <div className="min-w-0 leading-none"><p className="font-display text-[17px] font-extrabold uppercase tracking-[-0.01em] text-brand-navy">Prosperr.io</p><p className="mt-1 text-[9.5px] font-semibold uppercase tracking-[0.22em] text-brand-forest-600">Sales CRM</p></div>}
         </div>
 
         <button onClick={() => setCmdOpen(true)}
@@ -106,11 +106,11 @@ function NavItemLink({ item, collapsed }: { item: ReturnType<typeof navFor>[numb
   const Icon = item.icon;
   return (
     <NavLink to={item.to} end={item.to === '/'} title={collapsed ? item.label : undefined}
-      className={({ isActive }) => cn('group flex h-8 items-center gap-2.5 rounded-lg px-2 text-[13px] font-medium text-ink-soft transition-colors hover:bg-black/[0.04] hover:text-ink',
-        isActive && 'bg-accent-soft text-accent hover:bg-accent-soft hover:text-accent', collapsed && 'justify-center px-0')}>
+      className={({ isActive }) => cn('group relative flex h-9 items-center gap-2.5 rounded-xl px-2.5 text-[13.5px] font-medium text-ink-soft transition-all duration-150 hover:bg-black/[0.04] hover:text-ink',
+        isActive && 'bg-brand-forest text-white shadow-[0_6px_16px_-8px_rgba(5,63,26,.7)] hover:bg-brand-forest hover:text-white [&_svg]:text-white [&_.kbd-hint]:text-white/50', collapsed && 'justify-center px-0')}>
       <Icon className="h-4 w-4 shrink-0" />
       {!collapsed && <span className="flex-1">{item.label}</span>}
-      {!collapsed && item.shortcut && <span className="hidden text-2xs text-ink-muted/70 group-hover:inline">G {item.shortcut.toUpperCase()}</span>}
+      {!collapsed && item.shortcut && <span className="kbd-hint hidden text-2xs text-ink-muted/70 group-hover:inline">G {item.shortcut.toUpperCase()}</span>}
     </NavLink>
   );
 }
@@ -119,9 +119,9 @@ function TopBar() {
   const { pathname } = useLocation();
   const crumbs = pathname.split('/').filter(Boolean);
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b border-line bg-white/80 px-6 backdrop-blur">
+    <header className="flex h-16 shrink-0 items-center justify-between border-b border-line bg-[#F3F3F5]/80 px-6 backdrop-blur-xl">
       <div className="flex items-center gap-1.5 text-[13px] text-ink-muted">
-        <span>Prosperr</span>
+        <span className="font-semibold text-brand-navy">Prosperr</span>
         {crumbs.map((c, i) => (
           <span key={i} className="flex items-center gap-1.5">
             <span className="text-line">/</span>

@@ -32,7 +32,13 @@ Decisions:
 - The accent is forest, not lime, because lime on white fails WCAG contrast for text and buttons. Lime is used where it sits on forest or charcoal.
 - Inter is kept for both surfaces. The landing page gets character from size and tracking (`-0.035em` on display type), not from a second typeface, which would add a font download.
 
-**Logo:** the official mark is on prosperr.io's CDN, which this build environment could not download. `src/components/brand/Logo.tsx` renders a forest tile with a lime "P" as a stand-in. To use the real logo, put the file in `src/assets/brand/` and render it inside `LogoMark`. All screens use this one component.
+**Logo:** the official Prosperr mark (from prosperr.io's CDN) is at `src/assets/brand/prosperr-mark.png` and `public/favicon.png`. `src/components/brand/Logo.tsx` pairs it with the PROSPERR.IO wordmark in navy. Every screen uses this one component. The logo appears only in the header (landing nav, app sidebar, sign-in form) and the footer.
+
+**Palette (taken from prosperr.io's stylesheet):** forest `#053F1A` for primary CTAs and the one big block per page, ink `#0D0D0D` for text and the footer, canvas `#F3F3F5`, hairlines `#DCDCDE`, paper `#EFEFEF` for text on dark, mint `#23B24A` for small status accents. Lime is no longer used on the landing page. Headlines are two-tone: the second phrase uses `.dim` / `.dim-dark`. Section labels use the outlined `.eyebrow` pill.
+
+**Display type:** Bricolage Grotesque (prosperr.io's headline face) is the `font-display` family, used for landing headings, the sign-in page and `PageHeader` titles. Body text stays Inter.
+
+**prosperr.io patterns reused:** forest announcement strip and light header with a forest pill CTA (`LandingNav`), the three-card "managed in one place" block with contour backgrounds and chip tags (`Pillars.tsx`), and the dark corner card in the hero.
 
 ## 3. Two motion personalities
 
@@ -97,7 +103,15 @@ Confetti (`lib/celebrate.ts`) is loaded on demand and skipped for reduced motion
 ## 7. Not done yet (next increments)
 
 - The actual video clips (section 5).
-- The official logo file (section 2).
 - A dedicated date-picker component. The app still uses native date and datetime inputs, which are accessible and work on mobile.
 - A route-level page transition inside the app. It was left out deliberately to keep navigation instant. Add a 150 ms fade on `Outlet` if wanted.
 - Lighthouse and axe audits on a production build, run against the deployed site.
+
+## 8. Landing layout rule (light page, dark bookends and stages)
+
+- **Bookends:** the hero opens full-width on the dark contour surface (`TopoSurface`); the black footer closes the page.
+- **Page:** every section in between sits on one light canvas (`bg-canvas`, `#F3F3F5`). No white-vs-grey alternation.
+- **Stages:** dark appears mid-page only as inset rounded boxes on that canvas (`rounded-[40px]`, `max-w-7xl`, contour surface + soft mint glow): the Pillars banner, "In the field" and the closing CTA.
+- **Cards:** dark glass cards mean live product/data (hero cards, field tiles, feature cards); white cards explain (Pillars, Roles).
+- **Green:** `#23B24A`/`#1FA645` for the second phrase of headlines and live data; forest `#053F1A` for primary buttons and the top strip.
+- **Rhythm:** light sections use `py-16 lg:py-20`; a section that follows another light section drops its top padding so gaps stay even.

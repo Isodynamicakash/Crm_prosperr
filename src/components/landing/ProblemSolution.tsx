@@ -4,6 +4,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { BarChart3, Bell, CheckCircle2, FileSpreadsheet, MessagesSquare, PhoneCall, Users2, XCircle } from 'lucide-react';
 import { Reveal } from '@/lib/animations/components';
 import { AppWindow } from './previews';
+import { TopoSurface } from '@/components/brand/TopoLines';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -67,63 +68,73 @@ export function ProblemSolution() {
   return (
     <section id="story" ref={root} className="relative bg-canvas">
       {/* Desktop: pinned, scroll-scrubbed story */}
-      <div className="ps-pin hidden h-screen items-center overflow-hidden lg:flex motion-reduce:!hidden">
-        <div className="mx-auto grid w-full max-w-7xl grid-cols-[0.8fr_1.2fr] items-center gap-10 px-8">
+      <div className="ps-pin hidden h-screen overflow-hidden px-8 pb-6 pt-[88px] lg:block motion-reduce:!hidden">
+        <div className="relative isolate mx-auto flex h-full max-w-7xl items-center overflow-hidden rounded-[40px] text-paper">
+        <TopoSurface className="-z-20" />
+        <div className="absolute right-[18%] top-1/2 -z-10 h-[520px] w-[620px] -translate-y-1/2 rounded-full bg-brand-mint/[0.12] blur-[120px]" />
+        <div className="grid w-full grid-cols-[0.8fr_1.2fr] items-center gap-10 px-12">
           <div className="relative min-h-[260px]">
             <div className="ps-copy-problem absolute inset-0">
-              <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-danger/80">The problem</p>
-              <h2 className="mt-3 text-[44px] font-semibold leading-[1.05] tracking-[-0.03em]">Sales work is scattered across five places.</h2>
-              <p className="mt-4 max-w-[40ch] text-[16px] text-ink-soft">Leads slip, follow-ups depend on memory, and managers find out a deal stalled weeks after it did.</p>
+              <p className="eyebrow-dark"><span className="h-1.5 w-1.5 rounded-full bg-[#23B24A]" />The problem</p>
+              <h2 className="mt-5 text-[52px] font-medium leading-[1.02] tracking-[-0.045em]">Sales work is scattered <span className="text-[#23B24A]">across five places.</span></h2>
+              <p className="mt-4 max-w-[40ch] text-[16px] text-paper/65">Leads slip, follow-ups depend on memory, and managers find out a deal stalled weeks after it did.</p>
             </div>
             <div className="ps-copy-solution absolute inset-0">
-              <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-brand-forest-600">The Prosperr way</p>
-              <h2 className="mt-3 text-[44px] font-semibold leading-[1.05] tracking-[-0.03em]">One account. One timeline. Every next step.</h2>
-              <p className="mt-4 max-w-[40ch] text-[16px] text-ink-soft">Calls, meetings, owners and stage rules live on one record, so the CRM creates the follow-up instead of your memory.</p>
+              <p className="eyebrow-dark"><span className="h-1.5 w-1.5 rounded-full bg-brand-mint" />The Prosperr way</p>
+              <h2 className="mt-5 text-[52px] font-medium leading-[1.02] tracking-[-0.045em]">One account. One timeline. <span className="dim-dark">Every next step.</span></h2>
+              <p className="mt-4 max-w-[40ch] text-[16px] text-paper/65">Calls, meetings, owners and stage rules live on one record, so the CRM creates the follow-up instead of your memory.</p>
             </div>
           </div>
           <div className="relative mx-auto" style={{ width: W, height: H }}>
             {/* particles */}
             <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
               {Array.from({ length: 14 }).map((_, i) => (
-                <span key={i} className="absolute bottom-0 h-1 w-1 rounded-full bg-brand-lime/70 motion-safe:animate-[rise_9s_linear_infinite]"
+                <span key={i} className="absolute bottom-0 h-1 w-1 rounded-full bg-brand-mint/60 motion-safe:animate-[rise_9s_linear_infinite]"
                   style={{ left: `${(i * 53) % 100}%`, animationDelay: `${(i * 0.7) % 9}s`, opacity: 0 }} />
               ))}
             </div>
             <svg className="absolute inset-0" width={W} height={H} aria-hidden>
               {PROBLEMS.map((p, i) => (
-                <line key={i} className="ps-line" x1={CX + p.pos[0]} y1={CY + p.pos[1]} x2={CX} y2={CY} stroke="#8BC34A" strokeWidth={1.5} strokeLinecap="round" />
+                <line key={i} className="ps-line" x1={CX + p.pos[0]} y1={CY + p.pos[1]} x2={CX} y2={CY} stroke="#23B24A" strokeOpacity={0.6} strokeWidth={1.5} strokeLinecap="round" />
               ))}
             </svg>
-            <div className="ps-hub absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand-lime opacity-0 shadow-glow" />
+            <div className="ps-hub absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand-mint opacity-0 shadow-[0_0_30px_8px_rgba(35,178,74,.6)]" />
             {PROBLEMS.map((p, i) => (
-              <div key={p.title} className={`ps-card-${i} absolute left-1/2 top-1/2 -ml-[115px] -mt-[44px] w-[230px] rounded-2xl border border-line bg-white p-3.5 shadow-pop`}>
-                <p className="flex items-center gap-2 text-[13px] font-semibold"><p.icon className="h-4 w-4 text-danger" />{p.title}</p>
-                <p className="mt-1 text-[12px] text-ink-muted">{p.body}</p>
+              <div key={p.title} className={`ps-card-${i} absolute left-1/2 top-1/2 -ml-[115px] -mt-[44px] w-[230px] rounded-[22px] border border-white/10 bg-[#101311]/85 p-4 shadow-[0_24px_50px_-20px_rgba(0,0,0,.7)] backdrop-blur-xl`}>
+                <p className="flex items-center gap-2 text-[13px] font-semibold text-paper"><span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#23B24A]/15"><p.icon className="h-3.5 w-3.5 text-[#23B24A]" /></span>{p.title}</p>
+                <p className="mt-1.5 text-[12px] leading-relaxed text-paper/55">{p.body}</p>
               </div>
             ))}
-            <div className="ps-solution absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"><SolutionPanel /></div>
+            <div className="ps-solution absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+              <div className="absolute -inset-10 -z-10 rounded-full bg-brand-mint/25 blur-3xl" />
+              <SolutionPanel />
+            </div>
           </div>
+        </div>
         </div>
       </div>
 
       {/* Mobile / reduced motion: same story, stacked */}
-      <div className="mx-auto max-w-3xl px-5 py-20 lg:hidden motion-reduce:lg:block">
+      <div className="px-5 py-4 lg:hidden motion-reduce:lg:block">
+        <div className="relative isolate mx-auto max-w-3xl overflow-hidden rounded-[32px] px-6 py-10 text-paper">
+        <TopoSurface className="-z-20" />
         <Reveal>
-          <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-danger/80">The problem</p>
-          <h2 className="mt-3 text-[32px] font-semibold leading-tight tracking-tight">Sales work is scattered across five places.</h2>
+          <p className="eyebrow-dark"><span className="h-1.5 w-1.5 rounded-full bg-brand-mint" />The problem</p>
+          <h2 className="mt-3 text-[32px] font-medium leading-[1.05] tracking-[-0.04em]">Sales work is scattered across five places.</h2>
         </Reveal>
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           {PROBLEMS.map((p, i) => (
             <Reveal key={p.title} delay={i * 0.05}>
-              <div className="flex gap-3 rounded-2xl border border-line bg-white p-4"><XCircle className="h-4 w-4 shrink-0 text-danger" /><div><p className="text-[14px] font-semibold">{p.title}</p><p className="text-[13px] text-ink-muted">{p.body}</p></div></div>
+              <div className="flex gap-3 rounded-2xl border border-white/10 bg-[#101311]/85 p-4 backdrop-blur"><XCircle className="h-4 w-4 shrink-0 text-[#23B24A]" /><div><p className="text-[14px] font-semibold text-paper">{p.title}</p><p className="text-[13px] text-paper/55">{p.body}</p></div></div>
             </Reveal>
           ))}
         </div>
         <Reveal className="mt-12">
-          <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-brand-forest-600">The Prosperr way</p>
-          <h2 className="mt-3 text-[32px] font-semibold leading-tight tracking-tight">One account. One timeline. Every next step.</h2>
+          <p className="eyebrow-dark"><span className="h-1.5 w-1.5 rounded-full bg-brand-mint" />The Prosperr way</p>
+          <h2 className="mt-3 text-[32px] font-medium leading-[1.05] tracking-[-0.04em]">One account. One timeline. Every next step.</h2>
           <div className="mt-6 flex justify-center"><SolutionPanel /></div>
         </Reveal>
+      </div>
       </div>
     </section>
   );

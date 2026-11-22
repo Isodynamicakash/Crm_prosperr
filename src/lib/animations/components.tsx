@@ -4,15 +4,16 @@ import { cn } from '@/lib/cn';
 import { ease, fadeUp, revealViewport, stagger } from './index';
 
 /** Headline that appears word by word. Screen readers get the plain sentence. */
-export function WordReveal({ text, className, delay = 0, as: Tag = 'h1' }: { text: string; className?: string; delay?: number; as?: 'h1' | 'h2' | 'p' }) {
+/** `immediate` plays on mount instead of on scroll-into-view: use it for above-the-fold headlines. */
+export function WordReveal({ text, className, delay = 0, as: Tag = 'h1', immediate = false, accentFrom, accentClass = 'dim-dark' }: { text: string; className?: string; delay?: number; as?: 'h1' | 'h2' | 'p'; immediate?: boolean; accentFrom?: number; accentClass?: string }) {
   const reduce = useReducedMotion();
   const words = text.split(' ');
   const M = motion[Tag];
   return (
-    <M className={className} aria-label={text} initial="hidden" whileInView="show" viewport={{ once: true }} variants={stagger(0.07, delay)}>
+    <M className={className} aria-label={text} initial="hidden" {...(immediate ? { animate: 'show' } : { whileInView: 'show', viewport: { once: true } })} variants={stagger(0.07, delay)}>
       {words.map((w, i) => (
         <span key={i} aria-hidden className="inline-block overflow-hidden pb-[0.08em] align-bottom">
-          <motion.span className="inline-block"
+          <motion.span className={cn('inline-block', accentFrom !== undefined && i >= accentFrom && accentClass)}
             variants={reduce ? { hidden: { opacity: 0 }, show: { opacity: 1 } } : {
               hidden: { y: '105%', opacity: 0 },
               show: { y: '0%', opacity: 1, transition: { duration: 0.9, ease: ease.out } },
@@ -29,8 +30,8 @@ export function WordReveal({ text, className, delay = 0, as: Tag = 'h1' }: { tex
 export function Reveal({ children, className, delay = 0, y = 24 }: { children: ReactNode; className?: string; delay?: number; y?: number }) {
   const reduce = useReducedMotion();
   return (
-    <motion.div className={className} initial={{ opacity: 0, y: reduce ? 0 : y }} whileInView={{ opacity: 1, y: 0 }}
-      viewport={revealViewport} transition={{ duration: 0.8, ease: ease.out, delay }}>
+    <motion.div className={className} initial={{ opacity: 0, y: reduce ? 0 : y, filter: reduce ? 'none' : 'blur(8px)' }} whileInView={{ opacity: 1, y: 0, filter: reduce ? 'none' : 'blur(0px)' }}
+      viewport={revealViewport} transition={{ duration: 0.9, ease: ease.out, delay }}>
       {children}
     </motion.div>
   );

@@ -4,7 +4,7 @@ import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import type { Role } from '@/lib/types';
 import { AppShell } from '@/components/layout/AppShell';
-import LoginPage from '@/pages/LoginPage';
+const LoginPage = lazy(() => import('@/pages/LoginPage'));
 const LandingPage = lazy(() => import('@/pages/LandingPage'));
 const HomePage = lazy(() => import('@/pages/HomePage'));
 const MyDayPage = lazy(() => import('@/pages/MyDayPage'));
