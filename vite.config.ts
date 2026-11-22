@@ -12,7 +12,12 @@ export default defineConfig(({ mode }) => {
     resolve: { alias: { '@': path.resolve(__dirname, 'src') } },
     server: {
       port: 5173,
-      proxy: { '/api': { target, changeOrigin: true }, '/public': { target, changeOrigin: true } },
+      // The browser sees these calls as same-origin, so drop its Origin header: otherwise the backend's CORS check
+      // rejects any dev port other than FRONTEND_URL (e.g. 5174 when 5173 is taken).
+      proxy: Object.fromEntries(['/api', '/public'].map((p) => [p, {
+        target, changeOrigin: true,
+        configure: (proxy: { on: (e: string, cb: (req: { removeHeader: (h: string) => void }) => void) => void }) => proxy.on('proxyReq', (req) => req.removeHeader('origin')),
+      }])),
     },
   };
 });
