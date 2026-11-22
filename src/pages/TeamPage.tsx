@@ -115,7 +115,7 @@ function UserModal({ user, onClose, managers }: { user: UserView | 'new' | null;
           <div className="grid grid-cols-2 gap-2">
             {ROLES.map((r) => (
               <button key={r.value} onClick={() => setF({ ...f, role: r.value })}
-                className={`rounded-lg border px-3 py-2 text-left transition-all ${f.role === r.value ? 'border-accent bg-accent-soft/60 ring-1 ring-accent/30' : 'border-line hover:border-ink-muted/30'}`}>
+                className={`rounded-2xl border px-3.5 py-2.5 text-left transition-all ${f.role === r.value ? 'border-brand-forest bg-brand-forest-50 ring-2 ring-brand-forest/15' : 'border-line hover:border-ink-muted/30'}`}>
                 <p className="text-[13px] font-medium">{r.label}</p><p className="text-2xs text-ink-muted">{r.hint}</p>
               </button>
             ))}

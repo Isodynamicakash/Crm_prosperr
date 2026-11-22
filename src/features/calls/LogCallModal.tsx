@@ -81,7 +81,7 @@ export function LogCallModal({ open, onClose, target, onLogged, saveAndNext }: {
 
   return (
     <Modal open={open} onClose={onClose} width="max-w-2xl"
-      title={<span className="flex items-center gap-2"><PhoneCall className="h-4 w-4 text-accent" />Log call · {target?.name}</span>}
+      title={<span className="flex items-center gap-2"><span className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-forest text-white"><PhoneCall className="h-4 w-4" /></span>Log call · {target?.name}</span>}
       subtitle={[target?.designation, target?.accountName].filter(Boolean).join(' · ')}
       footer={<>
         {missing && <span className="mr-auto text-xs text-ink-muted">{missing}</span>}
@@ -105,9 +105,9 @@ export function LogCallModal({ open, onClose, target, onLogged, saveAndNext }: {
               <div className="flex flex-wrap gap-1.5">
                 {g.codes.filter((c) => labels[c]).map((c) => (
                   <button key={c} onClick={() => setCode(c)}
-                    className={cn('rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-all',
-                      code === c ? 'border-accent bg-accent text-white shadow-card' : 'border-line bg-white text-ink-soft hover:border-accent/40 hover:text-ink',
-                      c === 'L1_BOOKED' && code !== c && 'border-success/40 text-success')}>
+                    className={cn('rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-all',
+                      code === c ? 'border-brand-forest bg-brand-forest text-white shadow-[0_6px_14px_-8px_rgba(5,63,26,.9)]' : 'border-line bg-white text-ink-soft hover:border-brand-forest/40 hover:text-ink',
+                      c === 'L1_BOOKED' && code !== c && 'border-brand-mint/50 bg-[#E6F5EA] text-[#1A7F36]')}>
                     {labels[c]}
                   </button>
                 ))}
@@ -130,7 +130,7 @@ export function LogCallModal({ open, onClose, target, onLogged, saveAndNext }: {
           <Field label="Why?" required><Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Using Zaggle for FBP" /></Field>
         )}
         {NEEDS_REFERRAL.has(code) && (
-          <div className="rounded-lg border border-line bg-canvas/60 p-3">
+          <div className="rounded-2xl border border-line bg-canvas/60 p-4">
             <p className="mb-2 text-xs font-medium text-ink-soft">Who did they refer you to?</p>
             <div className="grid grid-cols-2 gap-2">
               <Input placeholder="Full name *" value={ref.fullName} onChange={(e) => setRef({ ...ref, fullName: e.target.value })} />
@@ -144,8 +144,8 @@ export function LogCallModal({ open, onClose, target, onLogged, saveAndNext }: {
         <Field label="Remark"><Textarea rows={2} value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="What was said? (optional)" /></Field>
 
         {code && (
-          <div className="rounded-lg border border-accent/20 bg-accent-soft/40 p-3">
-            <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-accent"><Info className="h-3.5 w-3.5" />What happens when you save</p>
+          <div className="rounded-2xl border border-brand-forest/15 bg-brand-forest-50/70 p-4">
+            <p className="mb-2 flex items-center gap-1.5 text-[13px] font-semibold text-brand-forest"><Info className="h-3.5 w-3.5" />What happens when you save</p>
             {NEEDS_DATE.has(code) && !followUpDate && <p className="text-xs text-ink-muted">Pick the call-back date to see the plan.</p>}
             {preview.isFetching && !plan && <p className="text-xs text-ink-muted">Working it out…</p>}
             {preview.error && <p className="text-xs text-danger">{(preview.error as Error).message}</p>}

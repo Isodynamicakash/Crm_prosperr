@@ -60,8 +60,8 @@ export function Field({ label, hint, error, required, children, className }: {
   label: string; hint?: ReactNode; error?: string; required?: boolean; children: ReactNode; className?: string;
 }) {
   return (
-    <label className={cn('block space-y-1', className)}>
-      <span className="text-xs font-medium text-ink-soft">{label}{required && <span className="ml-0.5 text-danger">*</span>}</span>
+    <label className={cn('block space-y-1.5', className)}>
+      <span className="text-[12.5px] font-semibold text-ink">{label}{required && <span className="ml-0.5 text-brand-mint">*</span>}</span>
       {children}
       {error ? <span className="block text-2xs text-danger">{error}</span> : hint ? <span className="block text-2xs text-ink-muted">{hint}</span> : null}
     </label>

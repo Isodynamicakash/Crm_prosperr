@@ -118,7 +118,7 @@ export function SubmitSqlModal({ open, onClose, accountId, accountName, stakehol
             <div className="grid grid-cols-2 gap-3">
               {([['Budget', 'budgetId', 'budgetNote', budget.data], ['Authority', 'authorityId', 'authorityNote', authority.data],
                 ['Need', 'needId', 'needNote', need.data], ['Timeline', 'timelineId', 'timelineNote', timeline.data]] as const).map(([label, id, note, opts]) => (
-                <div key={id} className="space-y-1.5 rounded-lg border border-line p-2.5">
+                <div key={id} className="space-y-1.5 rounded-2xl border border-line p-3">
                   <Field label={label} required>
                     <Select value={f[id]} onChange={set(id)}>
                       <option value="">Select…</option>
@@ -132,7 +132,7 @@ export function SubmitSqlModal({ open, onClose, accountId, accountName, stakehol
           </section>
 
           {(needsIntent || needsSmall) && (
-            <section className="grid grid-cols-2 gap-3 rounded-lg border border-warning/30 bg-warning-soft/50 p-3">
+            <section className="grid grid-cols-2 gap-3 rounded-2xl border border-[#C98A1B]/25 bg-[#FCF4E6] p-4">
               {needsIntent && <>
                 <Field label="Intent rating" hint="P1 cities need HIGH intent + manager confirmation">
                   <Select value={f.intentRating} onChange={set('intentRating')}>
@@ -249,7 +249,7 @@ export function ValidateSqlModal({ open, onClose, submissionId, onApproved }: {
           {d.smallExceptionReason && <p className="rounded-lg bg-canvas p-2.5 text-xs"><b>Exception reason:</b> {d.smallExceptionReason}</p>}
           <ul className="grid grid-cols-2 gap-2">
             {d.criteria.map((x) => (
-              <li key={x.code} className="flex gap-2 rounded-lg border border-line p-2">
+              <li key={x.code} className="flex gap-2 rounded-2xl border border-line p-2.5">
                 <CriterionIcon s={x.passed === true ? 'PASS' : x.passed === false ? 'FAIL' : 'NEEDS_APPROVAL'} />
                 <div><p className="text-xs font-medium">{criterionLabel[x.code] ?? humanize(x.code)}</p>{x.detail && <p className="text-2xs text-ink-muted">{x.detail}</p>}</div>
               </li>

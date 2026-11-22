@@ -50,7 +50,7 @@ export function RecordOutcomeModal({ open, onClose, meeting, stakeholders = [] }
         <div className="grid grid-cols-2 gap-2">
           {OUTCOMES.map((o) => (
             <button key={o.value} onClick={() => setOutcome(o.value)}
-              className={`rounded-lg border px-3 py-2 text-left transition-all ${outcome === o.value ? 'border-accent bg-accent-soft/60 ring-1 ring-accent/30' : 'border-line hover:border-ink-muted/30'}`}>
+              className={`rounded-2xl border px-3.5 py-2.5 text-left transition-all ${outcome === o.value ? 'border-brand-forest bg-brand-forest-50 ring-2 ring-brand-forest/15' : 'border-line hover:border-ink-muted/30'}`}>
               <p className="text-[13px] font-medium">{o.label}</p>
               {o.hint && <p className="text-2xs text-ink-muted">{o.hint}</p>}
             </button>
