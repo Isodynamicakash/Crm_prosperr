@@ -8,11 +8,18 @@ import { ApiError } from '@/lib/api';
 import App from './App';
 import './index.css';
 
+// Reference data (dropdowns, cities, settings) rarely changes; everything else re-syncs every 20 s while the tab is open,
+// on focus and on reconnect, so one person's change shows up for the rest of the team without a reload.
+const STATIC_KEYS = new Set(['picklist', 'picklist-admin', 'cities', 'designations', 'designations-review', 'settings', 'thresholds',
+  'checklist-items', 'templates', 'size-buckets', 'saved-views', 'me']);
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30_000,
-      refetchOnWindowFocus: false,
+      staleTime: 10_000,
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+      refetchInterval: (q) => (STATIC_KEYS.has(String(q.queryKey[0])) ? false : 20_000),
+      refetchIntervalInBackground: false,
       retry: (count, err) => !(err instanceof ApiError && err.status < 500) && count < 2,
     },
   },

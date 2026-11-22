@@ -204,7 +204,7 @@ function Notifications() {
   const seen = useRef<Set<string> | null>(null);
   const box = useRef<HTMLDivElement>(null);
   const { data = [], isSuccess } = useQuery({
-    queryKey: ['notifications'], queryFn: () => api.get<NotificationRow[]>('/api/notifications'), refetchInterval: 15_000, refetchOnWindowFocus: true,
+    queryKey: ['notifications'], queryFn: () => api.get<NotificationRow[]>('/api/notifications'), refetchInterval: 10_000, refetchOnWindowFocus: true,
   });
   const unread = data.filter((n) => !n.readAt).length;
 
@@ -225,7 +225,8 @@ function Notifications() {
       seen.current!.add(n.id);
       toast(n.title, { description: n.body, icon: <Bell className="h-4 w-4 text-brand-forest" />, action: { label: 'Open', onClick: () => openOne(n) } });
     });
-    if (fresh.length) qc.invalidateQueries({ queryKey: ['dashboard'] });
+    // Something happened elsewhere in the team: refresh every open screen right away, not at the next poll.
+    if (fresh.length) qc.invalidateQueries({ predicate: (q) => q.queryKey[0] !== 'notifications' });
   }, [data, isSuccess]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -256,7 +257,7 @@ function Notifications() {
             <div className="flex items-center justify-between border-b border-white/10 px-4 py-3.5">
               <div>
                 <p className="font-display text-[16px] font-medium">Notifications</p>
-                <p className="text-[11px] text-paper/45">{unread ? `${unread} unread` : 'You’re all caught up'} · updates every 15 s</p>
+                <p className="text-[11px] text-paper/45">{unread ? `${unread} unread` : 'You’re all caught up'} · live · every 10 s</p>
               </div>
               {unread > 0 && <button className="rounded-full bg-brand-mint/15 px-2.5 py-1 text-[11px] font-semibold text-brand-mint hover:bg-brand-mint/25" onClick={async () => { await api.post('/api/notifications/read-all'); qc.invalidateQueries({ queryKey: ['notifications'] }); }}>Mark all read</button>}
             </div>
