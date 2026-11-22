@@ -10,6 +10,7 @@ import { cn } from '@/lib/cn';
 import { fmtDate, fmtDateTime, humanize, inr } from '@/lib/format';
 import type { Achievement } from '@/lib/types';
 import { Button, Card, CardHeader, Empty, Field, Input, PageHeader, Select, SkeletonRows } from '@/components/ui/ui';
+import { C, ChartCard, Donut, GroupedBars, Meter, RadialGauge } from '@/components/charts/kit';
 
 type ReportKey = 'targets' | 'l1' | 'coverage' | 'inactive' | 'workload' | 'ageing' | 'sql' | 'sequences';
 const REPORTS: { key: ReportKey; label: string; hint: string }[] = [
@@ -33,7 +34,8 @@ export default function ReportsPage() {
         <nav className="space-y-0.5">
           {REPORTS.map((x) => (
             <button key={x.key} onClick={() => setKey(x.key)}
-              className={cn('w-full rounded-lg px-3 py-2 text-left text-[13px] font-medium text-ink-soft transition-colors hover:bg-black/[0.04]', key === x.key && 'bg-white text-ink shadow-card ring-1 ring-line')}>
+              className={cn('relative w-full rounded-xl px-3.5 py-2.5 text-left text-[13px] font-medium text-ink-soft transition-all hover:bg-white/70',
+                key === x.key && 'bg-brand-forest text-white shadow-[0_8px_20px_-10px_rgba(5,63,26,.8)] hover:bg-brand-forest')}>
               {x.label}
             </button>
           ))}
@@ -65,8 +67,42 @@ function GenericReport({ k }: { k: Exclude<ReportKey, 'targets'> }) {
           <Button icon={<Download className="h-3.5 w-3.5" />} onClick={() => api.download(ENDPOINT.l1, { format: 'csv' }, 'l1-not-progressed.csv').catch((e) => toast.error(e.message))}>Export CSV</Button>
         </div>
       )}
-      {sections.map(([title, rows]) => <ReportTable key={title} title={title ? humanize(title.replace(/([A-Z])/g, '_$1')) : undefined} rows={Array.isArray(rows) ? rows : []} />)}
+      {sections.map(([title, rows]) => {
+        const t = title ? humanize(title.replace(/([A-Z])/g, '_$1')) : undefined;
+        const list = Array.isArray(rows) ? rows : [];
+        return <div key={title} className="space-y-4"><AutoChart title={t ?? REPORTS.find((x) => x.key === k)!.label} rows={list} /><ReportTable title={t} rows={list} /></div>;
+      })}
     </div>
+  );
+}
+
+const isNum = (v: unknown) => typeof v === 'number' || (typeof v === 'string' && v.trim() !== '' && !Number.isNaN(Number(v)) && !/^\d{4}-/.test(v));
+const pretty = (c: string) => humanize(c.replace(/([A-Z])/g, '_$1'));
+const PAL = [C.forest, C.mint, C.navy, C.sage, C.slate, C.forest2, C.pale];
+
+/** Picks a chart from the shape of a report: one number per row → donut; buckets / stages → stacked bars; otherwise grouped bars. */
+function AutoChart({ title, rows }: { title: string; rows: Record<string, unknown>[] }) {
+  if (!rows.length) return null;
+  const keys = Object.keys(rows[0]).filter((c) => !/id$/i.test(c));
+  const label = keys.find((c) => !rows.every((r) => isNum(r[c]) || r[c] == null));
+  const nums = keys.filter((c) => c !== label && rows.every((r) => r[c] == null || isNum(r[c])) && !/^(total|weightedLoad|pct|share)$/i.test(c));
+  if (!label || !nums.length || rows.length > 40) return null;
+  const data = rows.map((r) => ({ [label]: String(r[label] ?? '—').replace(/_/g, ' ').toLowerCase().replace(/^\w/, (m) => m.toUpperCase()), ...Object.fromEntries(nums.map((n) => [n, Number(r[n] ?? 0)])) }));
+  if (nums.length === 1 && rows.length <= 9) {
+    return (
+      <ChartCard title={title} subtitle={pretty(nums[0])}>
+        <Donut height={210} data={data.map((d, i) => ({ name: String(d[label]), value: Number(d[nums[0]]), color: PAL[i % PAL.length] }))} />
+      </ChartCard>
+    );
+  }
+  const stacked = nums.length >= 3 && nums.every((n) => /^\d|^(l\d|sql|negotiation|won|lost|inactive|active)/i.test(n));
+  const horizontal = rows.length > 6 || data.some((d) => String(d[label]).length > 14);
+  return (
+    <ChartCard title={title} subtitle={nums.map(pretty).join(' · ')}>
+      <GroupedBars data={data} x={label} stacked={stacked} horizontal={horizontal}
+        height={horizontal ? Math.max(200, rows.length * (stacked ? 40 : 30 * Math.min(nums.length, 3))) : 260}
+        series={nums.slice(0, 7).map((n, i) => ({ key: n, name: pretty(n), color: PAL[i % PAL.length] }))} />
+    </ChartCard>
   );
 }
 
@@ -126,7 +162,7 @@ function Targets() {
   return (
     <div className="space-y-4">
       <Card className="p-4">
-        <p className="mb-3 flex items-center gap-2 text-[13px] font-semibold"><Target className="h-4 w-4 text-accent" />Set a target for this month</p>
+        <p className="mb-3 flex items-center gap-2 font-display text-[16px] font-medium tracking-[-0.02em]"><span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-forest text-white"><Target className="h-3.5 w-3.5" /></span>Set a target for this month</p>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-[1fr_1fr_140px_auto]">
           <Field label="Person"><Select value={userId} onChange={(e) => setUserId(e.target.value)}><option value="">Select…</option>{people.map((u) => <option key={u.id} value={u.id}>{u.fullName} · {u.role}</option>)}</Select></Field>
           <Field label="Metric"><Select value={metric} onChange={(e) => setMetric(e.target.value)}>{METRICS.map((m) => <option key={m} value={m}>{humanize(m)}</option>)}</Select></Field>
@@ -134,6 +170,16 @@ function Targets() {
           <div className="flex items-end"><Button variant="primary" disabled={!userId || !value} loading={save.isPending} onClick={() => save.mutate(undefined)}>Save</Button></div>
         </div>
       </Card>
+      {!!ach.data?.length && (
+        <ChartCard title="Achievement at a glance" subtitle="Live, against this month’s targets">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {ach.data.slice(0, 8).map((a, i) => (
+              <RadialGauge key={i} value={Number(a.pct ?? 0)} size={112} label={a.userName}
+                sub={`${humanize(a.metric)} · ${a.metric === 'MRR' ? `${inr(a.actual)} / ${inr(a.target)}` : `${Number(a.actual)} / ${Number(a.target)}`}`} />
+            ))}
+          </div>
+        </ChartCard>
+      )}
       <Card>
         <CardHeader title="Achievement this month" subtitle={userId ? people.find((p) => p.id === userId)?.fullName : 'Whole team'} />
         <div className="p-2">
@@ -147,7 +193,7 @@ function Targets() {
                     <tr key={i} className="border-t border-line/70">
                       <td className="px-2 py-2 font-medium">{a.userName}</td><td className="px-2">{humanize(a.metric)}</td>
                       <td className="px-2 text-right tabular-nums">{a.metric === 'MRR' ? `${inr(a.actual)} / ${inr(a.target)}` : `${Number(a.actual)} / ${Number(a.target)}`}</td>
-                      <td className="px-2"><div className="flex items-center gap-2"><div className="h-2 flex-1 rounded-full bg-canvas"><div className={cn('h-2 rounded-full', pct >= 100 ? 'bg-success' : pct >= 60 ? 'bg-accent' : 'bg-warning')} style={{ width: `${pct}%` }} /></div><span className="w-9 text-right text-xs tabular-nums text-ink-muted">{pct}%</span></div></td>
+                      <td className="px-2"><div className="flex items-center gap-2"><div className="flex-1"><Meter value={pct} max={100} /></div><span className="w-9 text-right text-xs tabular-nums text-ink-muted">{pct}%</span></div></td>
                     </tr>
                   );
                 })}

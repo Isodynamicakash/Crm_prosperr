@@ -1,32 +1,34 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { ArrowRight, CalendarCheck2, ClipboardCheck, Flag, PhoneCall, Plus, Video } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CalendarCheck2, ClipboardCheck, Flag, PhoneCall, Plus, Video } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/cn';
-import { fmtDateTime, humanize, inr, relTime } from '@/lib/format';
+import { humanize, inr, relTime } from '@/lib/format';
 import type { Achievement, LifecycleStage, MyDayItem, QueueRow } from '@/lib/types';
-import { Button, Card, CardHeader, Empty, PageHeader, Segmented, Skeleton, Stat } from '@/components/ui/ui';
+import { Button, Empty } from '@/components/ui/ui';
 import { stageLabel } from '@/components/ui/status';
+import { C, ChartCard, Donut, EmptyChart, Funnel, GroupedBars, Meter, RadialGauge } from '@/components/charts/kit';
+import { ActivityTrendCard, CommandHero, HeatmapCard, LiveFeedCard, OutcomeMixCard, StageMixCard, delta, sum, usePulse, type Preset } from '@/features/dashboard/pulse';
 import { RecordOutcomeModal, type MeetingRef } from '@/features/pipeline/PipelineForms';
 import { AddAccountModal } from '@/features/accounts/AccountForms';
 
-type Preset = '7' | '30' | 'month' | 'quarter';
-const PRESETS: { value: Preset; label: string }[] = [{ value: '7', label: '7 days' }, { value: '30', label: '30 days' }, { value: 'month', label: 'This month' }, { value: 'quarter', label: 'Quarter' }];
 const greeting = () => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; };
 const today = () => new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
+const LIVE = { refetchInterval: 30_000, refetchOnWindowFocus: true } as const;
 
 export default function HomePage() {
   const { user } = useAuth();
   const [preset, setPreset] = useState<Preset>('30');
-  const first = user?.fullName.split(' ')[0];
-  const header = <PageHeader title={`${greeting()}, ${first}`} subtitle={today()} actions={<Segmented value={preset} onChange={setPreset} options={PRESETS} />} />;
-  if (user?.role === 'BDR') return <>{header}<BdrHome preset={preset} /></>;
-  if (user?.role === 'AE') return <>{header}<AeHome preset={preset} /></>;
-  return <>{header}<LeaderHome preset={preset} /></>;
+  const first = user?.fullName.split(' ')[0] ?? '';
+  const props = { preset, setPreset, first };
+  if (user?.role === 'BDR') return <BdrHome {...props} />;
+  if (user?.role === 'AE') return <AeHome {...props} />;
+  return <LeaderHome {...props} />;
 }
+
+type HomeProps = { preset: Preset; setPreset: (p: Preset) => void; first: string };
 
 // ---------------------------------------------------------------- BDR
 
@@ -36,64 +38,77 @@ interface BdrDash {
   targets: Achievement[];
 }
 
-function BdrHome({ preset }: { preset: Preset }) {
+function BdrHome({ preset, setPreset, first }: HomeProps) {
   const navigate = useNavigate();
   const [adding, setAdding] = useState(false);
-  const { data: d } = useQuery({ queryKey: ['dashboard', 'bdr', preset], queryFn: () => api.get<BdrDash>('/api/dashboards/bdr', { preset }) });
-  const day = useQuery({ queryKey: ['my-day'], queryFn: () => api.get<MyDayItem[]>('/api/my-day') });
+  const pulse = usePulse(preset);
+  const { data: d } = useQuery({ queryKey: ['dashboard', 'bdr', preset], queryFn: () => api.get<BdrDash>('/api/dashboards/bdr', { preset }), ...LIVE });
+  const day = useQuery({ queryKey: ['my-day'], queryFn: () => api.get<MyDayItem[]>('/api/my-day'), ...LIVE });
+  const s = pulse.data?.series;
   const due = (day.data ?? []).filter((x) => x.section === 'OVERDUE' || x.section === 'DUE_TODAY');
   const fresh = (day.data ?? []).filter((x) => x.section === 'UNTOUCHED');
+  const overdue = due.filter((x) => x.section === 'OVERDUE').length;
+  const calls = d?.calls ?? sum(s, 'calls');
+  const connectRate = calls ? Math.round((100 * (d?.connects ?? sum(s, 'connects'))) / calls) : 0;
+  const approval = d?.sqlsSubmitted ? Math.round((100 * d.sqlsApproved) / d.sqlsSubmitted) : 0;
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-4 rounded-xl border border-accent/15 bg-gradient-to-r from-accent-soft/70 to-white p-5 shadow-card md:flex-row md:items-center">
-        <div className="flex-1">
-          <p className="text-[15px] font-semibold">Today: {due.length} follow-ups and {fresh.length} new leads</p>
-          <p className="mt-0.5 text-[13px] text-ink-muted">{due.filter((x) => x.section === 'OVERDUE').length ? `${due.filter((x) => x.section === 'OVERDUE').length} overdue — start with ${due.filter((x) => x.section === 'OVERDUE').length === 1 ? 'that one' : 'those'}.` : 'You’re on track. Keep the momentum going.'}</p>
+      <CommandHero title={`${greeting()}, ${first}`} subtitle={`Your prospecting pulse · ${today()}`} preset={preset} onPreset={setPreset}
+        pulse={s} updatedAt={pulse.dataUpdatedAt} fetching={pulse.isFetching} onRefresh={() => pulse.refetch()}
+        kpis={[
+          { label: 'Calls', value: calls, spark: 'calls', delta: delta(s, 'calls'), to: '/my-day' },
+          { label: 'Connect rate', value: `${connectRate}%`, spark: 'connects', delta: delta(s, 'connects'), hint: `${d?.connects ?? 0} conversations` },
+          { label: 'SQLs submitted', value: d?.sqlsSubmitted ?? '—', spark: 'sqls', delta: delta(s, 'sqls'), hint: d ? `${d.sqlsApproved} approved` : undefined, to: '/sql' },
+          { label: 'L1 booked', value: d?.l1Booked ?? '—', spark: 'meetingsBooked', delta: delta(s, 'meetingsBooked'), hint: d ? `${d.l1Done} done · ${d.noShows} no-show` : undefined },
+        ]}>
+        <div className="mt-4 flex flex-col gap-3 rounded-[20px] border border-white/[0.08] bg-white/[0.04] p-4 backdrop-blur md:flex-row md:items-center">
+          <div className="flex-1">
+            <p className="text-[15px] font-semibold">Today: {due.length} follow-ups and {fresh.length} new leads</p>
+            <p className="mt-0.5 text-[13px] text-paper/55">{overdue ? `${overdue} overdue — start with ${overdue === 1 ? 'that one' : 'those'}.` : 'You’re on track. Keep the momentum going.'}</p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => setAdding(true)} className="inline-flex h-10 items-center gap-2 rounded-full border border-white/15 px-4 text-[13px] font-semibold text-paper transition-colors hover:bg-white/10"><Plus className="h-4 w-4" />New account</button>
+            <button onClick={() => navigate('/my-day')} className="inline-flex h-10 items-center gap-2 rounded-full bg-brand-mint px-4 text-[13px] font-semibold text-brand-night shadow-[0_0_20px_rgba(35,178,74,.4)] transition-transform hover:-translate-y-0.5"><PhoneCall className="h-4 w-4" />Open My Day</button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button icon={<Plus className="h-3.5 w-3.5" />} onClick={() => setAdding(true)}>New account</Button>
-          <Button variant="primary" icon={<PhoneCall className="h-3.5 w-3.5" />} onClick={() => navigate('/my-day')}>Open My Day</Button>
-        </div>
+      </CommandHero>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        <ActivityTrendCard s={s} className="xl:col-span-2" />
+        <OutcomeMixCard mix={pulse.data?.outcomeMix} />
       </div>
 
-      {!d ? <StatSkeleton /> : (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">
-          <Stat label="Calls" value={d.calls} />
-          <Stat label="Connects" value={d.connects} hint={d.calls ? `${Math.round((100 * d.connects) / d.calls)}% connect rate` : undefined} />
-          <Stat label="Leads added" value={d.leadsGenerated} />
-          <Stat label="SQLs submitted" value={d.sqlsSubmitted} onClick={() => navigate('/sql')} />
-          <Stat label="SQLs approved" value={d.sqlsApproved} tone="success" hint={d.sqlsRejected ? `${d.sqlsRejected} rejected` : undefined} />
-          <Stat label="L1 done" value={d.l1Done} hint={d.noShows ? `${d.noShows} no-shows` : `${d.l1Booked} booked`} />
-        </div>
-      )}
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader title="Up next" action={<Link to="/my-day" className="flex items-center gap-1 text-xs font-medium text-accent hover:underline">My Day<ArrowRight className="h-3 w-3" /></Link>} />
-          {day.isLoading ? <div className="p-4"><Skeleton className="h-32" /></div> : (day.data ?? []).length === 0 ? (
-            <Empty icon={<CalendarCheck2 className="h-5 w-5" />} title="Nothing queued" body="Add stakeholders to accounts to build your calling list." />
-          ) : (
-            <ul className="divide-y divide-line px-2 pb-2 pt-1">
+      <div className="grid gap-4 xl:grid-cols-3">
+        <ChartCard title="Conversion" subtitle="How your work turns into meetings">
+          <div className="grid grid-cols-2 gap-2 pt-2">
+            <RadialGauge value={approval} label="SQL approval" sub={`${d?.sqlsApproved ?? 0} of ${d?.sqlsSubmitted ?? 0}`} size={118} />
+            <RadialGauge value={d?.sqlToL1DonePct ?? 0} label="SQL → L1 done" sub={`${d?.l1Done ?? 0} meetings held`} size={118} color={C.forest} />
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-2 border-t border-line pt-3 text-center">
+            <Mini label="Small-account share" value={`${d?.smallAccountShare ?? 0}%`} warn={(d?.smallAccountShare ?? 0) > 20} />
+            <Mini label="Revivals due" value={d?.revivalAccountsDue ?? 0} />
+          </div>
+        </ChartCard>
+        <TargetsCard targets={d?.targets} />
+        <ChartCard title="Up next" subtitle="From your calling list" action={<Link to="/my-day" className="flex items-center gap-1 text-xs font-semibold text-brand-forest hover:underline">My Day<ArrowRight className="h-3 w-3" /></Link>}>
+          {(day.data ?? []).length === 0 ? <Empty icon={<CalendarCheck2 className="h-5 w-5" />} title="Nothing queued" body="Add stakeholders to accounts to build your calling list." /> : (
+            <ul className="space-y-1.5">
               {[...due, ...fresh].slice(0, 6).map((x, i) => (
-                <li key={i}>
-                  <Link to="/my-day" className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-canvas">
-                    <span className={cn('h-1.5 w-1.5 rounded-full', x.section === 'OVERDUE' ? 'bg-danger' : x.section === 'DUE_TODAY' ? 'bg-accent' : 'bg-success')} />
-                    <span className="min-w-0 flex-1 truncate text-[13px]"><b className="font-medium">{x.stakeholderName ?? x.accountName}</b> <span className="text-ink-muted">· {x.accountName}</span></span>
-                    <span className="text-2xs text-ink-muted">{x.section === 'UNTOUCHED' ? 'New' : relTime(x.dueAt)}</span>
-                  </Link>
-                </li>
+                <li key={i}><Link to="/my-day" className="flex items-center gap-3 rounded-xl border border-line/70 px-3 py-2 transition-colors hover:border-brand-forest/30 hover:bg-brand-forest-50/50">
+                  <span className={cn('h-2 w-2 shrink-0 rounded-full', x.section === 'OVERDUE' ? 'bg-danger' : x.section === 'DUE_TODAY' ? 'bg-brand-forest' : 'bg-brand-mint')} />
+                  <span className="min-w-0 flex-1 truncate text-[13px]"><b className="font-semibold">{x.stakeholderName ?? x.accountName}</b> <span className="text-ink-muted">· {x.accountName}</span></span>
+                  <span className="text-[11px] text-ink-muted">{x.section === 'UNTOUCHED' ? 'New' : relTime(x.dueAt)}</span>
+                </Link></li>
               ))}
             </ul>
           )}
-        </Card>
-        <Targets targets={d?.targets} extra={d && (
-          <div className="grid grid-cols-3 gap-2 border-t border-line px-4 py-3 text-center">
-            <Mini label="SQL → L1 done" value={d.sqlToL1DonePct != null ? `${d.sqlToL1DonePct}%` : '—'} />
-            <Mini label="Small-account share" value={`${d.smallAccountShare ?? 0}%`} warn={(d.smallAccountShare ?? 0) > 20} />
-            <Mini label="Revivals due" value={d.revivalAccountsDue} />
-          </div>
-        )} />
+        </ChartCard>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        <HeatmapCard s={s} k="calls" title="Calling streak" className="xl:col-span-2" />
+        <LiveFeedCard feed={pulse.data?.feed} />
       </div>
       <AddAccountModal open={adding} onClose={() => setAdding(false)} />
     </div>
@@ -102,91 +117,79 @@ function BdrHome({ preset }: { preset: Preset }) {
 
 // ---------------------------------------------------------------- AE
 
-function AeHome({ preset }: { preset: Preset }) {
-  const navigate = useNavigate();
+function AeHome({ preset, setPreset, first }: HomeProps) {
   const [outcomeFor, setOutcomeFor] = useState<MeetingRef | null>(null);
-  const { data: d } = useQuery({ queryKey: ['dashboard', 'ae', preset], queryFn: () => api.get<Record<string, never>>('/api/dashboards/ae', { preset }) });
-  const overdue = useQuery({ queryKey: ['overdue-outcomes'], queryFn: () => api.get<{ id: string; level: 'L1' | 'L2' | 'L3' | 'OTHER'; scheduledStart: string; accountId: string; accountName: string }[]>('/api/meetings/overdue-outcomes') });
+  const pulse = usePulse(preset);
+  const { data: d } = useQuery({ queryKey: ['dashboard', 'ae', preset], queryFn: () => api.get<Record<string, never>>('/api/dashboards/ae', { preset }), ...LIVE });
+  const overdue = useQuery({ queryKey: ['overdue-outcomes'], queryFn: () => api.get<{ id: string; level: 'L1' | 'L2' | 'L3' | 'OTHER'; scheduledStart: string; accountId: string; accountName: string }[]>('/api/meetings/overdue-outcomes'), ...LIVE });
   const flagged = useQuery({ queryKey: ['to-be-moved'], queryFn: () => api.get<{ id: string; name: string; stage: LifecycleStage; lastActivityAt?: string }[]>('/api/lifecycle/to-be-moved') });
-  const byStage = (d?.opportunitiesByStage as unknown as { stage: LifecycleStage; count: number }[] | undefined) ?? [];
-  const mrr = (d?.mrrByTemperature as unknown as { temperature: string; count: number; mrr: number }[] | undefined) ?? [];
+  const s = pulse.data?.series;
+  const mrr = ((d?.mrrByTemperature as unknown as { temperature: string; count: number; mrr: number }[] | undefined) ?? []);
+  const openMrr = (pulse.data?.stageMix ?? []).filter((m) => !['WON', 'LOST', 'PROSPECT'].includes(m.stage)).reduce((a, m) => a + Number(m.mrr), 0);
+  const tempColor: Record<string, string> = { HOT: C.forest, WARM: C.mint, COLD: C.navy };
 
   return (
     <div className="space-y-4">
       {(overdue.data?.length ?? 0) > 0 && (
-        <Card className="border-warning/40">
-          <CardHeader title={<span className="flex items-center gap-2"><Video className="h-4 w-4 text-warning" />{overdue.data!.length} meeting{overdue.data!.length > 1 ? 's need' : ' needs'} an outcome</span>} subtitle="Stages and tasks update only after you record what happened." />
-          <ul className="divide-y divide-line px-2 pb-2 pt-1">
-            {overdue.data!.map((m) => (
-              <li key={m.id} className="flex items-center gap-3 px-2 py-2">
-                <span className="rounded-md bg-canvas px-1.5 py-0.5 text-2xs font-semibold">{m.level}</span>
-                <Link to={`/accounts/${m.accountId}`} className="flex-1 text-[13px] font-medium hover:text-accent">{m.accountName}</Link>
-                <span className="text-xs text-ink-muted">{fmtDateTime(m.scheduledStart)}</span>
-                <Button size="sm" variant="primary" onClick={() => setOutcomeFor({ id: m.id, level: m.level, accountId: m.accountId, accountName: m.accountName })}>Record outcome</Button>
-              </li>
+        <div className="flex flex-col gap-3 rounded-[22px] border border-brand-forest/20 bg-brand-forest-50/70 p-4 md:flex-row md:items-center">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-brand-forest text-white"><Video className="h-5 w-5" /></span>
+          <div className="flex-1"><p className="text-[14px] font-semibold">{overdue.data!.length} meeting{overdue.data!.length > 1 ? 's need' : ' needs'} an outcome</p>
+            <p className="text-[12.5px] text-ink-muted">Stages and tasks update only after you record what happened.</p></div>
+          <div className="flex flex-wrap gap-2">
+            {overdue.data!.slice(0, 3).map((m) => (
+              <Button key={m.id} size="sm" variant="primary" onClick={() => setOutcomeFor({ id: m.id, level: m.level, accountId: m.accountId, accountName: m.accountName })}>{m.level} · {m.accountName}</Button>
             ))}
-          </ul>
-        </Card>
-      )}
-
-      {!d ? <StatSkeleton /> : (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">
-          <Stat label="Active accounts" value={d.active} onClick={() => navigate('/pipeline')} />
-          <Stat label="L1 pending" value={d.l1Pending} />
-          <Stat label="L2 pending" value={d.l2Pending} />
-          <Stat label="L3 pending" value={d.l3Pending} />
-          <Stat label="Follow-ups today" value={d.followUpsDueToday} hint={d.followUpsOverdue ? `${d.followUpsOverdue} overdue` : undefined} tone={d.followUpsOverdue ? 'danger' : undefined} onClick={() => navigate('/tasks')} />
-          <Stat label="Need multithreading" value={d.accountsNeedingMultithreading} tone={d.accountsNeedingMultithreading ? 'warning' : undefined} />
+          </div>
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-        <Card>
-          <CardHeader title="Your pipeline by stage" action={<Link to="/pipeline" className="flex items-center gap-1 text-xs font-medium text-accent hover:underline">Board<ArrowRight className="h-3 w-3" /></Link>} />
-          <div className="h-56 px-2 pb-3 pt-2">
-            <ResponsiveContainer>
-              <BarChart data={byStage.map((s) => ({ name: stageLabel[s.stage] ?? s.stage, count: Number(s.count) }))}>
-                <CartesianGrid vertical={false} stroke="#E4E6E5" />
-                <XAxis dataKey="name" tickLine={false} axisLine={false} fontSize={11} stroke="#737C77" />
-                <YAxis allowDecimals={false} tickLine={false} axisLine={false} fontSize={11} stroke="#737C77" width={28} />
-                <Tooltip cursor={{ fill: 'rgba(6,63,26,0.05)' }} contentStyle={{ borderRadius: 8, border: '1px solid #E4E6E5', fontSize: 12 }} />
-                <Bar dataKey="count" name="Accounts" fill="#063F1A" radius={[6, 6, 0, 0]} maxBarSize={40} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-        <Card>
-          <CardHeader title="Expected MRR by temperature" />
-          <ul className="space-y-3 p-4">
-            {mrr.length === 0 && <p className="text-xs text-ink-muted">Set temperature and MRR on your opportunities to see this.</p>}
-            {mrr.map((m) => {
-              const max = Math.max(...mrr.map((x) => Number(x.mrr)), 1);
-              const color = m.temperature === 'HOT' ? 'bg-danger' : m.temperature === 'WARM' ? 'bg-warning' : m.temperature === 'COLD' ? 'bg-sky-400' : 'bg-ink-muted/40';
-              return (
-                <li key={m.temperature}>
-                  <div className="mb-1 flex justify-between text-xs"><span className="font-medium">{humanize(m.temperature)} <span className="font-normal text-ink-muted">· {m.count}</span></span><span className="tabular-nums">{inr(m.mrr)}</span></div>
-                  <div className="h-2 rounded-full bg-canvas"><div className={cn('h-2 rounded-full', color)} style={{ width: `${(100 * Number(m.mrr)) / max}%` }} /></div>
-                </li>
-              );
-            })}
-          </ul>
-        </Card>
+      <CommandHero title={`${greeting()}, ${first}`} subtitle={`Your pipeline pulse · ${today()}`} preset={preset} onPreset={setPreset}
+        pulse={s} updatedAt={pulse.dataUpdatedAt} fetching={pulse.isFetching} onRefresh={() => pulse.refetch()}
+        kpis={[
+          { label: 'Active accounts', value: d?.active ?? '—', hint: d ? `${d.l1Pending} L1 · ${d.l2Pending} L2 · ${d.l3Pending} L3 pending` : undefined, to: '/pipeline' },
+          { label: 'Open MRR', value: inr(openMrr), hint: 'Expected, across open deals' },
+          { label: 'Meetings done', value: sum(s, 'meetingsDone'), spark: 'meetingsDone', delta: delta(s, 'meetingsDone') },
+          { label: 'Won', value: sum(s, 'wins'), spark: 'wins', delta: delta(s, 'wins'), hint: d?.followUpsOverdue ? `${d.followUpsOverdue} follow-ups overdue` : `${d?.followUpsDueToday ?? 0} follow-ups today`, to: '/tasks' },
+        ]} />
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        <StageMixCard mix={pulse.data?.stageMix} title="Your pipeline by stage" className="xl:col-span-2" />
+        <ChartCard title="Expected MRR by temperature" subtitle="Where the money is">
+          {!mrr.length ? <EmptyChart>Set temperature and MRR on your opportunities to see this.</EmptyChart> : (
+            <Donut height={190} fmt={(v) => inr(v)} center={inr(mrr.reduce((a, m) => a + Number(m.mrr), 0))} sub="open MRR"
+              data={mrr.map((m) => ({ name: `${humanize(m.temperature)} · ${m.count}`, value: Number(m.mrr), color: tempColor[m.temperature] ?? C.slate }))} />
+          )}
+        </ChartCard>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader title={<span className="flex items-center gap-2"><Flag className="h-4 w-4 text-warning" />Flagged — decide: keep or move to inactive</span>} />
-          {(flagged.data ?? []).length === 0 ? <p className="px-4 pb-4 pt-2 text-xs text-ink-muted">No accounts flagged. Nice.</p> : (
-            <ul className="divide-y divide-line px-2 pb-2 pt-1">
-              {flagged.data!.slice(0, 8).map((a) => (
-                <li key={a.id}><Link to={`/accounts/${a.id}`} className="flex items-center gap-3 rounded-lg px-2 py-2 text-[13px] hover:bg-canvas">
-                  <span className="flex-1 font-medium">{a.name}</span><span className="text-xs text-ink-muted">{stageLabel[a.stage]} · last touched {relTime(a.lastActivityAt)}</span>
+      <div className="grid gap-4 xl:grid-cols-3">
+        <ActivityTrendCard s={s} mode="meetings" className="xl:col-span-2" />
+        <ChartCard title="Workload" subtitle="What needs you next">
+          <ul className="space-y-3">
+            {[['L1 pending', d?.l1Pending], ['L2 pending', d?.l2Pending], ['L3 pending', d?.l3Pending], ['Need multithreading', d?.accountsNeedingMultithreading], ['Follow-ups today', d?.followUpsDueToday]].map(([l, v]) => (
+              <li key={l as string}>
+                <div className="mb-1 flex justify-between text-[12.5px]"><span className="text-ink-soft">{l}</span><span className="font-semibold tabular-nums">{Number(v ?? 0)}</span></div>
+                <Meter value={Number(v ?? 0)} max={Math.max(1, Number(d?.active ?? 1))} />
+              </li>
+            ))}
+          </ul>
+        </ChartCard>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        <ChartCard title={<span className="flex items-center gap-2"><Flag className="h-4 w-4 text-brand-forest" />Flagged — keep or move to inactive</span>}>
+          {(flagged.data ?? []).length === 0 ? <EmptyChart>No accounts flagged. Nice.</EmptyChart> : (
+            <ul className="space-y-1.5">
+              {flagged.data!.slice(0, 7).map((a) => (
+                <li key={a.id}><Link to={`/accounts/${a.id}`} className="flex items-center gap-3 rounded-xl border border-line/70 px-3 py-2 text-[13px] transition-colors hover:bg-brand-forest-50/50">
+                  <span className="flex-1 truncate font-medium">{a.name}</span><span className="text-[11px] text-ink-muted">{stageLabel[a.stage]} · {relTime(a.lastActivityAt)}</span>
                 </Link></li>
               ))}
             </ul>
           )}
-        </Card>
-        <Targets targets={d?.targets as unknown as Achievement[] | undefined} />
+        </ChartCard>
+        <TargetsCard targets={d?.targets as unknown as Achievement[] | undefined} />
+        <LiveFeedCard feed={pulse.data?.feed} />
       </div>
       <RecordOutcomeModal open={!!outcomeFor} onClose={() => setOutcomeFor(null)} meeting={outcomeFor} />
     </div>
@@ -205,147 +208,124 @@ interface Leadership {
   averageDaysInStage: { stage: LifecycleStage; avgDays: number; opportunities: number }[];
 }
 
-function LeaderHome({ preset }: { preset: Preset }) {
+const AE_STAGES: LifecycleStage[] = ['SQL', 'L1', 'L2', 'L3', 'NEGOTIATION', 'WON'];
+
+function LeaderHome({ preset, setPreset, first }: HomeProps) {
   const navigate = useNavigate();
-  const { data: d } = useQuery({ queryKey: ['dashboard', 'lead', preset], queryFn: () => api.get<Leadership>('/api/dashboards/leadership', { preset }) });
-  const queue = useQuery({ queryKey: ['queue'], queryFn: () => api.get<QueueRow[]>('/api/assignment/queue') });
-  const hygiene = useQuery({ queryKey: ['dashboard', 'hygiene'], queryFn: () => api.get<Record<string, unknown[]>>('/api/dashboards/hygiene') });
+  const pulse = usePulse(preset);
+  const { data: d } = useQuery({ queryKey: ['dashboard', 'lead', preset], queryFn: () => api.get<Leadership>('/api/dashboards/leadership', { preset }), ...LIVE });
+  const queue = useQuery({ queryKey: ['queue'], queryFn: () => api.get<QueueRow[]>('/api/assignment/queue'), ...LIVE });
+  const hygiene = useQuery({ queryKey: ['dashboard', 'hygiene'], queryFn: () => api.get<Record<string, unknown[]>>('/api/dashboards/hygiene'), ...LIVE });
+  const s = pulse.data?.series;
   const active = d?.activeVsInactive.find((x) => x.status === 'ACTIVE')?.count ?? 0;
   const inactive = d?.activeVsInactive.find((x) => x.status === 'INACTIVE')?.count ?? 0;
-  const won = d?.winsAndLosses.filter((w) => w.outcome !== 'LOST').reduce((s, w) => s + Number(w.count), 0) ?? 0;
   const toReview = queue.data?.filter((q) => q.status !== 'QUALIFIED_SQL').length ?? 0;
   const toAssign = queue.data?.filter((q) => q.status === 'QUALIFIED_SQL').length ?? 0;
-  const stuck = d?.stuckAccounts.reduce((s, x) => s + Number(x.count), 0) ?? 0;
+  const stuck = d?.stuckAccounts.reduce((a, x) => a + Number(x.count), 0) ?? 0;
 
-  const byAe = Object.values((d?.opportunitiesByAe ?? []).reduce<Record<string, { ae: string; total: number; stages: Record<string, number> }>>((m, r) => {
-    m[r.ae] ??= { ae: r.ae, total: 0, stages: {} };
-    m[r.ae].total += Number(r.count); m[r.ae].stages[r.stage] = Number(r.count);
+  const byAe = Object.values((d?.opportunitiesByAe ?? []).reduce<Record<string, Record<string, number | string>>>((m, r) => {
+    m[r.ae] ??= { ae: r.ae, total: 0 };
+    m[r.ae][r.stage] = Number(r.count); m[r.ae].total = Number(m[r.ae].total) + Number(r.count);
     return m;
-  }, {})).sort((a, b) => b.total - a.total);
+  }, {})).sort((a, b) => Number(b.total) - Number(a.total));
+  const hygieneRows = [['noNextStep', 'Accounts with no next step'], ['overdueTasksByUser', 'People with overdue tasks'], ['meetingsWithoutOutcome', 'Meetings without outcome'],
+    ['stagnationReasonMissing', 'Stuck without a reason'], ['inactiveMissingReasonDetail', 'Inactive missing details']] as const;
+  const hygieneTotal = hygieneRows.reduce((a, [k]) => a + ((hygiene.data?.[k] as unknown[] | undefined)?.length ?? 0), 0);
 
   return (
     <div className="space-y-4">
-      {(toReview + toAssign) > 0 && (
-        <button onClick={() => navigate('/sql')} className="flex w-full items-center gap-3 rounded-xl border border-accent/20 bg-accent-soft/50 p-4 text-left shadow-card transition-colors hover:bg-accent-soft">
-          <ClipboardCheck className="h-5 w-5 text-accent" />
-          <span className="flex-1 text-[13.5px]"><b>{toReview} SQL{toReview === 1 ? '' : 's'} to review</b>{toAssign > 0 && <> and <b>{toAssign} waiting for an AE</b></>}</span>
-          <span className="flex items-center gap-1 text-xs font-medium text-accent">Open queue<ArrowRight className="h-3.5 w-3.5" /></span>
-        </button>
-      )}
+      <CommandHero title={`${greeting()}, ${first}`} subtitle={`Team pulse · ${today()}`} preset={preset} onPreset={setPreset}
+        pulse={s} updatedAt={pulse.dataUpdatedAt} fetching={pulse.isFetching} onRefresh={() => { pulse.refetch(); queue.refetch(); }}
+        kpis={[
+          { label: 'Pipeline MRR', value: d ? inr(d.pipelineMrr) : '—', hint: `${active} active · ${inactive} inactive`, to: '/pipeline' },
+          { label: 'Team calls', value: sum(s, 'calls'), spark: 'calls', delta: delta(s, 'calls'), hint: `${sum(s, 'connects')} connects` },
+          { label: 'SQLs', value: sum(s, 'sqls'), spark: 'sqls', delta: delta(s, 'sqls'), hint: `${toReview} to review · ${toAssign} to assign`, to: '/sql' },
+          { label: 'Won', value: sum(s, 'wins'), spark: 'wins', delta: delta(s, 'wins'), hint: stuck ? `${stuck} stuck past threshold` : 'Nothing stuck' },
+        ]}>
+        {(toReview + toAssign) > 0 && (
+          <button onClick={() => navigate('/sql')} className="mt-4 flex w-full items-center gap-3 rounded-[20px] border border-brand-mint/25 bg-brand-mint/10 p-4 text-left transition-colors hover:bg-brand-mint/15">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-mint text-brand-night"><ClipboardCheck className="h-4 w-4" /></span>
+            <span className="flex-1 text-[13.5px]"><b>{toReview} SQL{toReview === 1 ? '' : 's'} to review</b>{toAssign > 0 && <> and <b>{toAssign} waiting for an AE</b></>}</span>
+            <span className="flex items-center gap-1 text-xs font-semibold text-brand-mint">Open queue<ArrowRight className="h-3.5 w-3.5" /></span>
+          </button>
+        )}
+      </CommandHero>
 
-      {!d ? <StatSkeleton /> : (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-          <Stat label="Pipeline MRR" value={inr(d.pipelineMrr)} />
-          <Stat label="Active pipeline" value={active} onClick={() => navigate('/pipeline')} />
-          <Stat label="Inactive" value={inactive} />
-          <Stat label="Won (period)" value={won} tone="success" />
-          <Stat label="Stuck accounts" value={stuck} tone={stuck ? 'warning' : undefined} hint="Past stage threshold" />
-        </div>
-      )}
-
-      <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-        <Card>
-          <CardHeader title="Funnel" subtitle="Accounts reaching each stage in the period, with conversion from the step before." />
-          <div className="space-y-2.5 p-4">
-            {d?.funnel.map((f, i) => {
-              const max = Math.max(...d.funnel.map((x) => Number(x.count)), 1);
-              return (
-                <div key={f.stage} className="flex items-center gap-3">
-                  <span className="w-12 text-xs font-medium text-ink-soft">{f.stage}</span>
-                  <div className="h-7 flex-1 rounded-md bg-canvas">
-                    <div className="flex h-7 items-center rounded-md px-2 text-xs font-semibold text-white transition-all" style={{ width: `${Math.max(6, (100 * Number(f.count)) / max)}%`, background: `rgba(6,63,26,${1 - i * 0.13})` }}>{f.count}</div>
-                  </div>
-                  <span className="w-14 text-right text-2xs text-ink-muted">{f.conversionFromPreviousPct != null ? `${f.conversionFromPreviousPct}%` : ''}</span>
-                </div>
-              );
-            }) ?? <Skeleton className="h-40" />}
-          </div>
-        </Card>
-        <Card>
-          <CardHeader title="Average days in stage" />
-          <div className="h-60 px-2 pb-3">
-            <ResponsiveContainer>
-              <BarChart layout="vertical" data={(d?.averageDaysInStage ?? []).map((x) => ({ name: stageLabel[x.stage] ?? x.stage, days: Number(x.avgDays) }))} margin={{ left: 8 }}>
-                <XAxis type="number" hide />
-                <YAxis type="category" dataKey="name" width={96} tickLine={false} axisLine={false} fontSize={11} stroke="#737C77" />
-                <Tooltip cursor={{ fill: 'rgba(6,63,26,0.05)' }} contentStyle={{ borderRadius: 8, border: '1px solid #E4E6E5', fontSize: 12 }} formatter={(v) => [`${v} days`, 'Average']} />
-                <Bar dataKey="days" radius={[0, 6, 6, 0]} maxBarSize={18}>
-                  {(d?.averageDaysInStage ?? []).map((_, i) => <Cell key={i} fill={i % 2 ? '#8BC34A' : '#063F1A'} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
+      <div className="grid gap-4 xl:grid-cols-3">
+        <ActivityTrendCard s={s} mode="team" className="xl:col-span-2" />
+        <OutcomeMixCard mix={pulse.data?.outcomeMix} />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-        <Card>
-          <CardHeader title="Pipeline by AE" />
-          <div className="overflow-x-auto p-2">
-            <table className="w-full text-[13px]">
-              <thead><tr className="text-left text-2xs uppercase tracking-wide text-ink-muted">
-                <th className="px-2 py-2 font-medium">AE</th>{(['L1', 'L2', 'L3', 'NEGOTIATION', 'WON'] as LifecycleStage[]).map((s) => <th key={s} className="px-2 text-right font-medium">{stageLabel[s]}</th>)}<th className="px-2 text-right font-medium">Total</th></tr></thead>
-              <tbody>
-                {byAe.map((r) => (
-                  <tr key={r.ae} className="border-t border-line/70">
-                    <td className="px-2 py-2 font-medium">{r.ae}</td>
-                    {(['L1', 'L2', 'L3', 'NEGOTIATION', 'WON'] as LifecycleStage[]).map((s) => <td key={s} className="px-2 text-right tabular-nums text-ink-soft">{r.stages[s] ?? '·'}</td>)}
-                    <td className="px-2 text-right font-semibold tabular-nums">{r.total}</td>
-                  </tr>
-                ))}
-                {byAe.length === 0 && <tr><td colSpan={7} className="px-2 py-6 text-center text-xs text-ink-muted">No pipeline accounts yet.</td></tr>}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-        <Card>
-          <CardHeader title="Data hygiene" subtitle="Fix these to keep the numbers honest." action={<Link to="/reports" className="text-xs font-medium text-accent hover:underline">Reports</Link>} />
-          <ul className="space-y-1 p-3">
-            {[['noNextStep', 'Accounts with no next step'], ['overdueTasksByUser', 'People with overdue tasks'], ['meetingsWithoutOutcome', 'Meetings without outcome'],
-              ['stagnationReasonMissing', 'Stuck without a reason'], ['inactiveMissingReasonDetail', 'Inactive missing details']].map(([k, label]) => {
+      <div className="grid gap-4 xl:grid-cols-2">
+        <ChartCard title="Funnel" subtitle="Accounts reaching each stage in the period · conversion from the step before">
+          {!d ? <div className="h-60 animate-pulse rounded-2xl bg-canvas" /> : <Funnel steps={d.funnel.map((f) => ({ stage: f.stage, count: Number(f.count), pct: f.conversionFromPreviousPct }))} />}
+        </ChartCard>
+        <StageMixCard mix={pulse.data?.stageMix} />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        <ChartCard title="Pipeline by AE" subtitle="Open deals per stage" className="xl:col-span-2">
+          {!byAe.length ? <EmptyChart>No pipeline accounts yet.</EmptyChart> : (
+            <GroupedBars data={byAe} x="ae" stacked horizontal height={Math.max(160, byAe.length * 64)}
+              series={AE_STAGES.map((st, i) => ({ key: st, name: stageLabel[st], color: [C.pale, C.sage, C.mint, C.forest2, C.forest, C.navy][i] }))} />
+          )}
+        </ChartCard>
+        <ChartCard title="Wins and losses" subtitle="Closed in the period">
+          {!d?.winsAndLosses.length ? <EmptyChart>Nothing closed in this period.</EmptyChart> : (
+            <Donut height={180} data={d.winsAndLosses.map((w) => ({ name: humanize(w.outcome), value: Number(w.count), color: w.outcome === 'LOST' ? C.slate : C.mint }))} sub="closed" />
+          )}
+        </ChartCard>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        <ChartCard title="Average days in stage" subtitle="How long deals sit before moving">
+          {!d?.averageDaysInStage.length ? <EmptyChart /> : (
+            <GroupedBars horizontal height={Math.max(180, d.averageDaysInStage.length * 40)} x="stage" fmt={(v) => `${v} days`}
+              data={d.averageDaysInStage.map((x) => ({ stage: stageLabel[x.stage] ?? x.stage, days: Number(x.avgDays) }))}
+              series={[{ key: 'days', name: 'Avg days', color: C.forest }]} />
+          )}
+        </ChartCard>
+        <HeatmapCard s={s} k="calls" title="Team calling heatmap" />
+        <ChartCard title="Data hygiene" subtitle={hygieneTotal ? `${hygieneTotal} things to fix` : 'All clean'}
+          action={<Link to="/reports" className="text-xs font-semibold text-brand-forest hover:underline">Reports</Link>}>
+          <ul className="space-y-3">
+            {hygieneRows.map(([k, label]) => {
               const n = (hygiene.data?.[k] as unknown[] | undefined)?.length ?? 0;
               return (
-                <li key={k} className="flex items-center justify-between rounded-lg px-2 py-1.5 text-[13px] hover:bg-canvas">
-                  <span>{label}</span><span className={cn('min-w-6 rounded-md px-1.5 text-center text-xs font-semibold tabular-nums', n ? 'bg-warning-soft text-[#8A5A0B]' : 'bg-success-soft text-success')}>{hygiene.isLoading ? '…' : n}</span>
+                <li key={k}>
+                  <div className="mb-1 flex items-center justify-between text-[12.5px]"><span className="flex items-center gap-1.5 text-ink-soft">{n > 0 && <AlertTriangle className="h-3.5 w-3.5 text-brand-forest" />}{label}</span>
+                    <span className={cn('rounded-full px-2 text-[11px] font-semibold tabular-nums', n ? 'bg-brand-forest text-white' : 'bg-brand-forest-50 text-brand-forest')}>{hygiene.isLoading ? '…' : n}</span></div>
+                  <Meter value={n} max={Math.max(1, ...hygieneRows.map(([kk]) => (hygiene.data?.[kk] as unknown[] | undefined)?.length ?? 0))} />
                 </li>
               );
             })}
           </ul>
-        </Card>
+        </ChartCard>
       </div>
+
+      <LiveFeedCard feed={pulse.data?.feed} />
     </div>
   );
 }
 
 // ---------------------------------------------------------------- shared
 
-function Targets({ targets, extra }: { targets?: Achievement[]; extra?: React.ReactNode }) {
+function TargetsCard({ targets }: { targets?: Achievement[] }) {
   return (
-    <Card>
-      <CardHeader title="Targets this month" />
-      {!targets?.length ? <p className="px-4 pb-4 pt-2 text-xs text-ink-muted">No targets set yet — your manager sets them under Reports.</p> : (
-        <ul className="space-y-3 p-4">
-          {targets.map((t) => {
-            const pct = Math.min(100, Math.round(t.pct ?? 0));
-            return (
-              <li key={t.metric}>
-                <div className="mb-1 flex justify-between text-xs"><span className="font-medium">{humanize(t.metric)}</span>
-                  <span className="tabular-nums text-ink-muted">{t.metric === 'MRR' ? `${inr(t.actual)} / ${inr(t.target)}` : `${Number(t.actual)} / ${Number(t.target)}`}</span></div>
-                <div className="h-2 rounded-full bg-canvas"><div className={cn('h-2 rounded-full transition-all', pct >= 100 ? 'bg-success' : pct >= 60 ? 'bg-accent' : 'bg-warning')} style={{ width: `${pct}%` }} /></div>
-              </li>
-            );
-          })}
-        </ul>
+    <ChartCard title="Targets this month" subtitle="Live achievement">
+      {!targets?.length ? <EmptyChart>No targets yet — your manager sets them under Reports.</EmptyChart> : (
+        <div className="grid grid-cols-2 gap-3 pt-1">
+          {targets.slice(0, 4).map((t) => (
+            <RadialGauge key={t.metric} value={Number(t.pct ?? 0)} label={humanize(t.metric)} size={110}
+              sub={t.metric === 'MRR' ? `${inr(t.actual)} / ${inr(t.target)}` : `${Number(t.actual)} / ${Number(t.target)}`} />
+          ))}
+        </div>
       )}
-      {extra}
-    </Card>
+    </ChartCard>
   );
 }
 
 function Mini({ label, value, warn }: { label: string; value: React.ReactNode; warn?: boolean }) {
-  return <div><p className={cn('text-[15px] font-semibold tabular-nums', warn && 'text-warning')}>{value}</p><p className="text-2xs text-ink-muted">{label}</p></div>;
+  return <div><p className={cn('font-display text-[20px] font-medium tabular-nums', warn && 'text-[#B07615]')}>{value}</p><p className="text-[11px] text-ink-muted">{label}</p></div>;
 }
 
-function StatSkeleton() {
-  return <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-[88px] rounded-xl" />)}</div>;
-}
