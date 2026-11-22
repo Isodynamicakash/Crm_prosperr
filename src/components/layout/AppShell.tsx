@@ -97,7 +97,7 @@ export function AppShell() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar />
-        <main className="min-h-0 flex-1 overflow-y-auto bg-canvas scrollbar-thin">
+        <main className="app-main min-h-0 flex-1 overflow-y-auto bg-canvas scrollbar-thin">
           <div key={location.pathname} className="mx-auto max-w-[1360px] animate-[page-in_.35s_cubic-bezier(.16,1,.3,1)] px-4 py-6 sm:px-6"><Outlet /></div>
         </main>
       </div>

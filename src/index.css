@@ -59,3 +59,26 @@
 @keyframes vs-travel { 0% { offset-distance: 0%; opacity: 0; } 8% { opacity: 1; } 92% { opacity: 1; } 100% { offset-distance: 100%; opacity: 0; } }
 @keyframes wave { 0%, 100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
 @keyframes page-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* ---- Controls placed on the dark hero surface ---- */
+.on-dark [data-variant="primary"] { background: #23B24A; color: #0D0D0D; box-shadow: 0 0 22px rgba(35,178,74,.35); }
+.on-dark [data-variant="primary"]:hover { background: #2BC556; }
+.on-dark [data-variant="secondary"], .on-dark [data-variant="ghost"] { background: rgba(255,255,255,.06); color: #EFEFEF; border: 1px solid rgba(255,255,255,.12); }
+.on-dark [data-variant="secondary"]:hover, .on-dark [data-variant="ghost"]:hover { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.22); }
+.on-dark [data-variant="subtle"] { background: rgba(35,178,74,.15); color: #23B24A; }
+.on-dark [data-segmented] { background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.1); }
+.on-dark [data-segmented] button { color: rgba(239,239,239,.6); }
+.on-dark [data-segmented] button[data-on] { background: #23B24A; color: #0D0D0D; box-shadow: 0 0 16px rgba(35,178,74,.4); }
+.on-dark select, .on-dark input { background-color: rgba(255,255,255,.06); border-color: rgba(255,255,255,.12); color: #EFEFEF; }
+.on-dark select option { color: #0D0D0D; }
+
+/* ---- App tables: one consistent, airy style everywhere ---- */
+.app-main table thead tr { background: #F6F7F6; }
+.app-main table thead th { font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: #6B706D; font-weight: 600; padding-top: 11px; padding-bottom: 11px; }
+.app-main table thead tr th:first-child { border-top-left-radius: 14px; border-bottom-left-radius: 14px; }
+.app-main table thead tr th:last-child { border-top-right-radius: 14px; border-bottom-right-radius: 14px; }
+.app-main table tbody tr { transition: background-color .15s ease; }
+.app-main table tbody tr:hover { background: linear-gradient(90deg, rgba(5,63,26,.045), rgba(35,178,74,.02)); }
+.app-main table tbody td { padding-top: 11px; padding-bottom: 11px; }
+.cmd-group [cmdk-group-heading] { color: rgba(239,239,239,.38); }
+.cmd-group .kbd, [cmdk-root] .kbd { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.12); color: rgba(239,239,239,.6); box-shadow: none; }

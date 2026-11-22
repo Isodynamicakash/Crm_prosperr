@@ -2,6 +2,7 @@ import { forwardRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type R
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { initials } from '@/lib/format';
+import { TopoLines } from '@/components/brand/TopoLines';
 
 // ---------------------------------------------------------------- Button
 
@@ -24,7 +25,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   { variant = 'secondary', size = 'md', loading, icon, className, children, disabled, ...rest }, ref) {
   return (
-    <button ref={ref} disabled={disabled || loading}
+    <button ref={ref} disabled={disabled || loading} data-variant={variant}
       className={cn('inline-flex select-none items-center rounded-full font-semibold transition-all duration-200 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50',
         variants[variant], sizes[size], className)} {...rest}>
       {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : icon}
@@ -95,15 +96,50 @@ export function CardHeader({ title, subtitle, action, className }: { title: Reac
   );
 }
 
-export function PageHeader({ title, subtitle, actions }: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode }) {
+export interface HeroStat { label: string; value: ReactNode; hint?: ReactNode; onClick?: () => void }
+
+/**
+ * Page hero: the dark contour surface from the landing page, with an optional eyebrow, icon, stats row and actions.
+ * Buttons and segmented controls placed in `actions` restyle themselves for the dark surface (see .on-dark in index.css).
+ */
+export function PageHeader({ title, subtitle, actions, eyebrow, icon, stats, children }: {
+  title: ReactNode; subtitle?: ReactNode; actions?: ReactNode; eyebrow?: ReactNode; icon?: ReactNode; stats?: HeroStat[]; children?: ReactNode;
+}) {
   return (
-    <div className="mb-6 flex animate-fade-in flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 className="font-display text-[30px] font-medium leading-tight tracking-[-0.04em] text-ink sm:text-[34px]">{title}</h1>
-        {subtitle && <p className="mt-1 text-[13.5px] text-ink-muted">{subtitle}</p>}
+    <section className="on-dark relative isolate mb-5 overflow-hidden rounded-[28px] bg-[#141614] px-5 py-5 text-paper sm:px-7 sm:py-6">
+      <TopoLines levels={11} className="-z-10 opacity-70" />
+      <div className="absolute -left-20 bottom-[-40%] -z-10 h-64 w-[460px] rounded-full bg-brand-mint/[0.14] blur-[100px]" />
+      <div className="absolute -right-16 -top-20 -z-10 h-56 w-56 rounded-full bg-brand-mint/10 blur-[80px]" />
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-4">
+          {icon && <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-mint text-brand-night shadow-[0_0_26px_rgba(35,178,74,.45)] [&_svg]:h-5 [&_svg]:w-5">{icon}</span>}
+          <div className="min-w-0">
+            {eyebrow && <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-mint">{eyebrow}</p>}
+            <h1 className="font-display text-[28px] font-medium leading-tight tracking-[-0.04em] sm:text-[34px]">{title}</h1>
+            {subtitle && <p className="mt-1 text-[13.5px] text-paper/55">{subtitle}</p>}
+          </div>
+        </div>
+        {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
       </div>
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
-    </div>
+      {!!stats?.length && (
+        <div className={cn('mt-5 grid gap-3', stats.length >= 4 ? 'grid-cols-2 lg:grid-cols-4' : stats.length === 3 ? 'grid-cols-3' : 'grid-cols-2')}>
+          {stats.map((st) => {
+            const body = (
+              <>
+                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-paper/45">{st.label}</p>
+                <p className="mt-1.5 font-display text-[26px] font-medium leading-none tracking-[-0.04em] tabular-nums">{st.value}</p>
+                {st.hint && <p className="mt-1 text-[11.5px] text-paper/45">{st.hint}</p>}
+              </>
+            );
+            const cls = 'rounded-[18px] border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-left backdrop-blur transition-all duration-300';
+            return st.onClick
+              ? <button key={st.label} onClick={st.onClick} className={cn(cls, 'hover:-translate-y-0.5 hover:border-brand-mint/30 hover:bg-white/[0.07]')}>{body}</button>
+              : <div key={st.label} className={cls}>{body}</div>;
+          })}
+        </div>
+      )}
+      {children}
+    </section>
   );
 }
 
@@ -112,8 +148,8 @@ export function PageHeader({ title, subtitle, actions }: { title: ReactNode; sub
 export type Tone = 'neutral' | 'accent' | 'success' | 'warning' | 'danger' | 'info';
 const tones: Record<Tone, string> = {
   neutral: 'bg-black/[0.05] text-ink-soft',
-  accent: 'bg-accent-soft text-accent',
-  success: 'bg-success-soft text-success',
+  accent: 'bg-brand-forest-50 text-brand-forest ring-1 ring-inset ring-brand-forest/10',
+  success: 'bg-[#E6F5EA] text-[#1A7F36] ring-1 ring-inset ring-[#1A7F36]/15',
   warning: 'bg-warning-soft text-[#B07615]',
   danger: 'bg-danger-soft text-danger',
   info: 'bg-brand-navy-50 text-brand-navy',
@@ -170,9 +206,9 @@ export function Kbd({ children }: { children: ReactNode }) {
 
 export function Segmented<T extends string>({ value, options, onChange }: { value: T; options: { value: T; label: ReactNode }[]; onChange: (v: T) => void }) {
   return (
-    <div className="inline-flex rounded-full border border-line bg-white p-1">
+    <div data-segmented className="inline-flex rounded-full border border-line bg-white p-1">
       {options.map((o) => (
-        <button key={o.value} onClick={() => onChange(o.value)}
+        <button key={o.value} onClick={() => onChange(o.value)} data-on={value === o.value || undefined}
           className={cn('h-7 rounded-full px-3 text-xs font-semibold text-ink-muted transition-all duration-200 hover:text-ink',
             value === o.value && 'bg-brand-forest text-white shadow-[0_6px_14px_-8px_rgba(5,63,26,.8)] hover:text-white')}>
           {o.label}
@@ -184,13 +220,13 @@ export function Segmented<T extends string>({ value, options, onChange }: { valu
 
 export function Tabs<T extends string>({ value, tabs, onChange }: { value: T; tabs: { value: T; label: ReactNode; count?: number }[]; onChange: (v: T) => void }) {
   return (
-    <div className="flex gap-4 border-b border-line">
+    <div className="inline-flex max-w-full gap-1 overflow-x-auto rounded-full border border-line bg-white p-1">
       {tabs.map((t) => (
         <button key={t.value} onClick={() => onChange(t.value)}
-          className={cn('-mb-px flex items-center gap-1.5 border-b-2 border-transparent pb-2 text-[13px] font-medium text-ink-muted transition-colors hover:text-ink',
-            value === t.value && 'border-brand-forest text-ink')}>
+          className={cn('flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold text-ink-muted transition-all duration-200 hover:text-ink',
+            value === t.value && 'bg-brand-forest text-white shadow-[0_6px_14px_-8px_rgba(5,63,26,.8)] hover:text-white')}>
           {t.label}
-          {t.count !== undefined && <span className="rounded bg-black/[0.05] px-1 text-2xs text-ink-muted">{t.count}</span>}
+          {t.count !== undefined && <span className={cn('rounded-full px-1.5 text-2xs', value === t.value ? 'bg-white/20 text-white' : 'bg-black/[0.05] text-ink-muted')}>{t.count}</span>}
         </button>
       ))}
     </div>

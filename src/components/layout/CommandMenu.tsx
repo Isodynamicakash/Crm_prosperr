@@ -43,18 +43,18 @@ export function CommandMenu({ open, onClose }: { open: boolean; onClose: () => v
   const pages = navFor(user?.role);
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex justify-center bg-ink/25 pt-[12vh] animate-fade-in" onMouseDown={onClose}>
-      <div className="h-fit w-full max-w-[620px] overflow-hidden rounded-xl border border-line bg-white shadow-pop animate-pop-in" onMouseDown={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex justify-center bg-[#0D0D0D]/50 px-4 pt-[12vh] backdrop-blur-[6px] animate-fade-in" onMouseDown={onClose}>
+      <div className="relative isolate h-fit w-full max-w-[640px] overflow-hidden rounded-[24px] border border-white/10 bg-[#141614]/95 text-paper shadow-[0_40px_100px_-20px_rgba(0,0,0,.7)] animate-pop-in" onMouseDown={(e) => e.stopPropagation()}>
         <Command shouldFilter={false} loop>
-          <div className="flex items-center gap-2.5 border-b border-line px-4">
-            <Search className="h-4 w-4 text-ink-muted" />
+          <div className="flex items-center gap-3 border-b border-white/10 px-5">
+            <Search className="h-[18px] w-[18px] text-brand-mint" />
             <Command.Input autoFocus value={q} onValueChange={setQ} placeholder="Search company, person, email, phone, LinkedIn… or type a page"
-              className="h-12 flex-1 bg-transparent text-[14px] outline-none placeholder:text-ink-muted/70 focus-visible:ring-0 focus-visible:ring-offset-0" />
-            {isFetching && <span className="text-2xs text-ink-muted">Searching…</span>}
+              className="h-14 flex-1 bg-transparent text-[15px] text-paper outline-none placeholder:text-paper/40 focus-visible:ring-0 focus-visible:ring-offset-0" />
+            {isFetching && <span className="text-2xs text-brand-mint">Searching…</span>}
           </div>
           <Command.List className="max-h-[400px] overflow-y-auto p-2 scrollbar-thin">
             {term.length >= 2 && !isFetching && !data?.accounts.length && !data?.stakeholders.length && (
-              <Command.Empty className="py-8 text-center text-xs text-ink-muted">No matches for “{term}”.</Command.Empty>
+              <Command.Empty className="py-10 text-center text-xs text-paper/45">No matches for “{term}”.</Command.Empty>
             )}
             {!!data?.accounts.length && (
               <Command.Group heading="Accounts" className="cmd-group">
@@ -79,7 +79,7 @@ export function CommandMenu({ open, onClose }: { open: boolean; onClose: () => v
               ))}
             </Command.Group>}
           </Command.List>
-          <div className="flex items-center gap-4 border-t border-line bg-canvas/60 px-4 py-2 text-2xs text-ink-muted">
+          <div className="flex items-center gap-4 border-t border-white/10 bg-white/[0.03] px-5 py-2.5 text-2xs text-paper/45">
             <span><span className="kbd">↑↓</span> navigate</span><span><span className="kbd">Enter</span> open</span><span><span className="kbd">Esc</span> close</span>
           </div>
         </Command>
@@ -92,11 +92,11 @@ export function CommandMenu({ open, onClose }: { open: boolean; onClose: () => v
 function Item({ onSelect, icon, title, meta }: { onSelect: () => void; icon: React.ReactNode; title: string; meta?: string }) {
   return (
     <Command.Item onSelect={onSelect}
-      className="group flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-[13px] text-ink data-[selected=true]:bg-accent-soft data-[selected=true]:text-accent">
-      <span className="text-ink-muted group-data-[selected=true]:text-accent">{icon}</span>
+      className="group flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-[13.5px] text-paper/85 transition-colors data-[selected=true]:bg-brand-mint/15 data-[selected=true]:text-paper">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-paper/60 group-data-[selected=true]:bg-brand-mint group-data-[selected=true]:text-brand-night">{icon}</span>
       <span className="flex-1 truncate font-medium">{title}</span>
-      {meta && <span className="truncate text-2xs text-ink-muted">{meta}</span>}
-      <ArrowRight className="h-3.5 w-3.5 opacity-0 group-data-[selected=true]:opacity-100" />
+      {meta && <span className="truncate text-2xs text-paper/45">{meta}</span>}
+      <ArrowRight className="h-3.5 w-3.5 text-brand-mint opacity-0 group-data-[selected=true]:opacity-100" />
     </Command.Item>
   );
 }
