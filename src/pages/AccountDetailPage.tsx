@@ -131,8 +131,8 @@ export default function AccountDetailPage() {
               {openMeetings.map((m) => {
                 const past = new Date(m.scheduledStart) < new Date();
                 return (
-                  <div key={m.id} className={cn('flex flex-wrap items-center gap-3 rounded-[20px] border p-3.5', past ? 'border-[#C98A1B]/30 bg-[#FCF4E6]' : 'border-brand-forest/15 bg-brand-forest-50/70')}>
-                    <span className={cn('flex h-9 w-9 items-center justify-center rounded-xl text-white', past ? 'bg-[#C98A1B]' : 'bg-brand-forest')}><Video className="h-4 w-4" /></span>
+                  <div key={m.id} className={cn('flex flex-wrap items-center gap-3 rounded-[20px] border p-3.5', past ? 'border-[#202E64]/30 bg-[#E9EBF3]' : 'border-brand-forest/15 bg-brand-forest-50/70')}>
+                    <span className={cn('flex h-9 w-9 items-center justify-center rounded-xl text-white', past ? 'bg-[#202E64]' : 'bg-brand-forest')}><Video className="h-4 w-4" /></span>
                     <p className="flex-1 text-[13px]"><b>{m.level}{m.alsoCompletesL2 ? ' + L2' : ''}</b> {past ? 'was' : 'is'} on {fmtDateTime(m.scheduledStart)}{m.ae && ` with ${m.ae}`}{m.attendees && ` · ${m.attendees}`}</p>
                     {m.meetingLink && !past && <a href={m.meetingLink} target="_blank" rel="noreferrer"><Button size="sm">Join</Button></a>}
                     {canReschedule && <Button size="sm" variant={past ? 'ghost' : 'secondary'} icon={<CalendarClock className="h-3.5 w-3.5" />} onClick={() => reschedule(m)}>Reschedule</Button>}
@@ -192,7 +192,7 @@ export default function AccountDetailPage() {
                   );
                 })}
               </div>
-              {mt.data.onlyJuniorEngaged && <p className="mt-3 text-xs text-[#8A5A0B]">Only junior contacts are engaged. Reach a senior.</p>}
+              {mt.data.onlyJuniorEngaged && <p className="mt-3 text-xs text-[#202E64]">Only junior contacts are engaged. Reach a senior.</p>}
               {mt.data.suggestedNext && <p className="mt-3 flex items-center gap-2 rounded-xl bg-brand-forest-50 px-3 py-2 text-xs text-brand-forest">Next best person: <b>{mt.data.suggestedNext.name}</b></p>}
             </Card>
           )}

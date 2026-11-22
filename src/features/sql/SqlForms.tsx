@@ -132,7 +132,7 @@ export function SubmitSqlModal({ open, onClose, accountId, accountName, stakehol
           </section>
 
           {(needsIntent || needsSmall) && (
-            <section className="grid grid-cols-2 gap-3 rounded-2xl border border-[#C98A1B]/25 bg-[#FCF4E6] p-4">
+            <section className="grid grid-cols-2 gap-3 rounded-2xl border border-[#202E64]/25 bg-[#E9EBF3] p-4">
               {needsIntent && <>
                 <Field label="Intent rating" hint="P1 cities need HIGH intent + manager confirmation">
                   <Select value={f.intentRating} onChange={set('intentRating')}>
@@ -186,7 +186,7 @@ export function SubmitSqlModal({ open, onClose, accountId, accountName, stakehol
           </ul>
           {c && (
             <div className={cn('mt-4 rounded-lg px-2.5 py-2 text-xs font-medium',
-              c.canSubmit ? (c.needsApproval ? 'bg-warning-soft text-[#8A5A0B]' : 'bg-success-soft text-success') : 'bg-black/[0.04] text-ink-muted')}>
+              c.canSubmit ? (c.needsApproval ? 'bg-warning-soft text-[#202E64]' : 'bg-success-soft text-success') : 'bg-black/[0.04] text-ink-muted')}>
               {c.canSubmit ? (c.needsApproval ? 'Ready — goes to your manager for approval' : 'Ready to submit') : <span className="flex items-center gap-1.5"><CircleDashed className="h-3.5 w-3.5" />Not ready yet</span>}
             </div>
           )}

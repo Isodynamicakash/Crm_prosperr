@@ -42,7 +42,7 @@ export function AddAccountModal({ open, onClose }: { open: boolean; onClose: () 
       </>}>
       {joined ? (
         <div className="space-y-3">
-          <div className="flex gap-2.5 rounded-lg bg-warning-soft p-3 text-[13px] text-[#8A5A0B]">
+          <div className="flex gap-2.5 rounded-lg bg-warning-soft p-3 text-[13px] text-[#202E64]">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <p><b>{joined.account.name}</b> is already in the CRM. You’ve been added to it, so you can work new stakeholders there.</p>
           </div>

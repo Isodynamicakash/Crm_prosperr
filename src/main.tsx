@@ -24,7 +24,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <BrowserRouter>
         <AuthProvider>
           <App />
-          <Toaster position="bottom-right" toastOptions={{ className: 'text-[13px]' }} richColors closeButton />
+          <Toaster position={window.matchMedia('(max-width: 1023px)').matches ? 'top-center' : 'bottom-right'} toastOptions={{ className: 'text-[13px]' }} closeButton />
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>

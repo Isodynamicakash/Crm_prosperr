@@ -28,12 +28,12 @@ export default function SettingsPage() {
     <div>
       <PageHeader title="Settings" icon={<Settings2 />} eyebrow="Workspace" subtitle="Everything the business tunes without a code change. Changes apply immediately for the whole team." />
       <div className="grid gap-4 lg:grid-cols-[250px_1fr]">
-        <nav className="space-y-1 lg:sticky lg:top-2 lg:self-start">
+        <nav className="-mx-3 flex gap-1.5 overflow-x-auto px-3 pb-1 scrollbar-none sm:mx-0 sm:px-0 lg:sticky lg:top-2 lg:block lg:space-y-1 lg:self-start lg:overflow-visible lg:pb-0">
           {SECTIONS.map((x) => (
             <button key={x.key} onClick={() => setS(x.key)}
-              className={cn('group flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-all hover:bg-white/80', s === x.key && 'bg-brand-forest text-white shadow-[0_10px_24px_-12px_rgba(5,63,26,.8)] hover:bg-brand-forest')}>
+              className={cn('group flex shrink-0 items-center gap-2.5 rounded-2xl border border-line/80 bg-white px-2.5 py-2 text-left transition-all hover:bg-white/80 lg:w-full lg:gap-3 lg:border-transparent lg:bg-transparent lg:px-3 lg:py-2.5', s === x.key && 'border-transparent bg-brand-forest text-white shadow-[0_10px_24px_-12px_rgba(5,63,26,.8)] hover:bg-brand-forest lg:bg-brand-forest lg:hover:bg-brand-forest')}>
               <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-xl', s === x.key ? 'bg-brand-mint text-brand-night' : 'bg-white text-brand-forest ring-1 ring-line')}><x.icon className="h-4 w-4" /></span>
-              <span className="min-w-0"><span className="block text-[13px] font-semibold">{x.label}</span><span className={cn('block truncate text-[11px]', s === x.key ? 'text-white/60' : 'text-ink-muted')}>{x.hint}</span></span>
+              <span className="min-w-0"><span className="block whitespace-nowrap text-[13px] font-semibold">{x.label}</span><span className={cn('hidden truncate text-[11px] lg:block', s === x.key ? 'text-white/60' : 'text-ink-muted')}>{x.hint}</span></span>
             </button>
           ))}
         </nav>

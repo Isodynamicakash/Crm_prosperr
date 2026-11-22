@@ -123,7 +123,35 @@ export default function AccountsPage() {
           <Empty icon={<Building2 className="h-5 w-5" />} title="No accounts match" body="Try clearing a filter, or add a new account."
             action={is('BDR') ? <Button variant="primary" onClick={() => setAdding(true)} icon={<Plus className="h-3.5 w-3.5" />}>New account</Button> : undefined} />
         ) : (
-          <div className={cn('overflow-x-auto transition-opacity', isFetching && 'opacity-70')}>
+          <>
+          <ul className={cn('space-y-2 p-2 md:hidden', isFetching && 'opacity-70')}>
+            {data.items.map((a) => {
+              const overdue = a.nextStepDue && a.nextStepDue < new Date().toISOString().slice(0, 10);
+              return (
+                <li key={a.id}>
+                  <button onClick={() => navigate(`/accounts/${a.id}`)} className="w-full rounded-[18px] border border-line/70 bg-white p-3.5 text-left transition-all active:scale-[.99] active:border-brand-forest/30">
+                    <div className="flex items-start gap-3">
+                      <EntityTile name={a.name} />
+                      <div className="min-w-0 flex-1">
+                        <p className="flex items-center gap-1.5 truncate text-[14px] font-semibold">{a.name}{a.flaggedForReview && <Flag className="h-3 w-3 shrink-0 text-warning" />}</p>
+                        <p className="truncate text-[11.5px] text-ink-muted">{[a.city, a.sizeBucket && a.sizeBucket.toLowerCase(), a.licensePotential && `${a.licensePotential} licences`].filter(Boolean).join(' · ')}</p>
+                      </div>
+                      {a.expectedMrr ? <span className="shrink-0 font-display text-[15px] font-medium tabular-nums text-brand-forest">{inr(a.expectedMrr)}</span> : null}
+                    </div>
+                    <div className="mt-2.5 flex flex-wrap items-center gap-1.5"><StageBadge stage={a.stage} />{a.status === 'INACTIVE' && <StatusBadge status="INACTIVE" />}<TemperatureBadge t={a.temperature} /></div>
+                    <div className="mt-2"><StageMeter stage={a.stage} /></div>
+                    <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-line/60 pt-2.5 text-[11.5px]">
+                      <span className="min-w-0 truncate text-ink-soft">
+                        {a.status === 'INACTIVE' ? a.inactiveReason : a.nextStep ? <><span className={cn('font-semibold', overdue ? 'text-brand-navy' : 'text-brand-forest')}>{fmtDate(a.nextStepDue)}</span> · {a.nextStep}</> : a.zone === 'PIPELINE' ? <span className="font-semibold text-brand-navy">No next step</span> : '—'}
+                      </span>
+                      <span className="flex shrink-0 items-center gap-1.5 text-ink-muted"><span className={cn('h-1.5 w-1.5 rounded-full', a.lastActivityAt && Date.now() - new Date(a.lastActivityAt).getTime() < 3 * 864e5 ? 'bg-brand-mint' : 'bg-brand-forest/30')} />{relTime(a.lastActivityAt)}</span>
+                    </div>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <div className={cn('hidden overflow-x-auto transition-opacity md:block', isFetching && 'opacity-70')}>
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="border-b border-line text-left text-2xs uppercase tracking-wide text-ink-muted">
@@ -160,7 +188,7 @@ export default function AccountsPage() {
                       <td className="px-3 text-right">{a.expectedMrr ? <span className="font-display text-[15px] font-medium tabular-nums">{inr(a.expectedMrr)}</span> : <span className="text-ink-muted">—</span>}</td>
                       <td className="max-w-[220px] px-3">
                         {a.status === 'INACTIVE' ? <span className="text-xs text-ink-muted">{a.inactiveReason}{a.revisitOn && ` · revisit ${fmtDate(a.revisitOn)}`}</span>
-                          : a.nextStep ? <p className="truncate text-xs"><span className={cn(overdue && 'text-danger')}>{fmtDate(a.nextStepDue)}</span> · {a.nextStep}</p>
+                          : a.nextStep ? <p className="truncate text-xs"><span className={cn('font-semibold', overdue ? 'text-brand-navy' : 'text-brand-forest')}>{fmtDate(a.nextStepDue)}</span> · {a.nextStep}</p>
                           : a.zone === 'PIPELINE' ? <Badge tone="warning">No next step</Badge> : <span className="text-ink-muted">—</span>}
                       </td>
                       <td className="px-4 text-right text-xs text-ink-muted"><span className="inline-flex items-center gap-1.5"><span className={cn('h-1.5 w-1.5 rounded-full', !a.lastActivityAt ? 'bg-black/15' : Date.now() - new Date(a.lastActivityAt).getTime() < 3 * 864e5 ? 'bg-brand-mint' : Date.now() - new Date(a.lastActivityAt).getTime() < 14 * 864e5 ? 'bg-brand-forest/50' : 'bg-black/20')} />{relTime(a.lastActivityAt)}</span></td>
@@ -170,9 +198,10 @@ export default function AccountsPage() {
               </tbody>
             </table>
           </div>
+          </>
         )}
         {total > 0 && (
-          <div className="flex items-center justify-between border-t border-line px-4 py-2.5 text-xs text-ink-muted">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2.5 text-xs text-ink-muted">
             <span>{total.toLocaleString('en-IN')} accounts{user?.role === 'BDR' ? ' you can see' : ''}</span>
             <div className="flex items-center gap-2">
               <Button size="sm" disabled={page === 0} onClick={() => setPage(page - 1)}>Previous</Button>

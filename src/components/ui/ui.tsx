@@ -90,7 +90,7 @@ export function SectionHead({ icon, title, subtitle, actions }: { icon?: ReactNo
           {subtitle && <p className="mt-0.5 max-w-2xl text-[13px] text-ink-muted">{subtitle}</p>}
         </div>
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      {actions && <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">{actions}</div>}
     </div>
   );
 }
@@ -133,32 +133,32 @@ export function PageHeader({ title, subtitle, actions, eyebrow, icon, stats, chi
   title: ReactNode; subtitle?: ReactNode; actions?: ReactNode; eyebrow?: ReactNode; icon?: ReactNode; stats?: HeroStat[]; children?: ReactNode;
 }) {
   return (
-    <section className="on-dark relative isolate mb-5 overflow-hidden rounded-[28px] bg-[#141614] px-5 py-5 text-paper sm:px-7 sm:py-6">
+    <section className="on-dark relative isolate mb-4 overflow-hidden rounded-[24px] bg-[#141614] px-4 py-4 text-paper sm:mb-5 sm:rounded-[28px] sm:px-7 sm:py-6">
       <TopoLines levels={11} className="-z-10 opacity-70" />
       <div className="absolute -left-20 bottom-[-40%] -z-10 h-64 w-[460px] rounded-full bg-brand-mint/[0.14] blur-[100px]" />
       <div className="absolute -right-16 -top-20 -z-10 h-56 w-56 rounded-full bg-brand-mint/10 blur-[80px]" />
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-4">
-          {icon && <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-mint text-brand-night shadow-[0_0_26px_rgba(35,178,74,.45)] [&_svg]:h-5 [&_svg]:w-5">{icon}</span>}
+        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+          {icon && <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-brand-mint text-brand-night shadow-[0_0_26px_rgba(35,178,74,.45)] sm:h-12 sm:w-12 [&_svg]:h-5 [&_svg]:w-5">{icon}</span>}
           <div className="min-w-0">
-            {eyebrow && <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-mint">{eyebrow}</p>}
-            <h1 className="font-display text-[28px] font-medium leading-tight tracking-[-0.04em] sm:text-[34px]">{title}</h1>
-            {subtitle && <p className="mt-1 text-[13.5px] text-paper/55">{subtitle}</p>}
+            {eyebrow && <p className="mb-0.5 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-brand-mint sm:mb-1 sm:text-[11px]">{eyebrow}</p>}
+            <h1 className="font-display text-[24px] font-medium leading-tight tracking-[-0.04em] sm:text-[34px]">{title}</h1>
+            {subtitle && <p className="mt-1 text-[12.5px] leading-snug text-paper/60 sm:text-[13.5px]">{subtitle}</p>}
           </div>
         </div>
-        {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+        {actions && <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">{actions}</div>}
       </div>
       {!!stats?.length && (
-        <div className={cn('mt-5 grid gap-3', stats.length >= 4 ? 'grid-cols-2 lg:grid-cols-4' : stats.length === 3 ? 'grid-cols-3' : 'grid-cols-2')}>
+        <div className={cn('-mx-4 mt-4 flex snap-x gap-2.5 overflow-x-auto px-4 pb-1 scrollbar-none sm:mx-0 sm:mt-5 sm:grid sm:gap-3 sm:overflow-visible sm:px-0 sm:pb-0', stats.length >= 4 ? 'sm:grid-cols-2 lg:grid-cols-4' : stats.length === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2')}>
           {stats.map((st) => {
             const body = (
               <>
-                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-paper/45">{st.label}</p>
-                <p className="mt-1.5 font-display text-[26px] font-medium leading-none tracking-[-0.04em] tabular-nums">{st.value}</p>
-                {st.hint && <p className="mt-1 text-[11.5px] text-paper/45">{st.hint}</p>}
+                <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-brand-mint/85">{st.label}</p>
+                <p className="mt-1.5 font-display text-[24px] font-medium leading-none tracking-[-0.04em] tabular-nums sm:text-[26px]">{st.value}</p>
+                {st.hint && <p className="mt-1 text-[11.5px] text-paper/55">{st.hint}</p>}
               </>
             );
-            const cls = 'rounded-[18px] border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-left backdrop-blur transition-all duration-300';
+            const cls = 'relative min-w-[138px] shrink-0 snap-start overflow-hidden rounded-[18px] border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-left backdrop-blur transition-all duration-300 before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-brand-mint/50 before:to-transparent sm:min-w-0';
             return st.onClick
               ? <button key={st.label} onClick={st.onClick} className={cn(cls, 'hover:-translate-y-0.5 hover:border-brand-mint/30 hover:bg-white/[0.07]')}>{body}</button>
               : <div key={st.label} className={cls}>{body}</div>;
@@ -177,7 +177,7 @@ const tones: Record<Tone, string> = {
   neutral: 'bg-black/[0.05] text-ink-soft',
   accent: 'bg-brand-forest-50 text-brand-forest ring-1 ring-inset ring-brand-forest/10',
   success: 'bg-[#E6F5EA] text-[#1A7F36] ring-1 ring-inset ring-[#1A7F36]/15',
-  warning: 'bg-warning-soft text-[#B07615]',
+  warning: 'bg-warning-soft text-[#202E64]',
   danger: 'bg-danger-soft text-danger',
   info: 'bg-brand-navy-50 text-brand-navy',
 };
@@ -249,7 +249,7 @@ export function Segmented<T extends string>({ value, options, onChange }: { valu
     <div data-segmented className="inline-flex rounded-full border border-line bg-white p-1">
       {options.map((o) => (
         <button key={o.value} onClick={() => onChange(o.value)} data-on={value === o.value || undefined}
-          className={cn('h-7 rounded-full px-3 text-xs font-semibold text-ink-muted transition-all duration-200 hover:text-ink',
+          className={cn('h-7 whitespace-nowrap rounded-full px-2.5 text-xs font-semibold text-ink-muted transition-all duration-200 hover:text-ink sm:px-3',
             value === o.value && 'bg-brand-forest text-white shadow-[0_6px_14px_-8px_rgba(5,63,26,.8)] hover:text-white')}>
           {o.label}
         </button>
@@ -260,13 +260,13 @@ export function Segmented<T extends string>({ value, options, onChange }: { valu
 
 export function Tabs<T extends string>({ value, tabs, onChange }: { value: T; tabs: { value: T; label: ReactNode; count?: number }[]; onChange: (v: T) => void }) {
   return (
-    <div className="inline-flex max-w-full gap-1 overflow-x-auto rounded-full border border-line bg-white p-1">
+    <div className="inline-flex max-w-full gap-1 overflow-x-auto rounded-full border border-line bg-white p-1 scrollbar-none">
       {tabs.map((t) => (
         <button key={t.value} onClick={() => onChange(t.value)}
           className={cn('flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold text-ink-muted transition-all duration-200 hover:text-ink',
             value === t.value && 'bg-brand-forest text-white shadow-[0_6px_14px_-8px_rgba(5,63,26,.8)] hover:text-white')}>
           {t.label}
-          {t.count !== undefined && <span className={cn('rounded-full px-1.5 text-2xs', value === t.value ? 'bg-white/20 text-white' : 'bg-black/[0.05] text-ink-muted')}>{t.count}</span>}
+          {t.count !== undefined && <span className={cn('rounded-full px-1.5 text-2xs', value === t.value ? 'bg-brand-mint text-brand-night' : 'bg-brand-forest-50 text-brand-forest')}>{t.count}</span>}
         </button>
       ))}
     </div>
@@ -280,7 +280,7 @@ export function Stat({ label, value, hint, tone, onClick }: { label: string; val
       <span className="absolute inset-x-0 top-0 h-[3px] origin-left scale-x-0 bg-gradient-to-r from-brand-forest to-brand-mint transition-transform duration-300 group-hover:scale-x-100" />
       <p className="text-xs font-medium text-ink-muted">{label}</p>
       <p className={cn('mt-1.5 font-display text-[30px] font-medium leading-none tracking-[-0.04em] tabular-nums text-ink',
-        tone === 'danger' && 'text-danger', tone === 'warning' && 'text-[#B07615]', tone === 'success' && 'text-success')}>{value}</p>
+        tone === 'danger' && 'text-danger', tone === 'warning' && 'text-[#202E64]', tone === 'success' && 'text-success')}>{value}</p>
       {hint && <p className="mt-0.5 text-2xs text-ink-muted">{hint}</p>}
     </button>
   );

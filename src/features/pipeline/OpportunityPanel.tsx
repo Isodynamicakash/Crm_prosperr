@@ -70,7 +70,7 @@ export function OpportunityPanel({ opportunityId, canEdit }: { opportunityId: st
           </div>
         )} />
       <div className="space-y-4 p-4">
-        {data.blockedBy && <p className="flex items-center gap-2.5 rounded-2xl border border-[#C98A1B]/25 bg-[#FCF4E6] px-4 py-3 text-[12.5px] text-[#8A5A0B]"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#C98A1B] text-white"><AlertTriangle className="h-3.5 w-3.5" /></span>{data.blockedBy}</p>}
+        {data.blockedBy && <p className="flex items-center gap-2.5 rounded-2xl border border-[#202E64]/25 bg-[#E9EBF3] px-4 py-3 text-[12.5px] text-[#202E64]"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#202E64] text-white"><AlertTriangle className="h-3.5 w-3.5" /></span>{data.blockedBy}</p>}
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Field label="Temperature">
             <div className="flex gap-1">

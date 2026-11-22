@@ -10,7 +10,7 @@ import { TopoLines } from '@/components/brand/TopoLines';
  */
 export const C = {
   forest: '#053F1A', forest2: '#0E5A2A', mint: '#23B24A', sage: '#7CCB8E', pale: '#CDEBD5',
-  navy: '#202E64', slate: '#94A3B8', line: '#E7E8EA', ink: '#6B706D', amber: '#C98A1B',
+  navy: '#202E64', slate: '#94A3B8', line: '#E7E8EA', ink: '#56705F', amber: '#202E64',
 };
 export const SERIES = [C.forest, C.mint, C.navy, C.sage, C.slate, C.forest2, C.pale];
 

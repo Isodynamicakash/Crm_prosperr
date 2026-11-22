@@ -326,6 +326,6 @@ function TargetsCard({ targets }: { targets?: Achievement[] }) {
 }
 
 function Mini({ label, value, warn }: { label: string; value: React.ReactNode; warn?: boolean }) {
-  return <div><p className={cn('font-display text-[20px] font-medium tabular-nums', warn && 'text-[#B07615]')}>{value}</p><p className="text-[11px] text-ink-muted">{label}</p></div>;
+  return <div><p className={cn('font-display text-[20px] font-medium tabular-nums', warn && 'text-[#202E64]')}>{value}</p><p className="text-[11px] text-ink-muted">{label}</p></div>;
 }
 

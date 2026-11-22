@@ -12,6 +12,7 @@ import { cn } from '@/lib/cn';
 import { celebrate } from '@/lib/celebrate';
 import { addDaysISO, fmtDateTime, humanize, todayISO } from '@/lib/format';
 import type { AccountRow, Page, TaskRow, TaskType } from '@/lib/types';
+import { RadialGauge } from '@/components/charts/kit';
 import { AnimatedNumber, Button, Card, Empty, Field, Input, PageHeader, Segmented, Select, SkeletonRows } from '@/components/ui/ui';
 import { Modal } from '@/components/ui/overlay';
 
@@ -28,6 +29,7 @@ export default function TasksPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['tasks', who, status], queryFn: () => api.get<TaskRow[]>('/api/tasks', { assigneeId: who || undefined, status }),
   });
+  const doneCount = useQuery({ queryKey: ['tasks', who, 'DONE'], queryFn: () => api.get<TaskRow[]>('/api/tasks', { assigneeId: who || undefined, status: 'DONE' }), enabled: status === 'OPEN' });
   const qc = useQueryClient();
   // Rows the backend has confirmed as done: they play the finish animation, then the list refreshes.
   const [finished, setFinished] = useState<Set<string>>(new Set());
@@ -84,38 +86,109 @@ export default function TasksPage() {
           <Segmented value={status} onChange={setStatus} options={[{ value: 'OPEN', label: 'Open' }, { value: 'DONE', label: 'Done' }]} />
           <Button variant="primary" icon={<Plus className="h-3.5 w-3.5" />} onClick={() => setAdding(true)}>New task</Button>
         </>} />
+      {status === 'OPEN' && !!data?.length && <TaskInsights rows={data} done={doneCount.data?.length ?? 0} overdue={left(groups.Overdue)} today={left(groups.Today)} />}
       {isLoading ? <Card><SkeletonRows /></Card> : !data?.length ? (
         <Card><Empty icon={<CheckSquare className="h-5 w-5" />} title={status === 'OPEN' ? 'No open tasks' : 'Nothing completed yet'} body="Tasks are created automatically from call outcomes and meetings." /></Card>
       ) : (
-        <div className="space-y-4">
-          {(status === 'OPEN' ? (['Overdue', 'Today', 'Upcoming'] as Bucket[]) : (['Overdue', 'Today', 'Upcoming'] as Bucket[])).filter((b) => groups[b].length).map((b) => (
-            <Card key={b} className="p-2">
-              {status === 'OPEN' && <p className="flex items-center gap-2 px-3 pb-2 pt-3"><span className={cn('rounded-full px-2.5 py-0.5 text-[11px] font-semibold', b === 'Overdue' ? 'bg-[#FCF4E6] text-[#8A5A0B]' : b === 'Today' ? 'bg-brand-forest text-white' : 'bg-brand-forest-50 text-brand-forest')}>{b}</span><span className="text-xs text-ink-muted">{groups[b].length} task{groups[b].length === 1 ? '' : 's'}</span></p>}
-              <ul className="space-y-1.5 p-1">
-                {groups[b].map((t) => (
-                  <li key={t.id} className={cn('group flex items-center gap-3 rounded-[16px] border border-line/60 bg-white px-4 py-3 transition-all hover:border-brand-forest/25 hover:shadow-[0_10px_24px_-18px_rgba(5,63,26,.6)]', finished.has(t.id) && 'animate-[row-out_300ms_ease-in_600ms_forwards]')}>
-                    {status === 'OPEN' ? (
-                      <TaskCheck state={finished.has(t.id) ? 'done' : complete.isPending && complete.variables?.id === t.id ? 'saving' : 'open'}
-                        onClick={() => complete.mutate(t)} />
-                    ) : <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-success text-white"><Check className="h-3 w-3" strokeWidth={3} /></span>}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13.5px] font-semibold"><span className={cn(status === 'DONE' && 'text-ink-muted line-through', finished.has(t.id) && 'strike-through text-ink-muted transition-colors')}>{t.title}</span></p>
-                      <p className="truncate text-xs text-ink-muted">
-                        <Link to={`/accounts/${t.accountId}${t.stakeholderId ? `?stakeholder=${t.stakeholderId}` : ''}`} className="hover:text-accent hover:underline">{t.accountName}</Link>
-                        {t.stakeholderName && ` · ${t.stakeholderName}`}
-                      </p>
-                    </div>
-                    <span className="hidden items-center gap-1.5 rounded-full bg-brand-forest-50 px-2.5 py-1 text-[11px] font-semibold text-brand-forest sm:inline-flex">{(() => { const I = typeIcon[t.type] ?? ListTodo; return <I className="h-3 w-3" />; })()}{humanize(t.type)}</span>
-                    <span className={cn('w-36 text-right text-xs tabular-nums', b === 'Overdue' && status === 'OPEN' ? 'text-danger' : 'text-ink-muted')}>{fmtDateTime(t.dueAt)}</span>
-                    {status === 'OPEN' && <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100" icon={<Clock className="h-3.5 w-3.5" />} onClick={() => snooze.mutate(t)}>Tomorrow</Button>}
-                  </li>
-                ))}
+        <div className="space-y-5">
+          {(['Overdue', 'Today', 'Upcoming'] as Bucket[]).filter((b) => groups[b].length).map((b) => (
+            <section key={b}>
+              {status === 'OPEN' && (
+                <div className="mb-2.5 flex items-center gap-2.5 px-1">
+                  <span className={cn('h-2.5 w-2.5 rounded-full', b === 'Overdue' ? 'bg-brand-navy shadow-[0_0_0_4px_rgba(32,46,100,.15)]' : b === 'Today' ? 'bg-brand-mint shadow-[0_0_0_4px_rgba(35,178,74,.2)]' : 'bg-brand-forest/40')} />
+                  <p className="font-display text-[17px] font-medium tracking-[-0.02em]">{b}</p>
+                  <span className="rounded-full bg-brand-forest-50 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-brand-forest">{left(groups[b])}</span>
+                  <span className="hidden text-[12px] text-brand-forest/60 sm:inline">{b === 'Overdue' ? 'Do these first' : b === 'Today' ? 'On today’s plate' : 'Coming up'}</span>
+                </div>
+              )}
+              <ul className="space-y-2">
+                {groups[b].map((t) => {
+                  const I = typeIcon[t.type] ?? ListTodo;
+                  const late = b === 'Overdue' && status === 'OPEN';
+                  return (
+                    <li key={t.id} className={cn('group relative flex items-center gap-3 overflow-hidden rounded-[18px] border border-line/70 bg-white py-3 pl-4 pr-3 transition-all hover:border-brand-forest/25 hover:shadow-[0_14px_30px_-22px_rgba(5,63,26,.7)] sm:pr-4', finished.has(t.id) && 'animate-[row-out_300ms_ease-in_600ms_forwards]')}>
+                      <span className={cn('absolute inset-y-0 left-0 w-[3px]', late ? 'bg-brand-navy' : b === 'Today' ? 'bg-brand-mint' : 'bg-brand-forest/25')} />
+                      {status === 'OPEN' ? (
+                        <TaskCheck state={finished.has(t.id) ? 'done' : complete.isPending && complete.variables?.id === t.id ? 'saving' : 'open'} onClick={() => complete.mutate(t)} />
+                      ) : <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-forest text-white"><Check className="h-3.5 w-3.5" strokeWidth={3} /></span>}
+                      <span className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-forest-50 text-brand-forest sm:flex"><I className="h-4 w-4" /></span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[13.5px] font-semibold leading-snug"><span className={cn(status === 'DONE' && 'text-ink-muted line-through', finished.has(t.id) && 'strike-through text-ink-muted transition-colors')}>{t.title}</span></p>
+                        <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-brand-forest/70">
+                          <Link to={`/accounts/${t.accountId}${t.stakeholderId ? `?stakeholder=${t.stakeholderId}` : ''}`} className="font-medium text-brand-forest hover:underline">{t.accountName}</Link>
+                          {t.stakeholderName && <span>· {t.stakeholderName}</span>}
+                          <span className="inline-flex items-center gap-1 rounded-full bg-brand-forest-50 px-2 py-0.5 text-[10.5px] font-semibold text-brand-forest sm:hidden"><I className="h-3 w-3" />{humanize(t.type)}</span>
+                          <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold tabular-nums sm:hidden', late ? 'bg-brand-navy/10 text-brand-navy' : 'bg-canvas text-ink-soft')}><Clock className="h-3 w-3" />{fmtDateTime(t.dueAt)}</span>
+                        </p>
+                      </div>
+                      <span className="hidden items-center gap-1.5 rounded-full bg-brand-forest-50 px-2.5 py-1 text-[11px] font-semibold text-brand-forest lg:inline-flex">{humanize(t.type)}</span>
+                      <span className={cn('hidden w-36 items-center justify-end gap-1.5 text-right text-[12px] font-medium tabular-nums sm:flex', late ? 'text-brand-navy' : 'text-brand-forest/70')}>{late && <span className="rounded-full bg-brand-navy/10 px-1.5 text-[10px] font-bold uppercase tracking-wide">Late</span>}{fmtDateTime(t.dueAt)}</span>
+                      {status === 'OPEN' && (
+                        <button onClick={() => snooze.mutate(t)} title="Move to tomorrow 10 AM" className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-line px-2.5 text-[11.5px] font-semibold text-brand-forest transition-all hover:border-brand-forest/30 hover:bg-brand-forest-50 lg:opacity-0 lg:group-hover:opacity-100">
+                          <Clock className="h-3.5 w-3.5" /><span className="hidden sm:inline">Tomorrow</span>
+                        </button>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
-            </Card>
+            </section>
           ))}
         </div>
       )}
       <NewTaskModal open={adding} onClose={() => setAdding(false)} />
+    </div>
+  );
+}
+
+/** Completion ring, type mix and a 7-day load strip, all from the task lists already loaded. */
+function TaskInsights({ rows, done, overdue, today }: { rows: TaskRow[]; done: number; overdue: number; today: number }) {
+  const total = rows.length + done;
+  const types = Object.entries(rows.reduce<Record<string, number>>((m, t) => ({ ...m, [t.type]: (m[t.type] ?? 0) + 1 }), {})).sort((a, b) => b[1] - a[1]);
+  const max = Math.max(1, ...types.map(([, v]) => v));
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = addDaysISO(i);
+    return { d, n: rows.filter((t) => new Date(t.dueAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) === d).length };
+  });
+  const dmax = Math.max(1, ...days.map((x) => x.n));
+  return (
+    <div className="mb-5 grid gap-3 md:grid-cols-3">
+      <div className="relative flex items-center gap-4 overflow-hidden rounded-[22px] bg-[#141614] p-4 text-paper">
+        <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-brand-mint/20 blur-2xl" />
+        <RadialGauge size={92} value={total ? (100 * done) / total : 0} label="" />
+        <div className="relative">
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-brand-mint">Completion</p>
+          <p className="mt-1 font-display text-[26px] font-medium leading-none tabular-nums">{done}<span className="text-paper/40"> / {total}</span></p>
+          <p className="mt-1.5 text-[12px] text-paper/60">{overdue ? `${overdue} overdue · ${today} today` : today ? `${today} left for today` : 'Nothing urgent'}</p>
+        </div>
+      </div>
+      <div className="rounded-[22px] border border-line/80 bg-white p-4">
+        <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-brand-forest/70">Open by type</p>
+        <div className="mt-3 space-y-2">
+          {types.slice(0, 4).map(([k, v]) => {
+            const I = typeIcon[k] ?? ListTodo;
+            return (
+              <div key={k} className="flex items-center gap-2.5 text-[12px]">
+                <I className="h-3.5 w-3.5 shrink-0 text-brand-forest" /><span className="w-24 shrink-0 truncate font-medium">{humanize(k)}</span>
+                <span className="h-2 flex-1 overflow-hidden rounded-full bg-brand-forest-50"><span className="block h-full rounded-full bg-gradient-to-r from-brand-forest to-brand-mint transition-[width] duration-700" style={{ width: `${(100 * v) / max}%` }} /></span>
+                <span className="w-5 text-right font-semibold tabular-nums">{v}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div className="rounded-[22px] border border-line/80 bg-white p-4">
+        <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-brand-forest/70">Next 7 days</p>
+        <div className="mt-3 flex h-[86px] items-end gap-1.5">
+          {days.map((x, i) => (
+            <div key={x.d} className="flex flex-1 flex-col items-center gap-1">
+              <span className="text-[10px] font-semibold tabular-nums text-brand-forest">{x.n || ''}</span>
+              <span className={cn('w-full rounded-t-lg', i === 0 ? 'bg-brand-mint' : 'bg-brand-forest')} style={{ height: `${Math.max(4, (56 * x.n) / dmax)}px`, opacity: x.n ? 1 : 0.15 }} />
+              <span className="text-[10px] font-medium text-ink-muted">{i === 0 ? 'Today' : new Date(`${x.d}T00:00:00`).toLocaleDateString('en-IN', { weekday: 'short' })}</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -157,12 +230,12 @@ function NewTaskModal({ open, onClose }: { open: boolean; onClose: () => void })
 /** Checkbox that only turns green once the server has confirmed the task is done. */
 function TaskCheck({ state, onClick }: { state: 'open' | 'saving' | 'done'; onClick: () => void }) {
   if (state === 'done') {
-    return <span className="flex h-[18px] w-[18px] shrink-0 animate-check-pop items-center justify-center rounded-full bg-success text-white" aria-label="Done"><Check className="h-3 w-3" strokeWidth={3} /></span>;
+    return <span className="flex h-6 w-6 shrink-0 animate-check-pop items-center justify-center rounded-full bg-brand-mint text-brand-night" aria-label="Done"><Check className="h-3.5 w-3.5" strokeWidth={3} /></span>;
   }
   return (
     <button onClick={onClick} disabled={state === 'saving'} title="Mark done" aria-label="Mark done"
-      className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-2 border-line text-transparent transition-all hover:border-success hover:text-success disabled:border-success/40">
-      {state === 'saving' ? <Loader2 className="h-3 w-3 animate-spin text-success" /> : <Check className="h-3 w-3" strokeWidth={3} />}
+      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-brand-forest/25 text-transparent transition-all hover:border-brand-mint hover:bg-brand-mint/10 hover:text-brand-forest disabled:border-brand-mint/40">
+      {state === 'saving' ? <Loader2 className="h-3.5 w-3.5 animate-spin text-brand-forest" /> : <Check className="h-3.5 w-3.5" strokeWidth={3} />}
     </button>
   );
 }

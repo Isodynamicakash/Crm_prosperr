@@ -44,6 +44,8 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           navigateFallback: '/index.html',
+          // Server routes (OAuth redirects, CSV downloads) must reach the backend, never the cached app shell.
+          navigateFallbackDenylist: [/^\/api\//, /^\/public\//],
         },
         devOptions: {
           enabled: true,
