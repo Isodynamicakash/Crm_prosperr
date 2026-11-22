@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowDown, ArrowUp, Check, ClipboardList, Gauge, ListChecks, Mail, MapPin, Pencil, Plus, Settings2, SlidersHorizontal, Trash2, UserSquare2 } from 'lucide-react';
+import { LayoutDashboard, ArrowDown, ArrowUp, Check, ClipboardList, Gauge, ListChecks, Mail, MapPin, Pencil, Plus, Settings2, SlidersHorizontal, Trash2, UserSquare2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { useAction } from '@/lib/hooks';
@@ -10,9 +10,11 @@ import type { City, Department, PicklistItem } from '@/lib/types';
 import { Badge, Button, Card, CardHeader, Checkbox, Field, Input, PageHeader, SectionHead, Select, SkeletonRows, Switch, Tabs, Textarea } from '@/components/ui/ui';
 import { Modal } from '@/components/ui/overlay';
 import { stageLabel } from '@/components/ui/status';
+import { C, ChartCard, Donut, GroupedBars, SERIES } from '@/components/charts/kit';
 
-type Section = 'general' | 'picklists' | 'cities' | 'designations' | 'stages' | 'checklists' | 'templates';
+type Section = 'overview' | 'general' | 'picklists' | 'cities' | 'designations' | 'stages' | 'checklists' | 'templates';
 const SECTIONS: { key: Section; label: string; icon: typeof Gauge; hint: string }[] = [
+  { key: 'overview', label: 'Overview', icon: LayoutDashboard, hint: 'Your setup at a glance' },
   { key: 'general', label: 'General', icon: SlidersHorizontal, hint: 'Windows, limits, digests' }, { key: 'picklists', label: 'Dropdown lists', icon: ClipboardList, hint: 'Outcomes, reasons, sources' },
   { key: 'cities', label: 'Cities & ICP', icon: MapPin, hint: 'Locations and priority' }, { key: 'designations', label: 'Designations', icon: UserSquare2, hint: 'Title → level mapping' },
   { key: 'stages', label: 'Stage thresholds', icon: Gauge, hint: 'When a deal is stuck' }, { key: 'checklists', label: 'Stage requirements', icon: ListChecks, hint: 'Exit criteria per stage' },
@@ -21,7 +23,7 @@ const SECTIONS: { key: Section; label: string; icon: typeof Gauge; hint: string 
 
 /** Everything the business tunes without a code change (M10-1). */
 export default function SettingsPage() {
-  const [s, setS] = useState<Section>('general');
+  const [s, setS] = useState<Section>('overview');
   return (
     <div>
       <PageHeader title="Settings" icon={<Settings2 />} eyebrow="Workspace" subtitle="Everything the business tunes without a code change. Changes apply immediately for the whole team." />
@@ -36,6 +38,7 @@ export default function SettingsPage() {
           ))}
         </nav>
         <div className="min-w-0">
+          {s === 'overview' && <Overview go={setS} />}
           {s === 'general' && <General />}
           {s === 'picklists' && <Picklists />}
           {s === 'cities' && <Cities />}
@@ -44,6 +47,59 @@ export default function SettingsPage() {
           {s === 'checklists' && <Checklists />}
           {s === 'templates' && <Templates />}
         </div>
+      </div>
+    </div>
+  );
+}
+
+/** A visual summary of everything configured, each tile jumping to its section. */
+function Overview({ go }: { go: (s: Section) => void }) {
+  const q = <T,>(key: string[], url: string) => useQuery({ queryKey: key, queryFn: () => api.get<T>(url) }).data;
+  const settings = q<{ key: string }[]>(['settings'], '/api/admin/settings') ?? [];
+  const cities = q<City[]>(['cities'], '/api/config/cities') ?? [];
+  const desig = q<{ level: number; department: Department; rightPoc: boolean }[]>(['designations'], '/api/config/designations') ?? [];
+  const stages = q<{ stage: keyof typeof stageLabel; inactivityFlagDays: number; stagnationDays?: number; followUpIntervalDays: number }[]>(['thresholds'], '/api/admin/stage-thresholds') ?? [];
+  const checks = q<ChecklistItem[]>(['checklist-items'], '/api/config/checklist-items') ?? [];
+  const templates = q<Template[]>(['templates'], '/api/admin/email-templates') ?? [];
+  const tiles: { s: Section; label: string; value: number; hint: string }[] = [
+    { s: 'general', label: 'Business rules', value: settings.length, hint: 'Windows, limits, digests' },
+    { s: 'cities', label: 'Cities', value: cities.length, hint: `${cities.filter((c) => c.priority === 'P0').length} are P0` },
+    { s: 'designations', label: 'Designations mapped', value: desig.length, hint: `${desig.filter((d) => d.rightPoc).length} are the right POC` },
+    { s: 'checklists', label: 'Stage requirements', value: checks.length, hint: `${checks.filter((c) => c.exitStep).length} exit steps` },
+    { s: 'templates', label: 'Email templates', value: templates.length, hint: `${templates.filter((t) => t.active).length} active` },
+    { s: 'stages', label: 'Stages tuned', value: stages.length, hint: 'Flag and stuck timers' },
+  ];
+  const prio = (['P0', 'P1', 'NONE'] as const).map((p, i) => ({ name: p === 'NONE' ? 'Not ICP' : p, value: cities.filter((c) => c.priority === p).length, color: [C.forest, C.mint, C.slate][i] }));
+  const levels = [...new Set(desig.map((d) => d.level))].sort().map((l) => ({ level: `L${l}`, ...Object.fromEntries((['FINANCE', 'HR', 'PAYROLL', 'OTHER'] as const).map((dep) => [dep, desig.filter((d) => d.level === l && d.department === dep).length])) }));
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
+        {tiles.map((t, i) => (
+          <button key={t.s} onClick={() => go(t.s)} className={cn('group relative overflow-hidden rounded-[20px] border px-4 py-4 text-left transition-all hover:-translate-y-0.5', i === 0 ? 'border-transparent bg-[#141614] text-paper' : 'border-line/80 bg-white hover:border-brand-forest/25 hover:shadow-[0_16px_30px_-22px_rgba(5,63,26,.6)]')}>
+            <span className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-brand-forest to-brand-mint" />
+            <p className={cn('text-[11px] font-medium uppercase tracking-[0.12em]', i === 0 ? 'text-paper/50' : 'text-ink-muted')}>{t.label}</p>
+            <p className="mt-2 font-display text-[30px] font-medium leading-none tracking-[-0.04em] tabular-nums">{t.value}</p>
+            <p className={cn('mt-1.5 text-[11.5px]', i === 0 ? 'text-paper/50' : 'text-ink-muted')}>{t.hint} <span className={cn('font-semibold opacity-0 transition-opacity group-hover:opacity-100', i === 0 ? 'text-brand-mint' : 'text-brand-forest')}>→ Edit</span></p>
+          </button>
+        ))}
+      </div>
+      <div className="grid gap-4 xl:grid-cols-5">
+        <ChartCard title="Stage timers" subtitle="Days before a deal is flagged, stuck, or due a follow-up" className="xl:col-span-3">
+          <GroupedBars height={250} x="stage" fmt={(v) => `${v} days`} data={stages.map((t) => ({ stage: stageLabel[t.stage] ?? humanize(t.stage), flag: t.inactivityFlagDays, stuck: t.stagnationDays ?? 0, follow: t.followUpIntervalDays }))}
+            series={[{ key: 'follow', name: 'Follow-up every', color: C.pale }, { key: 'flag', name: 'Inactivity flag', color: C.mint }, { key: 'stuck', name: 'Stuck after', color: C.forest }]} />
+        </ChartCard>
+        <ChartCard title="Cities by priority" subtitle="P0 passes SQL outright; P1 needs intent" className="xl:col-span-2">
+          <Donut height={210} sub="cities" data={prio} />
+        </ChartCard>
+      </div>
+      <div className="grid gap-4 xl:grid-cols-2">
+        <ChartCard title="Designation map" subtitle="Mapped titles per level and department">
+          <GroupedBars stacked height={230} x="level" data={levels} series={(['FINANCE', 'HR', 'PAYROLL', 'OTHER'] as const).map((d, i) => ({ key: d, name: humanize(d), color: SERIES[i] }))} />
+        </ChartCard>
+        <ChartCard title="Stage requirements" subtitle="Checklist items to exit each meeting stage">
+          <GroupedBars height={230} x="stage" data={CHECKLIST_STAGES.map((st) => ({ stage: st, items: checks.filter((c) => c.stage === st && !c.exitStep).length, exit: checks.filter((c) => c.stage === st && c.exitStep).length }))}
+            stacked series={[{ key: 'items', name: 'Requirements', color: C.mint }, { key: 'exit', name: 'Exit steps', color: C.forest }]} />
+        </ChartCard>
       </div>
     </div>
   );
