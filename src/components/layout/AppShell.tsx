@@ -5,10 +5,11 @@ import { Bell, ChevronsLeft, ChevronsRight, LogOut, Search } from 'lucide-react'
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { LogoMark } from '@/components/brand/Logo';
+import { TopoLines } from '@/components/brand/TopoLines';
 import { cn } from '@/lib/cn';
 import { humanize, relTime } from '@/lib/format';
 import type { NotificationRow } from '@/lib/types';
-import { Avatar, Button, Kbd } from '@/components/ui/ui';
+import { Avatar, Button } from '@/components/ui/ui';
 import { CommandMenu } from './CommandMenu';
 import { navFor } from './nav';
 
@@ -19,6 +20,7 @@ export function AppShell() {
   const [collapsed, setCollapsed] = useState(() => { try { return localStorage.getItem(COLLAPSE_KEY) === '1'; } catch { return false; } });
   const [cmdOpen, setCmdOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const items = navFor(user?.role);
 
   useEffect(() => { try { localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0'); } catch { /* ignore */ } }, [collapsed]);
@@ -50,42 +52,44 @@ export function AppShell() {
 
   return (
     <div className="flex h-full">
-      <aside className={cn('relative flex shrink-0 flex-col border-r border-line bg-white transition-[width] duration-200', collapsed ? 'w-[60px]' : 'w-[240px]')}>
+      <aside className={cn('relative isolate flex shrink-0 flex-col overflow-hidden bg-[#141614] text-paper transition-[width] duration-200', collapsed ? 'w-[60px]' : 'w-[240px]')}>
+        <TopoLines levels={9} className="-z-10 opacity-60" />
+        <div aria-hidden className="absolute -left-16 bottom-10 -z-10 h-56 w-56 rounded-full bg-brand-mint/15 blur-3xl" />
         <div className={cn('flex h-16 items-center gap-2.5 px-4', collapsed && 'justify-center px-0')}>
-          <LogoMark size={30} />
-          {!collapsed && <div className="min-w-0 leading-none"><p className="font-display text-[17px] font-extrabold uppercase tracking-[-0.01em] text-brand-navy">Prosperr.io</p><p className="mt-1 text-[9.5px] font-semibold uppercase tracking-[0.22em] text-brand-forest-600">Sales CRM</p></div>}
+          <LogoMark size={30} tone="light" />
+          {!collapsed && <div className="min-w-0 leading-none"><p className="font-display text-[17px] font-extrabold uppercase tracking-[-0.01em] text-white">Prosperr.io</p><p className="mt-1 text-[9.5px] font-semibold uppercase tracking-[0.22em] text-brand-mint">Sales CRM</p></div>}
         </div>
 
         <button onClick={() => setCmdOpen(true)}
-          className={cn('mx-3 mb-3 flex h-8 items-center gap-2 rounded-lg border border-line bg-canvas px-2.5 text-xs text-ink-muted transition-colors hover:border-ink-muted/30',
-            collapsed && 'mx-auto w-8 justify-center px-0')} title="Search (Ctrl K)">
+          className={cn('mx-3 mb-3 flex h-9 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-3 text-xs text-paper/55 transition-colors hover:border-white/20 hover:text-paper',
+            collapsed && 'mx-auto w-9 justify-center px-0')} title="Search (Ctrl K)">
           <Search className="h-3.5 w-3.5" />
-          {!collapsed && <><span className="flex-1 text-left">Search…</span><Kbd>Ctrl K</Kbd></>}
+          {!collapsed && <><span className="flex-1 text-left">Search…</span><kbd className="rounded-md border border-white/10 px-1.5 text-2xs text-paper/50">Ctrl K</kbd></>}
         </button>
 
         <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 scrollbar-thin">
           {main.map((n) => <NavItemLink key={n.to} item={n} collapsed={collapsed} />)}
           {workspace.length > 0 && (
             <>
-              {!collapsed ? <p className="px-2 pb-1 pt-5 text-2xs font-semibold uppercase tracking-wider text-ink-muted/80">Workspace</p> : <div className="my-3 border-t border-line" />}
+              {!collapsed ? <p className="px-2.5 pb-1 pt-5 text-2xs font-semibold uppercase tracking-[0.16em] text-paper/35">Workspace</p> : <div className="my-3 border-t border-white/10" />}
               {workspace.map((n) => <NavItemLink key={n.to} item={n} collapsed={collapsed} />)}
             </>
           )}
         </nav>
 
-        <div className="border-t border-line p-3">
+        <div className="border-t border-white/10 p-3">
           <div className={cn('flex items-center gap-2.5', collapsed && 'flex-col')}>
             <Avatar name={user?.fullName} size="md" />
             {!collapsed && (
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] font-medium">{user?.fullName}</p>
-                <p className="text-2xs text-ink-muted">{humanize(user?.role)}</p>
+                <p className="truncate text-[13px] font-medium text-paper">{user?.fullName}</p>
+                <p className="text-2xs text-brand-mint">{humanize(user?.role)}</p>
               </div>
             )}
-            <Button variant="ghost" size="icon" onClick={signOut} title="Sign out"><LogOut className="h-4 w-4" /></Button>
+            <button onClick={signOut} title="Sign out" className="flex h-9 w-9 items-center justify-center rounded-full text-paper/60 transition-colors hover:bg-white/10 hover:text-paper"><LogOut className="h-4 w-4" /></button>
           </div>
           <button onClick={() => setCollapsed((c) => !c)} title="Collapse sidebar ( [ )"
-            className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-md py-1 text-2xs text-ink-muted hover:bg-canvas hover:text-ink">
+            className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg py-1 text-2xs text-paper/40 hover:bg-white/[0.06] hover:text-paper">
             {collapsed ? <ChevronsRight className="h-3.5 w-3.5" /> : <><ChevronsLeft className="h-3.5 w-3.5" />Collapse</>}
           </button>
         </div>
@@ -93,8 +97,8 @@ export function AppShell() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar />
-        <main className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
-          <div className="mx-auto max-w-[1360px] px-6 py-6"><Outlet /></div>
+        <main className="min-h-0 flex-1 overflow-y-auto bg-canvas scrollbar-thin">
+          <div key={location.pathname} className="mx-auto max-w-[1360px] animate-[page-in_.35s_cubic-bezier(.16,1,.3,1)] px-4 py-6 sm:px-6"><Outlet /></div>
         </main>
       </div>
       <CommandMenu open={cmdOpen} onClose={() => setCmdOpen(false)} />
@@ -106,11 +110,11 @@ function NavItemLink({ item, collapsed }: { item: ReturnType<typeof navFor>[numb
   const Icon = item.icon;
   return (
     <NavLink to={item.to} end={item.to === '/'} title={collapsed ? item.label : undefined}
-      className={({ isActive }) => cn('group relative flex h-9 items-center gap-2.5 rounded-xl px-2.5 text-[13.5px] font-medium text-ink-soft transition-all duration-150 hover:bg-black/[0.04] hover:text-ink',
-        isActive && 'bg-brand-forest text-white shadow-[0_6px_16px_-8px_rgba(5,63,26,.7)] hover:bg-brand-forest hover:text-white [&_svg]:text-white [&_.kbd-hint]:text-white/50', collapsed && 'justify-center px-0')}>
+      className={({ isActive }) => cn('group relative flex h-10 items-center gap-2.5 rounded-xl px-3 text-[13.5px] font-medium text-paper/60 transition-all duration-200 hover:bg-white/[0.06] hover:text-paper',
+        isActive && 'bg-brand-mint/[0.14] text-paper ring-1 ring-brand-mint/25 hover:bg-brand-mint/[0.18] [&_svg]:text-brand-mint before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-full before:bg-brand-mint before:shadow-[0_0_10px_rgba(35,178,74,.8)]', collapsed && 'justify-center px-0')}>
       <Icon className="h-4 w-4 shrink-0" />
       {!collapsed && <span className="flex-1">{item.label}</span>}
-      {!collapsed && item.shortcut && <span className="kbd-hint hidden text-2xs text-ink-muted/70 group-hover:inline">G {item.shortcut.toUpperCase()}</span>}
+      {!collapsed && item.shortcut && <span className="kbd-hint hidden text-2xs text-paper/35 group-hover:inline">G {item.shortcut.toUpperCase()}</span>}
     </NavLink>
   );
 }
@@ -119,13 +123,13 @@ function TopBar() {
   const { pathname } = useLocation();
   const crumbs = pathname.split('/').filter(Boolean);
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-line bg-[#F3F3F5]/80 px-6 backdrop-blur-xl">
+    <header className="flex h-16 shrink-0 items-center justify-between border-b border-line/70 bg-canvas/80 px-6 backdrop-blur-xl">
       <div className="flex items-center gap-1.5 text-[13px] text-ink-muted">
-        <span className="font-semibold text-brand-navy">Prosperr</span>
+        <span className="font-display font-semibold text-ink">Prosperr</span>
         {crumbs.map((c, i) => (
           <span key={i} className="flex items-center gap-1.5">
             <span className="text-line">/</span>
-            <span className={cn(i === crumbs.length - 1 && 'text-ink')}>{i > 0 && crumbs[i - 1] === 'accounts' ? 'Account' : humanize(c.replace('-', '_'))}</span>
+            <span className={cn(i === crumbs.length - 1 && 'rounded-full bg-white px-2.5 py-0.5 font-medium text-ink ring-1 ring-line')}>{i > 0 && crumbs[i - 1] === 'accounts' ? 'Account' : humanize(c.replace('-', '_'))}</span>
           </span>
         ))}
       </div>

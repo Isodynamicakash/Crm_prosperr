@@ -58,3 +58,4 @@
 @keyframes topo-drift { from { transform: scale(1.04) translate3d(-1%, 0, 0); } to { transform: scale(1.08) translate3d(1%, -1.5%, 0); } }
 @keyframes vs-travel { 0% { offset-distance: 0%; opacity: 0; } 8% { opacity: 1; } 92% { opacity: 1; } 100% { offset-distance: 100%; opacity: 0; } }
 @keyframes wave { 0%, 100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
+@keyframes page-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }

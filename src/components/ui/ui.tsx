@@ -9,13 +9,13 @@ type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'subtle';
 type Size = 'sm' | 'md' | 'icon';
 
 const variants: Record<Variant, string> = {
-  primary: 'bg-accent text-white hover:bg-accent-hover shadow-card',
-  secondary: 'bg-white text-ink border border-line hover:bg-canvas shadow-card',
-  ghost: 'text-ink-soft hover:bg-black/[0.04] hover:text-ink',
-  subtle: 'bg-accent-soft text-accent hover:bg-accent/15',
-  danger: 'bg-danger text-white hover:bg-danger/90 shadow-card',
+  primary: 'bg-brand-forest text-white hover:bg-brand-forest-700 shadow-[0_8px_20px_-10px_rgba(5,63,26,.8)] hover:shadow-[0_12px_28px_-10px_rgba(5,63,26,.75)]',
+  secondary: 'bg-white text-ink border border-line hover:border-brand-forest/30 hover:bg-brand-forest-50/60',
+  ghost: 'text-ink-soft hover:bg-black/[0.05] hover:text-ink',
+  subtle: 'bg-brand-forest-50 text-brand-forest hover:bg-brand-forest/15',
+  danger: 'bg-danger text-white hover:bg-danger/90',
 };
-const sizes: Record<Size, string> = { sm: 'h-7 px-2.5 text-xs gap-1.5', md: 'h-8 px-3 text-[13px] gap-2', icon: 'h-8 w-8 justify-center' };
+const sizes: Record<Size, string> = { sm: 'h-8 px-3 text-xs gap-1.5', md: 'h-9 px-4 text-[13px] gap-2', icon: 'h-9 w-9 justify-center' };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant; size?: Size; loading?: boolean; icon?: ReactNode;
@@ -25,7 +25,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   { variant = 'secondary', size = 'md', loading, icon, className, children, disabled, ...rest }, ref) {
   return (
     <button ref={ref} disabled={disabled || loading}
-      className={cn('inline-flex select-none items-center rounded-lg font-medium transition-all duration-150 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50',
+      className={cn('inline-flex select-none items-center rounded-full font-semibold transition-all duration-200 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50',
         variants[variant], sizes[size], className)} {...rest}>
       {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : icon}
       {children}
@@ -35,10 +35,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
 
 // ---------------------------------------------------------------- Inputs
 
-const field = 'w-full rounded-lg border border-line bg-white px-2.5 text-[13px] text-ink placeholder:text-ink-muted/70 transition-colors hover:border-ink-muted/40 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/15 disabled:bg-canvas';
+const field = 'w-full rounded-xl border border-line bg-white px-3 text-[13.5px] text-ink placeholder:text-ink-muted/70 transition-all duration-200 hover:border-ink-muted/40 focus:border-brand-forest/50 focus:outline-none focus:ring-4 focus:ring-brand-forest/10 disabled:bg-canvas';
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input({ className, ...p }, ref) {
-  return <input ref={ref} className={cn(field, 'h-8', className)} {...p} />;
+  return <input ref={ref} className={cn(field, 'h-9', className)} {...p} />;
 });
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(function Textarea({ className, ...p }, ref) {
@@ -49,7 +49,7 @@ const CHEVRON = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/sv
 
 export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSelectElement>>(function Select({ className, children, style, ...p }, ref) {
   return (
-    <select ref={ref} className={cn(field, 'h-8 cursor-pointer appearance-none pr-7', className)} style={{ backgroundImage: CHEVRON, backgroundSize: 12, backgroundPosition: 'right 8px center', backgroundRepeat: 'no-repeat', ...style }} {...p}>
+    <select ref={ref} className={cn(field, 'h-9 cursor-pointer appearance-none pr-8', className)} style={{ backgroundImage: CHEVRON, backgroundSize: 12, backgroundPosition: 'right 8px center', backgroundRepeat: 'no-repeat', ...style }} {...p}>
       {children}
     </select>
   );
@@ -80,14 +80,14 @@ export function Checkbox({ checked, onChange, label, disabled }: { checked: bool
 // ---------------------------------------------------------------- Surfaces
 
 export function Card({ className, children, ...p }: { className?: string; children: ReactNode } & React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('rounded-xl border border-line bg-white shadow-card', className)} {...p}>{children}</div>;
+  return <div className={cn('rounded-[22px] border border-line/80 bg-white shadow-[0_1px_2px_rgba(13,13,13,.04),0_12px_32px_-24px_rgba(13,13,13,.25)]', className)} {...p}>{children}</div>;
 }
 
 export function CardHeader({ title, subtitle, action, className }: { title: ReactNode; subtitle?: ReactNode; action?: ReactNode; className?: string }) {
   return (
-    <div className={cn('flex items-start justify-between gap-3 px-4 pt-4', className)}>
+    <div className={cn('flex items-start justify-between gap-3 px-5 pt-5', className)}>
       <div>
-        <h3 className="text-[14px] font-semibold text-ink">{title}</h3>
+        <h3 className="font-display text-[16.5px] font-medium tracking-[-0.02em] text-ink">{title}</h3>
         {subtitle && <p className="mt-0.5 text-xs text-ink-muted">{subtitle}</p>}
       </div>
       {action}
@@ -97,10 +97,10 @@ export function CardHeader({ title, subtitle, action, className }: { title: Reac
 
 export function PageHeader({ title, subtitle, actions }: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode }) {
   return (
-    <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div className="mb-6 flex animate-fade-in flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="font-display text-[24px] font-bold tracking-[-0.02em] text-ink">{title}</h1>
-        {subtitle && <p className="mt-1 text-[13px] text-ink-muted">{subtitle}</p>}
+        <h1 className="font-display text-[30px] font-medium leading-tight tracking-[-0.04em] text-ink sm:text-[34px]">{title}</h1>
+        {subtitle && <p className="mt-1 text-[13.5px] text-ink-muted">{subtitle}</p>}
       </div>
       {actions && <div className="flex items-center gap-2">{actions}</div>}
     </div>
@@ -121,15 +121,15 @@ const tones: Record<Tone, string> = {
 
 export function Badge({ tone = 'neutral', children, className, dot }: { tone?: Tone; children: ReactNode; className?: string; dot?: boolean }) {
   return (
-    <span className={cn('inline-flex items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-0.5 text-2xs font-medium', tones[tone], className)}>
+    <span className={cn('inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-2xs font-semibold', tones[tone], className)}>
       {dot && <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />}
       {children}
     </span>
   );
 }
 
-const avatarColors = ['bg-brand-forest-50 text-brand-forest', 'bg-brand-navy-50 text-brand-navy', 'bg-amber-100 text-amber-800',
-  'bg-rose-100 text-rose-700', 'bg-brand-lime-50 text-[#4D7A1C]', 'bg-slate-100 text-slate-700'];
+const avatarColors = ['bg-brand-forest-50 text-brand-forest', 'bg-brand-navy-50 text-brand-navy', 'bg-brand-forest text-white',
+  'bg-[#E6F5EA] text-[#1A7F36]', 'bg-slate-100 text-slate-700', 'bg-brand-night text-brand-mint'];
 
 export function Avatar({ name, size = 'sm', className }: { name?: string | null; size?: 'xs' | 'sm' | 'md'; className?: string }) {
   const h = [...(name ?? '?')].reduce((a, c) => a + c.charCodeAt(0), 0);
@@ -156,8 +156,8 @@ export function SkeletonRows({ rows = 6 }: { rows?: number }) {
 export function Empty({ icon, title, body, action }: { icon?: ReactNode; title: string; body?: ReactNode; action?: ReactNode }) {
   return (
     <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
-      {icon && <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-accent-soft text-accent">{icon}</div>}
-      <p className="text-[14px] font-semibold text-ink">{title}</p>
+      {icon && <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-forest text-white shadow-[0_10px_24px_-10px_rgba(5,63,26,.7)]">{icon}</div>}
+      <p className="font-display text-[16px] font-medium tracking-[-0.02em] text-ink">{title}</p>
       {body && <p className="mt-1 max-w-sm text-[13px] text-ink-muted">{body}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
@@ -170,11 +170,11 @@ export function Kbd({ children }: { children: ReactNode }) {
 
 export function Segmented<T extends string>({ value, options, onChange }: { value: T; options: { value: T; label: ReactNode }[]; onChange: (v: T) => void }) {
   return (
-    <div className="inline-flex rounded-lg border border-line bg-canvas p-0.5">
+    <div className="inline-flex rounded-full border border-line bg-white p-1">
       {options.map((o) => (
         <button key={o.value} onClick={() => onChange(o.value)}
-          className={cn('h-7 rounded-md px-2.5 text-xs font-medium text-ink-muted transition-all',
-            value === o.value && 'bg-white text-ink shadow-card')}>
+          className={cn('h-7 rounded-full px-3 text-xs font-semibold text-ink-muted transition-all duration-200 hover:text-ink',
+            value === o.value && 'bg-brand-forest text-white shadow-[0_6px_14px_-8px_rgba(5,63,26,.8)] hover:text-white')}>
           {o.label}
         </button>
       ))}
@@ -188,7 +188,7 @@ export function Tabs<T extends string>({ value, tabs, onChange }: { value: T; ta
       {tabs.map((t) => (
         <button key={t.value} onClick={() => onChange(t.value)}
           className={cn('-mb-px flex items-center gap-1.5 border-b-2 border-transparent pb-2 text-[13px] font-medium text-ink-muted transition-colors hover:text-ink',
-            value === t.value && 'border-accent text-ink')}>
+            value === t.value && 'border-brand-forest text-ink')}>
           {t.label}
           {t.count !== undefined && <span className="rounded bg-black/[0.05] px-1 text-2xs text-ink-muted">{t.count}</span>}
         </button>
@@ -200,9 +200,10 @@ export function Tabs<T extends string>({ value, tabs, onChange }: { value: T; ta
 export function Stat({ label, value, hint, tone, onClick }: { label: string; value: ReactNode; hint?: ReactNode; tone?: 'danger' | 'warning' | 'success'; onClick?: () => void }) {
   return (
     <button type="button" onClick={onClick} disabled={!onClick}
-      className={cn('flex flex-col items-start justify-start rounded-xl border border-line bg-white p-4 text-left shadow-card transition-colors', onClick && 'hover:border-accent/40 hover:bg-accent-soft/30')}>
+      className={cn('group relative flex flex-col items-start justify-start overflow-hidden rounded-[20px] border border-line/80 bg-white p-4 text-left shadow-[0_1px_2px_rgba(13,13,13,.04)] transition-all duration-200', onClick && 'hover:-translate-y-0.5 hover:border-brand-forest/30 hover:shadow-[0_16px_32px_-20px_rgba(5,63,26,.45)]')}>
+      <span className="absolute inset-x-0 top-0 h-[3px] origin-left scale-x-0 bg-gradient-to-r from-brand-forest to-brand-mint transition-transform duration-300 group-hover:scale-x-100" />
       <p className="text-xs font-medium text-ink-muted">{label}</p>
-      <p className={cn('mt-1.5 text-[24px] font-semibold tracking-tight tabular-nums text-ink',
+      <p className={cn('mt-1.5 font-display text-[30px] font-medium leading-none tracking-[-0.04em] tabular-nums text-ink',
         tone === 'danger' && 'text-danger', tone === 'warning' && 'text-[#B07615]', tone === 'success' && 'text-success')}>{value}</p>
       {hint && <p className="mt-0.5 text-2xs text-ink-muted">{hint}</p>}
     </button>
