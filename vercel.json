@@ -1,3 +1,7 @@
 {
-  "rewrites": [{ "source": "/((?!assets/|media/).*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://crm-prosperr-backend.onrender.com/api/:path*" },
+    { "source": "/public/:path*", "destination": "https://crm-prosperr-backend.onrender.com/public/:path*" },
+    { "source": "/((?!assets/|media/).*)", "destination": "/index.html" }
+  ]
 }
