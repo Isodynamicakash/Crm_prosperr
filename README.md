@@ -2,7 +2,7 @@
 
 React + TypeScript + Vite + Tailwind, wired to the Spring Boot backend (`prosperr-crm-backend`).
 
-## Run it (2 minutes)
+
 
 1. Start the backend first (IntelliJ → Run `CrmApplication`, profile `local`). It runs on **http://localhost:8081**.
 2. In this folder:
