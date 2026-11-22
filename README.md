@@ -1,4 +1,4 @@
-# Prosperr Sales CRM — Frontend
+# Prosperr Sales CRM — Frontend version1 
 
 React + TypeScript + Vite + Tailwind, wired to the Spring Boot backend (`prosperr-crm-backend`).
 
