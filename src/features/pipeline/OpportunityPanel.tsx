@@ -70,14 +70,14 @@ export function OpportunityPanel({ opportunityId, canEdit }: { opportunityId: st
           </div>
         )} />
       <div className="space-y-4 p-4">
-        {data.blockedBy && <p className="flex gap-2 rounded-lg bg-warning-soft px-3 py-2 text-xs text-[#8A5A0B]"><AlertTriangle className="h-3.5 w-3.5 shrink-0" />{data.blockedBy}</p>}
+        {data.blockedBy && <p className="flex items-center gap-2.5 rounded-2xl border border-[#C98A1B]/25 bg-[#FCF4E6] px-4 py-3 text-[12.5px] text-[#8A5A0B]"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#C98A1B] text-white"><AlertTriangle className="h-3.5 w-3.5" /></span>{data.blockedBy}</p>}
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Field label="Temperature">
             <div className="flex gap-1">
               {(['HOT', 'WARM', 'COLD'] as const).map((t) => (
                 <button key={t} disabled={!canEdit} onClick={() => setF({ ...f, temperature: t })}
-                  className={cn('h-8 flex-1 rounded-lg border text-xs font-medium transition-all',
-                    f.temperature === t ? (t === 'HOT' ? 'border-danger bg-danger-soft text-danger' : t === 'WARM' ? 'border-warning bg-warning-soft text-[#8A5A0B]' : 'border-sky-400 bg-sky-50 text-sky-700') : 'border-line text-ink-muted hover:border-ink-muted/30')}>
+                  className={cn('h-9 flex-1 rounded-full border text-xs font-semibold transition-all',
+                    f.temperature === t ? (t === 'HOT' ? 'border-brand-forest bg-brand-forest text-white shadow-[0_6px_14px_-8px_rgba(5,63,26,.9)]' : t === 'WARM' ? 'border-brand-mint bg-[#E6F5EA] text-[#1A7F36]' : 'border-brand-navy/40 bg-brand-navy-50 text-brand-navy') : 'border-line text-ink-muted hover:border-brand-forest/30')}>
                   {t.charAt(0) + t.slice(1).toLowerCase()}
                 </button>
               ))}
@@ -105,32 +105,36 @@ export function OpportunityPanel({ opportunityId, canEdit }: { opportunityId: st
 
         <Journey stage={o.stage} />
         {guide && (
-          <p className="flex gap-2 rounded-lg bg-accent-soft/50 px-3 py-2 text-xs text-ink-soft">
-            <Lightbulb className="mt-px h-3.5 w-3.5 shrink-0 text-accent" /><span><b className="text-ink">What moves this forward:</b> {guide}</span>
+          <p className="flex gap-3 rounded-2xl bg-[#141614] px-4 py-3.5 text-[12.5px] leading-relaxed text-paper/80">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-mint text-brand-night"><Lightbulb className="h-3.5 w-3.5" /></span><span><b className="text-paper">What moves this forward:</b> {guide}</span>
           </p>
         )}
 
         {checklistStages.length > 0 && (
           <div>
             <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-xs font-semibold text-ink-soft">Stage requirements</p>
+              <div className="min-w-0 flex-1">
+                <p className="font-display text-[15px] font-medium">Stage requirements</p>
+                <div className="mt-1.5 flex items-center gap-2"><div className="h-1.5 w-40 overflow-hidden rounded-full bg-black/[0.06]"><div className="h-full rounded-full bg-gradient-to-r from-brand-forest to-brand-mint transition-[width] duration-700" style={{ width: `${stageItems.length ? (100 * stageItems.filter((c) => c.done).length) / stageItems.length : 0}%` }} /></div>
+                  <span className="text-[11px] text-ink-muted">{stageItems.filter((c) => c.done).length} of {stageItems.length} done</span></div>
+              </div>
               <Segmented value={activeTab} onChange={setTab}
                 options={checklistStages.map((st) => {
                   const items = data.checklist.filter((c) => c.stage === st);
                   return { value: st, label: `${st} · ${items.filter((c) => c.done).length}/${items.length}` };
                 })} />
             </div>
-            <ul className="space-y-1">
+            <ul className="space-y-1.5">
               {stageItems.map((c) => (
                 <li key={c.id}>
                   <button disabled={!canEdit || tick.isPending}
                     onClick={() => (c.done ? tick.mutate({ item: c, done: false }) : c.requiresAttachment ? setAttachFor(c) : tick.mutate({ item: c, done: true }))}
-                    className="group flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left hover:bg-canvas disabled:cursor-default">
-                    <span className={cn('flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors', c.done ? 'border-success bg-success text-white' : 'border-line group-hover:border-accent')}>
+                    className={cn('group flex w-full items-center gap-3 rounded-2xl border px-3.5 py-2.5 text-left transition-all disabled:cursor-default', c.done ? 'border-brand-mint/30 bg-[#E6F5EA]/60' : 'border-line/70 bg-white hover:border-brand-forest/30')}>
+                    <span className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors', c.done ? 'border-brand-mint bg-brand-mint text-white' : 'border-line group-hover:border-brand-forest')}>
                       {c.done && <Check className="h-3 w-3" />}
                     </span>
-                    <span className={cn('flex-1 text-[13px]', c.done && 'text-ink-muted line-through')}>{c.label}</span>
-                    {c.exitStep && <span className="rounded bg-warning-soft px-1.5 py-0.5 text-2xs font-medium text-[#8A5A0B]">Needed to move on</span>}
+                    <span className={cn('flex-1 text-[13px] font-medium', c.done && 'text-ink-muted line-through')}>{c.label}</span>
+                    {c.exitStep && <span className="rounded-full bg-brand-forest px-2 py-0.5 text-2xs font-semibold text-white">Needed to move on</span>}
                     {c.requiresAttachment && !c.done && <span title="Needs a file or link"><Link2 className="h-3.5 w-3.5 text-ink-muted" /></span>}
                     {c.done && <span className="text-2xs text-ink-muted">{c.doneBy} · {fmtDate(c.doneAt)}</span>}
                   </button>
@@ -169,8 +173,8 @@ function Journey({ stage }: { stage: LifecycleStage }) {
     <ol className="flex items-center gap-1">
       {JOURNEY.map((st, i) => (
         <li key={st} className="flex flex-1 items-center gap-1">
-          <span className={cn('flex h-6 flex-1 items-center justify-center rounded-md text-2xs font-semibold',
-            i < at ? 'bg-success-soft text-success' : i === at ? 'bg-accent text-white' : 'bg-canvas text-ink-muted')}>
+          <span className={cn('flex h-8 flex-1 items-center justify-center rounded-full text-[11px] font-semibold transition-all',
+            i < at ? 'bg-[#E6F5EA] text-[#1A7F36]' : i === at ? 'bg-brand-forest text-white shadow-[0_0_0_3px_rgba(35,178,74,.25)]' : 'bg-canvas text-ink-muted')}>
             {i < at && <Check className="mr-1 h-3 w-3" />}{st === 'L1' && stage === 'MULTITHREADING' ? 'Multithreading' : stageLabel[st]}
           </span>
         </li>

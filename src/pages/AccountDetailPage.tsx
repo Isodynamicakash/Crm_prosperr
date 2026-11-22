@@ -154,7 +154,7 @@ export default function AccountDetailPage() {
               <div className="p-2">
                 {DEPT_ORDER.filter((d) => data.stakeholdersByDepartment[d]?.length).map((d) => (
                   <div key={d} className="mb-1">
-                    <p className="px-2 pb-1 pt-3 text-2xs font-semibold uppercase tracking-wider text-ink-muted/80">{humanize(d)}</p>
+                    <p className="flex items-center gap-2 px-1 pb-2 pt-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted"><span className="h-1.5 w-1.5 rounded-full bg-brand-mint" />{humanize(d)}<span className="font-normal normal-case tracking-normal">· {data.stakeholdersByDepartment[d]!.length}</span></p>
                     {data.stakeholdersByDepartment[d]!.map((s) => (
                       <StakeholderRow key={s.id} s={s} highlight={s.id === highlight} accountId={a.id}
                         onCall={() => setCall({ stakeholderId: s.id, name: fullName(s.firstName, s.lastName), designation: s.designation, accountName: a.name, phones: s.phones })} />
@@ -180,20 +180,20 @@ export default function AccountDetailPage() {
 
           {mt.data && (
             <Card className="p-4">
-              <p className="mb-3 flex items-center justify-between text-[13px] font-semibold">Coverage {mt.data.needsMultithreading && <Badge tone="warning">Multithread</Badge>}</p>
+              <p className="mb-3 flex items-center justify-between font-display text-[16px] font-medium">Coverage {mt.data.needsMultithreading && <Badge className="bg-brand-forest text-white">Multithread</Badge>}</p>
               <div className="grid grid-cols-3 gap-2">
                 {(['FINANCE', 'HR', 'PAYROLL'] as Department[]).map((d) => {
                   const c = mt.data!.coverage[d];
                   return (
-                    <div key={d} className={cn('rounded-lg border p-2 text-center', c?.engaged ? 'border-success/30 bg-success-soft/60' : 'border-line bg-canvas/60')}>
-                      <p className="text-2xs text-ink-muted">{humanize(d)}</p>
-                      <p className={cn('mt-0.5 text-[13px] font-semibold', c?.engaged ? 'text-success' : 'text-ink-muted')}>{c?.engaged ? `L${c.bestLevel ?? '?'}` : c?.stakeholders ? 'Not engaged' : 'None'}</p>
+                    <div key={d} className={cn('rounded-2xl border p-2.5 text-center', c?.engaged ? 'border-brand-forest bg-brand-forest text-white shadow-[0_10px_20px_-12px_rgba(5,63,26,.9)]' : 'border-dashed border-line bg-canvas/60')}>
+                      <p className={cn('text-[10.5px] font-semibold uppercase tracking-[0.1em]', c?.engaged ? 'text-white/60' : 'text-ink-muted')}>{humanize(d)}</p>
+                      <p className={cn('mt-1 font-display text-[18px] font-medium leading-none', c?.engaged ? 'text-white' : 'text-ink-muted')}>{c?.engaged ? `L${c.bestLevel ?? '?'}` : c?.stakeholders ? 'Not engaged' : 'None'}</p>
                     </div>
                   );
                 })}
               </div>
               {mt.data.onlyJuniorEngaged && <p className="mt-3 text-xs text-[#8A5A0B]">Only junior contacts are engaged. Reach a senior.</p>}
-              {mt.data.suggestedNext && <p className="mt-3 text-xs text-ink-soft">Next best person: <b>{mt.data.suggestedNext.name}</b></p>}
+              {mt.data.suggestedNext && <p className="mt-3 flex items-center gap-2 rounded-xl bg-brand-forest-50 px-3 py-2 text-xs text-brand-forest">Next best person: <b>{mt.data.suggestedNext.name}</b></p>}
             </Card>
           )}
 
@@ -248,11 +248,12 @@ function StakeholderRow({ s, onCall, highlight, accountId }: { s: StakeholderVie
   const setDncAction = useAction(() => api.post(`/api/stakeholders/${s.id}/do-not-contact`, { reason: 'Asked not to be contacted' }), { success: 'Marked do-not-contact', invalidate, onSuccess: () => setDnc(false) });
 
   return (
-    <div id={`s-${s.id}`} className={cn('group flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-canvas', highlight && 'bg-accent-soft/50 ring-1 ring-accent/30')}>
+    <div id={`s-${s.id}`} className={cn('group mb-1.5 flex flex-wrap items-center gap-3 rounded-[18px] border border-line/70 bg-white px-3.5 py-3 transition-all hover:border-brand-forest/25 hover:shadow-[0_12px_26px_-20px_rgba(5,63,26,.6)]', highlight && 'border-brand-mint ring-4 ring-brand-mint/15')}>
       <Avatar name={fullName(s.firstName, s.lastName)} size="md" />
       <div className="min-w-0 flex-1">
-        <p className="flex items-center gap-1.5 truncate text-[13.5px] font-medium">
+        <p className="flex items-center gap-1.5 truncate text-[14px] font-semibold">
           {fullName(s.firstName, s.lastName)}
+          {s.level && <span className={cn('rounded-full px-1.5 py-px text-[10px] font-bold', s.level <= 1 ? 'bg-brand-forest text-white' : s.level === 2 ? 'bg-[#0E5A2A] text-white' : s.level === 3 ? 'bg-brand-mint text-brand-night' : 'bg-black/[0.06] text-ink-soft')}>L{s.level}</span>}
           {s.primarySpoc && <Star className="h-3 w-3 fill-warning text-warning" aria-label="Primary SPOC" />}
           {s.decisionMaker && <Badge tone="accent">DM</Badge>}
           {s.doNotContact && <Badge tone="danger"><Ban className="h-3 w-3" />DNC</Badge>}
@@ -309,10 +310,10 @@ function Meetings({ meetings, canAct, canReschedule, onReschedule, onOutcome }: 
   return (
     <Card>
       <CardHeader title={`Meetings · ${meetings.length}`} />
-      <ul className="divide-y divide-line p-2">
+      <ul className="space-y-1.5 p-3">
         {meetings.map((m) => (
-          <li key={m.id} className="flex items-start gap-3 px-2 py-2.5">
-            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-canvas text-xs font-semibold text-ink-soft">{m.level}</span>
+          <li key={m.id} className="flex flex-wrap items-start gap-3 rounded-[18px] border border-line/70 bg-white px-3.5 py-3">
+            <span className={cn('mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-display text-[13px] font-semibold', m.status === 'COMPLETED' ? 'bg-brand-forest text-white' : 'bg-brand-forest-50 text-brand-forest')}>{m.level}</span>
             <div className="min-w-0 flex-1">
               <p className="text-[13px] font-medium">{fmtDateTime(m.scheduledStart)} <Badge tone={tone(m)} className="ml-1">{humanize(m.outcome ?? m.status)}</Badge></p>
               <p className="text-xs text-ink-muted">Booked by {m.bookedBy}{m.ae && ` · AE ${m.ae}`}{m.attendees && ` · ${m.attendees}`}</p>
@@ -341,20 +342,20 @@ function Timeline({ events, stakeholders }: { events: TimelineEvent[]; stakehold
     <Card>
       <CardHeader title="Activity" subtitle="Everything that happened, newest first."
         action={types.length > 1 && (
-          <Select value={filter} onChange={(e) => setFilter(e.target.value)} className="h-7 w-36 text-xs">
+          <Select value={filter} onChange={(e) => setFilter(e.target.value)} className="w-40 rounded-full text-xs">
             <option value="">All activity</option>{types.map((t) => <option key={t} value={t}>{humanize(t)}</option>)}
           </Select>
         )} />
       {shown.length === 0 ? <Empty icon={<Building2 className="h-5 w-5" />} title="No activity yet" body="Calls, emails and meetings show up here." /> : (
-        <ol className="relative px-4 pb-4 pt-3">
+        <ol className="relative px-5 pb-5 pt-3">
           {shown.map((e, i) => {
             const Icon = eventIcon[e.type] ?? StickyNote;
             return (
               <li key={`${e.kind}-${e.id}-${i}`} className="relative flex gap-3 pb-4 last:pb-0">
-                {i < shown.length - 1 && <span className="absolute left-[13px] top-7 h-[calc(100%-20px)] w-px bg-line" />}
-                <span className="z-[1] flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line bg-white text-ink-muted"><Icon className="h-3.5 w-3.5" /></span>
-                <div className="min-w-0 flex-1 pt-0.5">
-                  <p className="text-[13px]"><span className="font-medium">{humanize(e.type)}</span>{e.stakeholderId && names[e.stakeholderId] && <span className="text-ink-muted"> · {names[e.stakeholderId]}</span>}</p>
+                {i < shown.length - 1 && <span className="absolute left-[17px] top-9 h-[calc(100%-26px)] w-[2px] rounded-full bg-gradient-to-b from-brand-mint/40 to-line" />}
+                <span className={cn('z-[1] flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', i === 0 ? 'bg-brand-forest text-white shadow-[0_8px_18px_-8px_rgba(5,63,26,.9)]' : 'bg-brand-forest-50 text-brand-forest')}><Icon className="h-4 w-4" /></span>
+                <div className="min-w-0 flex-1 rounded-2xl bg-canvas/70 px-3.5 py-2.5">
+                  <p className="text-[13px]"><span className="font-semibold">{humanize(e.type)}</span>{e.stakeholderId && names[e.stakeholderId] && <span className="text-ink-muted"> · {names[e.stakeholderId]}</span>}</p>
                   {e.summary && <p className="mt-0.5 whitespace-pre-line text-xs text-ink-soft">{e.summary}</p>}
                   <p className="mt-0.5 text-2xs text-ink-muted">{fmtDateTime(e.at)}{e.byName && ` · ${e.byName}`}</p>
                 </div>
