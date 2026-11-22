@@ -81,38 +81,30 @@ export default function MyDayPage() {
 
   return (
     <div>
-      <PageHeader title={`${greeting()}, ${user?.fullName.split(' ')[0]}`}
+      <PageHeader title={`${greeting()}, ${user?.fullName.split(' ')[0]}`} icon={<PhoneCall />} eyebrow="My Day · calling list"
         subtitle={isLoading ? 'Loading your day…' : data.length ? `${counts.OVERDUE + counts.DUE_TODAY} follow-ups and ${counts.UNTOUCHED} new leads to call today.` : 'Nothing queued — add stakeholders to start calling.'}
         actions={callable.length > 0 && (
-          <Button variant="primary" icon={<Play className="h-3.5 w-3.5" />} onClick={() => { setSession(true); open(callable[0]); }}>Start calling</Button>
-        )} />
-
-      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-        {SECTIONS.map((s) => (
-          <button key={s.value} onClick={() => { setTab(s.value); setCursor(0); }}
-            className={cn('flex items-center gap-3 rounded-xl border bg-white p-3.5 text-left shadow-card transition-all',
-              tab === s.value ? 'border-accent ring-2 ring-accent/10' : 'border-line hover:border-ink-muted/30')}>
-            <span className={cn('flex h-9 w-9 items-center justify-center rounded-lg bg-canvas', s.tone)}><s.icon className="h-4 w-4" /></span>
-            <span><span className="block text-[22px] font-semibold leading-6 tabular-nums">{counts[s.value] ?? 0}</span><span className="text-xs text-ink-muted">{s.label}</span></span>
-          </button>
-        ))}
-      </div>
+          <Button variant="primary" icon={<Play className="h-3.5 w-3.5" />} onClick={() => { setSession(true); open(callable[0]); }}>Start calling · {callable.length}</Button>
+        )}
+        stats={SECTIONS.map((x) => ({ label: x.label, value: counts[x.value] ?? 0, hint: tab === x.value ? 'Showing below' : 'Click to open', onClick: () => { setTab(x.value); setCursor(0); } }))} />
 
       <Card>
-        <div className="flex items-center justify-between px-4 pt-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5">
           <Tabs value={tab} onChange={(v) => { setTab(v); setCursor(0); }} tabs={SECTIONS.map((s) => ({ value: s.value, label: s.label, count: counts[s.value] }))} />
           <span className="hidden items-center gap-1.5 text-2xs text-ink-muted md:flex"><Kbd>J</Kbd><Kbd>K</Kbd> move <Kbd>Enter</Kbd> log call</span>
         </div>
         {isLoading ? <SkeletonRows /> : rows.length === 0 ? (
           <Empty icon={<CheckCircle2 className="h-5 w-5" />} title="All clear here" body="Nothing in this list right now. Check the other tabs or add new stakeholders." />
         ) : (
-          <ul className="divide-y divide-line">
+          <ul className="space-y-2 p-4">
             {rows.map((r, i) => (
               <li key={`${r.taskId ?? r.stakeholderId ?? r.accountId}-${i}`} onMouseEnter={() => setCursor(i)}
-                className={cn('group flex items-center gap-4 px-4 py-3 transition-colors', cursor === i ? 'bg-accent-soft/40' : 'hover:bg-canvas')}>
+                className={cn('group relative flex flex-wrap items-center gap-4 overflow-hidden rounded-[18px] border px-4 py-3 transition-all duration-200',
+                  cursor === i ? 'border-brand-forest/25 bg-gradient-to-r from-brand-forest-50 to-white shadow-[0_12px_28px_-20px_rgba(5,63,26,.6)]' : 'border-line/70 bg-white hover:border-brand-forest/20')}>
+                {cursor === i && <span className="absolute inset-y-2 left-0 w-1 rounded-full bg-brand-mint shadow-[0_0_10px_rgba(35,178,74,.7)]" />}
                 <Avatar name={r.stakeholderName ?? r.accountName} size="md" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13.5px] font-medium">
+                  <p className="truncate text-[14px] font-semibold">
                     {r.stakeholderName ?? r.accountName}
                     {r.designation && <span className="ml-1.5 font-normal text-ink-muted">· {r.designation}</span>}
                   </p>
@@ -127,7 +119,7 @@ export default function MyDayPage() {
                 <div className="flex items-center gap-1.5">
                   {r.phone && (
                     <a href={`tel:${r.phone}`} onClick={() => open(r)} title={`Call ${r.phone}`}
-                      className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line bg-white px-2.5 text-xs font-medium tabular-nums text-ink-soft shadow-card hover:border-success/40 hover:text-success">
+                      className="inline-flex h-8 items-center gap-1.5 rounded-full border border-line bg-white px-3 text-xs font-medium tabular-nums text-ink-soft transition-colors hover:border-brand-forest/40 hover:text-brand-forest">
                       <Phone className="h-3.5 w-3.5" />{r.phone}
                     </a>
                   )}

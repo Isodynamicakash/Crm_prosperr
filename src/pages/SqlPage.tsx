@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 import { isLeadership, useAuth } from '@/lib/auth';
 import { fmtDateTime, humanize, relTime } from '@/lib/format';
 import type { QueueRow, SqlRow, SqlStatus } from '@/lib/types';
-import { Avatar, Badge, Button, Card, Empty, PageHeader, SkeletonRows, Tabs } from '@/components/ui/ui';
+import { Avatar, Badge, Button, Card, Empty, EntityTile, PageHeader, SkeletonRows, Tabs } from '@/components/ui/ui';
 import { SqlBadge } from '@/components/ui/status';
 import { AssignModal, ValidateSqlModal } from '@/features/sql/SqlForms';
 
@@ -30,8 +30,14 @@ function ManagerQueue() {
 
   return (
     <div>
-      <PageHeader title="SQL queue" subtitle={`${toReview.length} to review · ${toAssign.length} approved and waiting for an AE`} />
-      <div className="mb-4"><Tabs value={tab} onChange={setTab} tabs={[{ value: 'queue', label: 'Needs action', count: rows.length }, { value: 'all', label: 'All SQLs' }]} /></div>
+      <PageHeader title="SQL queue" icon={<ClipboardCheck />} eyebrow="Qualification" subtitle="Every SQL is validated here and handed to an AE — nothing is auto-assigned."
+        stats={[
+          { label: 'To review', value: toReview.length, hint: 'Waiting on you', onClick: () => setTab('queue') },
+          { label: 'Waiting for an AE', value: toAssign.length, hint: 'Approved, not assigned', onClick: () => setTab('queue') },
+          { label: 'Small exceptions', value: rows.filter((r) => r.smallException).length, hint: 'Need your approval' },
+          { label: 'P1 cities', value: rows.filter((r) => r.locationPriority === 'P1').length, hint: 'Confirm intent' },
+        ]} />
+      <div className="mb-4 flex"><Tabs value={tab} onChange={setTab} tabs={[{ value: 'queue', label: 'Needs action', count: rows.length }, { value: 'all', label: 'All SQLs' }]} /></div>
       {tab === 'queue' ? (
         <Card>
           {queue.isLoading ? <SkeletonRows /> : rows.length === 0 ? (
@@ -44,8 +50,8 @@ function ManagerQueue() {
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.submissionId} className="border-b border-line/70 last:border-0 hover:bg-canvas">
-                    <td className="px-4 py-3"><Link to={`/accounts/${r.accountId}`} className="font-medium hover:text-accent">{r.accountName}</Link>
-                      <p className="text-2xs text-ink-muted">Submitted {relTime(r.submittedAt)}</p></td>
+                    <td className="px-4 py-3"><div className="flex items-center gap-3"><EntityTile name={r.accountName} /><div><Link to={`/accounts/${r.accountId}`} className="text-[13.5px] font-semibold hover:text-brand-forest">{r.accountName}</Link>
+                      <p className="text-2xs text-ink-muted">Submitted {relTime(r.submittedAt)}</p></div></div></td>
                     <td className="px-3"><SqlBadge status={r.status} /></td>
                     <td className="px-3"><span className="flex items-center gap-1.5"><Avatar name={r.submittedBy} size="xs" />{r.submittedBy}</span></td>
                     <td className="px-3 text-xs">{r.l1At ? fmtDateTime(r.l1At) : <span className="text-ink-muted">—</span>}</td>
@@ -78,7 +84,13 @@ function MySqls() {
   const approved = data?.filter((s) => s.status === 'QUALIFIED_SQL').length ?? 0;
   return (
     <div>
-      <PageHeader title="My SQLs" subtitle={data ? `${data.length} submitted · ${approved} approved` : undefined} />
+      <PageHeader title="My SQLs" icon={<ClipboardCheck />} eyebrow="Qualification" subtitle="Every SQL you submitted and where it stands."
+        stats={[
+          { label: 'Submitted', value: data?.length ?? 0 },
+          { label: 'Approved', value: approved, hint: data?.length ? `${Math.round((100 * approved) / data.length)}% approval` : undefined },
+          { label: 'In progress', value: data?.filter((x) => ['PENDING_QUALIFICATION', 'MEETING_BOOKED', 'PENDING_SENIOR_CONNECTION'].includes(x.status)).length ?? 0 },
+          { label: 'Rejected', value: data?.filter((x) => x.status === 'REJECTED_NOT_ICP').length ?? 0 },
+        ]} />
       <SqlTable rows={data} loading={isLoading} />
     </div>
   );
@@ -97,7 +109,7 @@ function SqlTable({ rows, loading, showBdr }: { rows?: SqlRow[]; loading: boolea
           <tbody>
             {rows.map((s) => (
               <tr key={s.id} className="border-b border-line/70 last:border-0 hover:bg-canvas">
-                <td className="px-4 py-2.5"><Link to={`/accounts/${s.accountId}`} className="font-medium hover:text-accent">{s.accountName}</Link></td>
+                <td className="px-4 py-2.5"><div className="flex items-center gap-3"><EntityTile name={s.accountName} size="sm" /><Link to={`/accounts/${s.accountId}`} className="text-[13.5px] font-semibold hover:text-brand-forest">{s.accountName}</Link></div></td>
                 <td className="px-3"><SqlBadge status={s.status} /></td>
                 {showBdr && <td className="px-3">{s.submittedBy}</td>}
                 <td className="px-3 text-xs text-ink-muted">{humanize(s.sizeBucket)}{s.smallException && ' · exception'}</td>
