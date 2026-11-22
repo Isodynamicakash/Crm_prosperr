@@ -10,7 +10,8 @@ import { cn } from '@/lib/cn';
 import { fmtDate, fmtDateTime, humanize, inr } from '@/lib/format';
 import type { Achievement } from '@/lib/types';
 import { Button, Card, CardHeader, Empty, EntityTile, Field, Input, PageHeader, SectionHead, Select, SkeletonRows } from '@/components/ui/ui';
-import { C, ChartCard, Donut, GroupedBars, Meter, RadialGauge } from '@/components/charts/kit';
+import { ChartCard, Meter, RadialGauge } from '@/components/charts/kit';
+import { AgeingReport, CoverageReport, InactiveReport, L1Report, SequenceReport, SqlQualityReport, WorkloadReport } from '@/features/reports/ReportViews';
 
 type ReportKey = 'targets' | 'l1' | 'coverage' | 'inactive' | 'workload' | 'ageing' | 'sql' | 'sequences';
 const REPORTS: { key: ReportKey; label: string; hint: string; icon: typeof Target }[] = [
@@ -54,6 +55,20 @@ const ENDPOINT: Record<Exclude<ReportKey, 'targets'>, string> = {
   workload: '/api/reports/workload', ageing: '/api/reports/ageing', sql: '/api/reports/sql-quality', sequences: '/api/reports/sequence-performance',
 };
 
+function DedicatedView({ k, data }: { k: Exclude<ReportKey, 'targets'>; data: unknown }) {
+  const rows = (Array.isArray(data) ? data : []) as Record<string, unknown>[];
+  const obj = (Array.isArray(data) ? {} : data ?? {}) as Record<string, Record<string, unknown>[]>;
+  switch (k) {
+    case 'l1': return <L1Report rows={rows} />;
+    case 'coverage': return <CoverageReport data={obj} />;
+    case 'inactive': return <InactiveReport data={obj} />;
+    case 'workload': return <WorkloadReport data={obj} />;
+    case 'ageing': return <AgeingReport data={obj} />;
+    case 'sql': return <SqlQualityReport data={obj} />;
+    case 'sequences': return <SequenceReport rows={rows} />;
+  }
+}
+
 /** Reports come back as a list or as named lists; each list renders as a table with readable headers. */
 function GenericReport({ k }: { k: Exclude<ReportKey, 'targets'> }) {
   const { data, isLoading, error } = useQuery({ queryKey: ['report', k], queryFn: () => api.get<unknown>(ENDPOINT[k]) });
@@ -67,64 +82,26 @@ function GenericReport({ k }: { k: Exclude<ReportKey, 'targets'> }) {
           <Button icon={<Download className="h-3.5 w-3.5" />} onClick={() => api.download(ENDPOINT.l1, { format: 'csv' }, 'l1-not-progressed.csv').catch((e) => toast.error(e.message))}>Export CSV</Button>
         </div>
       )}
-      {[...sections].sort((x, y) => Number(!(Array.isArray(y[1]) && y[1].length)) - Number(!(Array.isArray(x[1]) && x[1].length)) || 0).map(([title, rows]) => {
+      <DedicatedView k={k} data={data} />
+      {sections.some(([, rows]) => Array.isArray(rows) && rows.length) && (
+        <details className="group rounded-[22px] border border-line/80 bg-white/70 open:bg-transparent open:border-transparent">
+          <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-3.5 text-[13px] font-semibold group-open:px-1"><span>Detailed data</span><span className="text-xs font-normal text-ink-muted group-open:hidden">Show tables</span></summary>
+          <div className="space-y-4">
+      {[...sections].filter(([, rows]) => Array.isArray(rows) && rows.length).sort((x, y) => Number(!(Array.isArray(y[1]) && y[1].length)) - Number(!(Array.isArray(x[1]) && x[1].length)) || 0).map(([title, rows]) => {
         const t = title ? humanize(title.replace(/([A-Z])/g, '_$1')) : undefined;
         const list = Array.isArray(rows) ? rows : [];
         if (!list.length) return <div key={title} className="flex items-center justify-between rounded-[18px] border border-dashed border-line bg-white/60 px-5 py-3.5 text-[13px]"><span className="font-semibold">{t ?? 'Details'}</span><span className="text-xs text-ink-muted">Nothing to show right now</span></div>;
-        return <div key={title} className="space-y-4"><ReportKpis rows={list} title={t} /><AutoChart title={t ?? REPORTS.find((x) => x.key === k)!.label} rows={list} /><ReportTable title={t} rows={list} /></div>;
+        return <ReportTable key={title} title={t} rows={list} />;
       })}
+          </div>
+        </details>
+      )}
     </div>
   );
 }
 
 const isNum = (v: unknown) => typeof v === 'number' || (typeof v === 'string' && v.trim() !== '' && !Number.isNaN(Number(v)) && !/^\d{4}-/.test(v));
 const pretty = (c: string) => humanize(c.replace(/([A-Z])/g, '_$1'));
-const PAL = [C.forest, C.mint, C.navy, C.sage, C.slate, C.forest2, C.pale];
-
-/** Picks a chart from the shape of a report: one number per row → donut; buckets / stages → stacked bars; otherwise grouped bars. */
-function AutoChart({ title, rows }: { title: string; rows: Record<string, unknown>[] }) {
-  if (!rows.length) return null;
-  const keys = Object.keys(rows[0]).filter((c) => !/id$/i.test(c));
-  const label = keys.find((c) => !rows.every((r) => isNum(r[c]) || r[c] == null));
-  const nums = keys.filter((c) => c !== label && rows.every((r) => r[c] == null || isNum(r[c])) && !/^(total|weightedLoad|pct|share)$/i.test(c));
-  if (!label || !nums.length || rows.length > 40) return null;
-  const data = rows.map((r) => ({ [label]: String(r[label] ?? '—').replace(/_/g, ' ').toLowerCase().replace(/^\w/, (m) => m.toUpperCase()), ...Object.fromEntries(nums.map((n) => [n, Number(r[n] ?? 0)])) }));
-  if (nums.length === 1 && rows.length <= 9) {
-    return (
-      <ChartCard title={title} subtitle={pretty(nums[0])}>
-        <Donut height={210} data={data.map((d, i) => ({ name: String(d[label]), value: Number(d[nums[0]]), color: PAL[i % PAL.length] }))} />
-      </ChartCard>
-    );
-  }
-  const stacked = nums.length >= 3 && nums.every((n) => /^\d|^(l\d|sql|negotiation|won|lost|inactive|active)/i.test(n));
-  const horizontal = rows.length > 6 || data.some((d) => String(d[label]).length > 14);
-  return (
-    <ChartCard title={title} subtitle={nums.map(pretty).join(' · ')}>
-      <GroupedBars data={data} x={label} stacked={stacked} horizontal={horizontal}
-        height={horizontal ? Math.max(200, rows.length * (stacked ? 40 : 30 * Math.min(nums.length, 3))) : 260}
-        series={nums.slice(0, 7).map((n, i) => ({ key: n, name: pretty(n), color: PAL[i % PAL.length] }))} />
-    </ChartCard>
-  );
-}
-
-/** Row count plus the totals of the main number columns, as a compact stat strip. */
-function ReportKpis({ rows, title }: { rows: Record<string, unknown>[]; title?: string }) {
-  if (!rows.length) return null;
-  const keys = Object.keys(rows[0]).filter((c) => !/id$/i.test(c));
-  const nums = keys.filter((c) => rows.every((r) => r[c] == null || isNum(r[c])) && !/pct|share|rank|order|level/i.test(c)).slice(0, 3);
-  const items = [{ label: title ? `${title} · rows` : 'Rows', value: rows.length }, ...nums.map((n) => ({ label: `Total ${pretty(n).toLowerCase()}`, value: rows.reduce((a, r) => a + Number(r[n] ?? 0), 0) }))];
-  return (
-    <div className={cn('grid gap-3', items.length >= 4 ? 'grid-cols-2 lg:grid-cols-4' : items.length === 3 ? 'grid-cols-3' : 'grid-cols-2')}>
-      {items.map((it) => (
-        <div key={it.label} className="relative overflow-hidden rounded-[20px] border border-line/80 bg-white px-4 py-3.5">
-          <span className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-brand-forest to-brand-mint" />
-          <p className="truncate text-[11px] font-medium uppercase tracking-[0.12em] text-ink-muted">{it.label}</p>
-          <p className="mt-1.5 font-display text-[28px] font-medium leading-none tracking-[-0.04em] tabular-nums">{/mrr/i.test(it.label) ? inr(it.value) : it.value.toLocaleString('en-IN')}</p>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 function cell(key: string, v: unknown) {
   if (v === null || v === undefined || v === '') return <span className="text-ink-muted">—</span>;
