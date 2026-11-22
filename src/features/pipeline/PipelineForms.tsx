@@ -38,7 +38,7 @@ export function RecordOutcomeModal({ open, onClose, meeting, stakeholders = [] }
     return api.post(`/api/meetings/${meeting!.id}/outcome`, {
       outcome, notes: notes || null, nextStep: nextStep || null, nextStepDue: nextStep ? nextStepDue : null, attendedStakeholderIds: attended,
     });
-  }, { success: 'Meeting updated', invalidate: [['account'], ['overdue-outcomes'], ['dashboard'], ['accounts'], ['tasks']], onSuccess: onClose });
+  }, { success: 'Meeting updated', invalidate: [['account'], ['opportunity'], ['overdue-outcomes'], ['dashboard'], ['accounts'], ['tasks']], onSuccess: onClose });
 
   const completed = outcome.startsWith('COMPLETED');
   const blocked = outcome === 'RESCHEDULED' ? !newStart || isPastLocal(newStart) : outcome === 'COMPLETED_FOLLOW_UP' && !nextStep.trim();
@@ -99,7 +99,7 @@ export function BookMeetingModal({ open, onClose, accountId, stakeholders = [] }
       level, alsoCompletesL2: false, scheduledStart: s, scheduledEnd: new Date(new Date(s).getTime() + Number(duration) * 60000).toISOString(),
       meetingLink: link || null, attendeeStakeholderIds: attendees,
     });
-  }, { success: 'Meeting booked', invalidate: [['account', accountId]], onSuccess: onClose });
+  }, { success: 'Meeting booked', invalidate: [['account', accountId], ['opportunity'], ['accounts'], ['tasks']], onSuccess: onClose });
 
   return (
     <Modal open={open} onClose={onClose} title="Book meeting"
@@ -136,7 +136,7 @@ export function MoveInactiveModal({ open, onClose, accountId }: { open: boolean;
 
   const save = useAction(() => api.post<{ status: string }>(`/api/accounts/${accountId}/inactive`, { reasonId, remark, revisitOn: revisitOn || null }), {
     success: (res) => (res.status === 'PENDING_APPROVAL' ? 'Sent to your manager for approval' : 'Moved to Inactive'),
-    invalidate: [['account', accountId], ['accounts'], ['dashboard'], ['to-be-moved']], onSuccess: onClose,
+    invalidate: [['account', accountId], ['opportunity'], ['accounts'], ['dashboard'], ['to-be-moved']], onSuccess: onClose,
   });
 
   return (
@@ -163,7 +163,7 @@ export function KeepActiveModal({ open, onClose, accountId }: { open: boolean; o
   const [due, setDue] = useState(addDaysISO(7));
   useEffect(() => { if (open) { setNextStep(''); setDue(addDaysISO(7)); } }, [open]);
   const save = useAction(() => api.post(`/api/accounts/${accountId}/keep-active`, { nextStep, nextStepDue: due }), {
-    success: 'Kept active', invalidate: [['account', accountId], ['to-be-moved'], ['dashboard']], onSuccess: onClose,
+    success: 'Kept active', invalidate: [['account', accountId], ['opportunity'], ['accounts'], ['to-be-moved'], ['dashboard']], onSuccess: onClose,
   });
   return (
     <Modal open={open} onClose={onClose} title="Keep active" subtitle="Add a concrete next step so it doesn’t get flagged again."
@@ -183,7 +183,7 @@ export function ReactivateModal({ open, onClose, accountId, stakeholders = [] }:
   const [sid, setSid] = useState('');
   useEffect(() => { if (open) { setReasonId(''); setNote(''); setSid(''); } }, [open]);
   const save = useAction(() => api.post(`/api/accounts/${accountId}/reactivate`, { reasonId, note: note || null, newStakeholderId: sid || null }), {
-    success: 'Account reactivated', invalidate: [['account', accountId], ['accounts'], ['revival'], ['dashboard']], onSuccess: onClose,
+    success: 'Account reactivated', invalidate: [['account', accountId], ['opportunity'], ['accounts'], ['revival'], ['dashboard']], onSuccess: onClose,
   });
   return (
     <Modal open={open} onClose={onClose} title="Reactivate account"
@@ -221,7 +221,7 @@ export function RescheduleMeetingModal({ open, onClose, meeting }: {
     return api.post(`/api/meetings/${meeting!.id}/reschedule`, {
       scheduledStart: s, scheduledEnd: new Date(new Date(s).getTime() + Number(duration) * 60000).toISOString(), meetingLink: link.trim() || null,
     });
-  }, { success: 'Meeting rescheduled', invalidate: [['account'], ['dashboard'], ['tasks'], ['pipeline']], onSuccess: onClose });
+  }, { success: 'Meeting rescheduled', invalidate: [['account'], ['opportunity'], ['accounts'], ['dashboard'], ['tasks']], onSuccess: onClose });
 
   return (
     <Modal open={open} onClose={onClose} title={`Reschedule ${meeting?.level ?? ''} meeting`}
