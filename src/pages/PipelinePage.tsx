@@ -88,7 +88,7 @@ export default function PipelinePage() {
           </div>
         </>} />
 
-      <div className="-mx-4 overflow-x-auto px-4 pb-4 scrollbar-thin sm:-mx-6 sm:px-6">
+      <div className="-mx-3 snap-x snap-mandatory overflow-x-auto px-3 pb-4 scrollbar-thin sm:-mx-6 sm:snap-none sm:px-6">
         <div className="flex min-w-max gap-3">
           {COLUMNS.map((stage) => {
             const items = byStage[stage] ?? [];
@@ -96,7 +96,7 @@ export default function PipelinePage() {
             const allowed = drag && (MANUAL_MOVES[drag.stage] ?? []).includes(stage);
             return (
               <div key={stage} onDragOver={(e) => { e.preventDefault(); setOver(stage); }} onDragLeave={() => setOver(null)} onDrop={() => drop(stage)}
-                className={cn('relative flex w-[288px] flex-col overflow-hidden rounded-[24px] border border-line/80 bg-white/60 p-2.5 backdrop-blur transition-all duration-200',
+                className={cn('relative flex w-[84vw] shrink-0 snap-center flex-col overflow-hidden rounded-[24px] sm:w-[288px] border border-line/80 bg-white/60 p-2.5 backdrop-blur transition-all duration-200',
                   over === stage && (allowed ? 'border-brand-mint/50 bg-brand-forest-50 shadow-[0_0_0_4px_rgba(35,178,74,.12)]' : 'bg-black/[0.04]'))}>
                 <span className={cn('absolute inset-x-0 top-0 h-1 bg-gradient-to-r', lane[stage])} />
                 <div className="px-2 pb-3 pt-2">

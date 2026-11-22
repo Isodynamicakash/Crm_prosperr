@@ -63,6 +63,7 @@
 @keyframes page-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes drawer-in { from { transform: translateX(-100%); } to { transform: none; } }
+@keyframes sheet-up { from { transform: translateY(100%); } to { transform: none; } }
 
 /* ---- Controls placed on the dark hero surface ---- */
 .on-dark [data-variant="primary"] { background: #23B24A; color: #0D0D0D; box-shadow: 0 0 22px rgba(35,178,74,.35); }

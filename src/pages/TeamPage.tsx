@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Pencil, Plus, UserCheck, UserX, Users } from 'lucide-react';
 import { api } from '@/lib/api';
@@ -33,6 +34,13 @@ export default function TeamPage() {
   });
 
   const grouped = ROLES.map((r) => ({ ...r, users: (data ?? []).filter((u) => u.role === r.value) }));
+  const [roleFilter, setRoleFilter] = useState<Role | ''>('');
+  // AE load comes from the workload report; a 403 for non-leadership just leaves the bars out.
+  const workload = useQuery({ queryKey: ['report', 'workload'], queryFn: () => api.get<{ current?: { ae: string; total: number; weightedLoad: number; l2: number; l3: number; negotiation: number }[] }>('/api/reports/workload'), retry: false });
+  const loads = workload.data?.current ?? [];
+  const maxLoad = Math.max(1, ...loads.map((l) => Number(l.weightedLoad)));
+  const online = (data ?? []).filter((u) => u.lastLoginAt && Date.now() - new Date(u.lastLoginAt).getTime() < 864e5).length;
+  const people = grouped.flatMap((g) => g.users).filter((u) => !roleFilter || u.role === roleFilter);
 
   return (
     <div>
@@ -41,22 +49,64 @@ export default function TeamPage() {
         actions={admin && <Button variant="primary" icon={<Plus className="h-3.5 w-3.5" />} onClick={() => setEditing('new')}>Add person</Button>}
         stats={ROLES.map((r) => ({ label: r.label, value: (data ?? []).filter((u) => u.role === r.value && u.active).length, hint: r.hint }))} />
       {isLoading ? <Card><SkeletonRows /></Card> : !data?.length ? <Card><Empty icon={<Users className="h-5 w-5" />} title="No one here yet" /></Card> : (
+        <>
+        <div className="mb-4 grid gap-3 md:grid-cols-3">
+          <div className="relative overflow-hidden rounded-[22px] bg-[#141614] p-4 text-paper md:col-span-1">
+            <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-brand-mint/20 blur-2xl" />
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-brand-mint">Signed in today</p>
+            <p className="mt-2 font-display text-[34px] font-medium leading-none tabular-nums">{online}<span className="text-[18px] text-paper/40"> / {data.filter((u) => u.active).length}</span></p>
+            <div className="mt-3 flex -space-x-2">
+              {data.filter((u) => u.active).slice(0, 8).map((u) => (
+                <span key={u.id} className="relative">
+                  <Avatar name={u.fullName} size="sm" className="ring-2 ring-[#141614]" />
+                  {u.lastLoginAt && Date.now() - new Date(u.lastLoginAt).getTime() < 864e5 && <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-brand-mint ring-2 ring-[#141614]" />}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-[22px] border border-line/80 bg-white p-4 md:col-span-2">
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-brand-forest/70">Team mix</p>
+            <div className="mt-3 flex h-3 overflow-hidden rounded-full bg-brand-forest-50">
+              {grouped.filter((g) => g.users.length).map((g) => (
+                <span key={g.value} className="h-full transition-[width] duration-700" style={{ width: `${(100 * g.users.length) / data.length}%`, background: ['#7CCB8E', '#23B24A', '#053F1A', '#202E64'][ROLES.indexOf(ROLES.find((r) => r.value === g.value)!)] }} title={`${g.label}: ${g.users.length}`} />
+              ))}
+            </div>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              <button onClick={() => setRoleFilter('')} className={cn('rounded-full border px-3 py-1 text-[12px] font-semibold transition-all', !roleFilter ? 'border-brand-forest bg-brand-forest text-white' : 'border-line text-brand-forest hover:border-brand-forest/30')}>Everyone · {data.length}</button>
+              {grouped.filter((g) => g.users.length).map((g) => (
+                <button key={g.value} onClick={() => setRoleFilter(g.value)} className={cn('flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-semibold transition-all', roleFilter === g.value ? 'border-brand-forest bg-brand-forest text-white' : 'border-line text-brand-forest hover:border-brand-forest/30')}>
+                  <span className="h-2 w-2 rounded-full" style={{ background: ['#7CCB8E', '#23B24A', '#053F1A', '#202E64'][ROLES.indexOf(ROLES.find((r) => r.value === g.value)!)] }} />{g.label} · {g.users.length}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {grouped.flatMap((g) => g.users).map((u) => (
+          {people.map((u) => {
+            const load = u.role === 'AE' ? loads.find((l) => l.ae === u.fullName) : undefined;
+            const isOnline = u.lastLoginAt && Date.now() - new Date(u.lastLoginAt).getTime() < 864e5;
+            return (
             <div key={u.id} className={cn('group relative overflow-hidden rounded-[22px] border bg-white p-5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_40px_-26px_rgba(5,63,26,.6)]',
               u.active ? 'border-line/80 hover:border-brand-forest/25' : 'border-line/60 opacity-70')}>
               <span className={cn('absolute inset-x-0 top-0 h-1', u.role === 'ADMIN' ? 'bg-brand-navy' : u.role === 'MANAGER' ? 'bg-brand-forest' : u.role === 'AE' ? 'bg-brand-mint' : 'bg-[#7CCB8E]')} />
               <div className="flex items-start gap-3">
-                <Avatar name={u.fullName} size="md" className="h-11 w-11 text-sm" />
+                <span className="relative shrink-0"><Avatar name={u.fullName} size="md" className="h-11 w-11 text-sm" />{isOnline && u.active && <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-brand-mint ring-2 ring-white" title="Signed in today" />}</span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-display text-[16px] font-medium tracking-[-0.02em]">{u.fullName}{u.id === me?.id && <span className="ml-1 text-[12px] font-normal text-ink-muted">(you)</span>}</p>
+                  <p className="truncate font-display text-[16px] font-medium tracking-[-0.02em]">{u.fullName}{u.id === me?.id && <span className="ml-1.5 rounded-full bg-brand-mint/15 px-1.5 py-0.5 align-middle font-sans text-[10px] font-bold uppercase tracking-wide text-brand-forest">You</span>}</p>
                   <p className="truncate text-[12px] text-ink-muted">{u.email}</p>
                 </div>
                 {u.active ? <Badge tone="success" dot>Active</Badge> : <Badge dot>Deactivated</Badge>}
               </div>
+              {load && (
+                <div className="mt-4 rounded-2xl bg-brand-forest-50/70 p-3">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-brand-forest"><span>Pipeline load</span><span className="tabular-nums">{load.total} deals · {load.weightedLoad} weighted</span></div>
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-white"><span className="block h-full rounded-full bg-gradient-to-r from-brand-forest to-brand-mint transition-[width] duration-700" style={{ width: `${(100 * Number(load.weightedLoad)) / maxLoad}%` }} /></div>
+                  <div className="mt-2 flex gap-3 text-[10.5px] font-medium text-brand-forest/70"><span>L2 {load.l2}</span><span>L3 {load.l3}</span><span>Negotiation {load.negotiation}</span></div>
+                </div>
+              )}
               <div className="mt-4 flex items-center justify-between border-t border-line/70 pt-3 text-[12px]">
                 <span className="rounded-full bg-brand-forest-50 px-2.5 py-1 font-semibold text-brand-forest">{ROLES.find((r) => r.value === u.role)?.label}</span>
-                <span className="text-ink-muted">Signed in {u.lastLoginAt ? relTime(u.lastLoginAt) : 'never'}</span>
+                <span className={cn('font-medium', isOnline ? 'text-brand-forest' : 'text-ink-muted')}>Signed in {u.lastLoginAt ? relTime(u.lastLoginAt) : 'never'}</span>
               </div>
               {admin && u.id !== me?.id && (
                 <div className="mt-3 flex gap-1.5">
@@ -66,8 +116,10 @@ export default function TeamPage() {
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
+        </>
       )}
       <UserModal user={editing} onClose={() => setEditing(null)} managers={(data ?? []).filter((u) => u.role === 'MANAGER' && u.active)} />
       <Confirm open={!!deactivate} onClose={() => setDeactivate(null)} danger confirmLabel="Deactivate" loading={doDeactivate.isPending}
