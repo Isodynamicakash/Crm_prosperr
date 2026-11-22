@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, ChevronsLeft, ChevronsRight, LogOut, Search } from 'lucide-react';
+import { Bell, Building2, CalendarClock, CheckSquare, ChevronsLeft, ChevronsRight, ClipboardCheck, LogOut, Search, UserPlus } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { LogoMark } from '@/components/brand/Logo';
@@ -9,7 +10,7 @@ import { TopoLines } from '@/components/brand/TopoLines';
 import { cn } from '@/lib/cn';
 import { humanize, relTime } from '@/lib/format';
 import type { NotificationRow } from '@/lib/types';
-import { Avatar, Button } from '@/components/ui/ui';
+import { Avatar } from '@/components/ui/ui';
 import { CommandMenu } from './CommandMenu';
 import { navFor } from './nav';
 
@@ -96,7 +97,7 @@ export function AppShell() {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <TopBar />
+        <TopBar onSearch={() => setCmdOpen(true)} />
         <main className="app-main min-h-0 flex-1 overflow-y-auto bg-canvas scrollbar-thin">
           <div key={location.pathname} className="mx-auto max-w-[1360px] animate-[page-in_.35s_cubic-bezier(.16,1,.3,1)] px-4 py-6 sm:px-6"><Outlet /></div>
         </main>
@@ -119,31 +120,45 @@ function NavItemLink({ item, collapsed }: { item: ReturnType<typeof navFor>[numb
   );
 }
 
-function TopBar() {
+function TopBar({ onSearch }: { onSearch: () => void }) {
   const { pathname } = useLocation();
+  const { user } = useAuth();
   const crumbs = pathname.split('/').filter(Boolean);
+  const item = navFor(user?.role).find((n) => (n.to === '/' ? pathname === '/' : pathname.startsWith(n.to)));
+  const Icon = item?.icon;
+  const title = crumbs[0] === 'accounts' && crumbs[1] ? 'Account' : item?.label ?? 'Home';
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-line/70 bg-canvas/80 px-6 backdrop-blur-xl">
-      <div className="flex items-center gap-1.5 text-[13px] text-ink-muted">
-        <span className="font-display font-semibold text-ink">Prosperr</span>
-        {crumbs.map((c, i) => (
-          <span key={i} className="flex items-center gap-1.5">
-            <span className="text-line">/</span>
-            <span className={cn(i === crumbs.length - 1 && 'rounded-full bg-white px-2.5 py-0.5 font-medium text-ink ring-1 ring-line')}>{i > 0 && crumbs[i - 1] === 'accounts' ? 'Account' : humanize(c.replace('-', '_'))}</span>
-          </span>
-        ))}
+    <header className="relative z-30 flex h-16 shrink-0 items-center justify-between gap-4 border-b border-line/70 bg-canvas/85 px-4 backdrop-blur-xl sm:px-6">
+      <div className="flex min-w-0 items-center gap-2.5">
+        {Icon && <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-forest text-white"><Icon className="h-4 w-4" /></span>}
+        {crumbs[0] === 'accounts' && crumbs[1] && <><NavLink to="/accounts" className="text-[13px] text-ink-muted hover:text-ink">Accounts</NavLink><span className="text-ink-muted/50">/</span></>}
+        <span className="truncate font-display text-[16px] font-medium tracking-[-0.02em]">{title}</span>
       </div>
-      <Notifications />
+      <div className="flex items-center gap-2">
+        <button onClick={onSearch} className="hidden h-9 w-64 items-center gap-2 rounded-full border border-line bg-white px-3.5 text-[13px] text-ink-muted transition-colors hover:border-brand-forest/30 md:flex">
+          <Search className="h-4 w-4" /><span className="flex-1 text-left">Search accounts, people…</span><kbd className="kbd">Ctrl K</kbd>
+        </button>
+        <span className="hidden items-center gap-1.5 rounded-full bg-brand-forest-50 px-2.5 py-1 text-[11px] font-semibold text-brand-forest lg:inline-flex" title="Data refreshes automatically">
+          <span className="relative flex h-1.5 w-1.5"><span className="absolute h-full w-full rounded-full bg-brand-mint motion-safe:animate-ping" /><span className="relative h-1.5 w-1.5 rounded-full bg-brand-mint" /></span>Live
+        </span>
+        <Notifications />
+      </div>
     </header>
   );
 }
 
+const notifIcon: Record<string, typeof Bell> = { SQL: ClipboardCheck, ASSIGN: UserPlus, MEETING: CalendarClock, TASK: CheckSquare, ACCOUNT: Building2 };
+const iconFor = (n: NotificationRow) => notifIcon[Object.keys(notifIcon).find((k) => `${n.type} ${n.entityType ?? ''}`.toUpperCase().includes(k)) ?? ''] ?? Bell;
+
 function Notifications() {
   const [open, setOpen] = useState(false);
+  const [onlyUnread, setOnlyUnread] = useState(false);
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const seen = useRef<Set<string> | null>(null);
+  const box = useRef<HTMLDivElement>(null);
   const { data = [] } = useQuery({
-    queryKey: ['notifications'], queryFn: () => api.get<NotificationRow[]>('/api/notifications'), refetchInterval: 60_000,
+    queryKey: ['notifications'], queryFn: () => api.get<NotificationRow[]>('/api/notifications'), refetchInterval: 15_000, refetchOnWindowFocus: true,
   });
   const unread = data.filter((n) => !n.readAt).length;
 
@@ -155,32 +170,71 @@ function Notifications() {
     else if (n.entityType?.toLowerCase().includes('sql')) navigate('/sql');
   };
 
+  // Live: toast anything new that arrived since the last poll (not on first load).
+  useEffect(() => {
+    if (!data.length && seen.current) return;
+    if (seen.current === null) { seen.current = new Set(data.map((n) => n.id)); return; }
+    const fresh = data.filter((n) => !seen.current!.has(n.id) && !n.readAt);
+    fresh.forEach((n) => {
+      seen.current!.add(n.id);
+      toast(n.title, { description: n.body, icon: <Bell className="h-4 w-4 text-brand-forest" />, action: { label: 'Open', onClick: () => openOne(n) } });
+    });
+    if (fresh.length) qc.invalidateQueries({ queryKey: ['dashboard'] });
+  }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    const out = (e: MouseEvent) => { if (box.current && !box.current.contains(e.target as Node)) setOpen(false); };
+    window.addEventListener('keydown', h);
+    document.addEventListener('mousedown', out);
+    return () => { window.removeEventListener('keydown', h); document.removeEventListener('mousedown', out); };
+  }, [open]);
+
+  const list = onlyUnread ? data.filter((n) => !n.readAt) : data;
   return (
-    <div className="relative">
-      <Button variant="ghost" size="icon" onClick={() => setOpen((o) => !o)} aria-label="Notifications">
+    <div ref={box} className="relative">
+      <button onClick={() => setOpen((o) => !o)} aria-label="Notifications"
+        className={cn('relative flex h-9 w-9 items-center justify-center rounded-full border transition-all', open ? 'border-brand-forest bg-brand-forest text-white' : 'border-line bg-white text-ink-soft hover:border-brand-forest/30 hover:text-ink')}>
         <Bell className="h-4 w-4" />
-        {unread > 0 && <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[9px] font-semibold text-white">{unread > 9 ? '9+' : unread}</span>}
-      </Button>
+        {unread > 0 && (
+          <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center">
+            <span className="absolute h-full w-full rounded-full bg-brand-mint/60 motion-safe:animate-ping" />
+            <span className="relative flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand-mint px-1 text-[10px] font-bold text-brand-night ring-2 ring-canvas">{unread > 9 ? '9+' : unread}</span>
+          </span>
+        )}
+      </button>
       {open && (
         <>
-          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-10 z-40 w-[360px] overflow-hidden rounded-xl border border-line bg-white shadow-pop animate-pop-in">
-            <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
-              <p className="text-[13px] font-semibold">Notifications</p>
-              {unread > 0 && <button className="text-xs text-accent hover:underline" onClick={async () => { await api.post('/api/notifications/read-all'); qc.invalidateQueries({ queryKey: ['notifications'] }); }}>Mark all read</button>}
+          <div className="absolute right-0 top-12 z-50 w-[380px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-[22px] border border-white/10 bg-[#141614]/95 text-paper shadow-[0_30px_80px_-20px_rgba(0,0,0,.7)] backdrop-blur-xl animate-pop-in">
+            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3.5">
+              <div>
+                <p className="font-display text-[16px] font-medium">Notifications</p>
+                <p className="text-[11px] text-paper/45">{unread ? `${unread} unread` : 'You’re all caught up'} · updates every 15 s</p>
+              </div>
+              {unread > 0 && <button className="rounded-full bg-brand-mint/15 px-2.5 py-1 text-[11px] font-semibold text-brand-mint hover:bg-brand-mint/25" onClick={async () => { await api.post('/api/notifications/read-all'); qc.invalidateQueries({ queryKey: ['notifications'] }); }}>Mark all read</button>}
             </div>
-            <div className="max-h-[420px] overflow-y-auto scrollbar-thin">
-              {data.length === 0 && <p className="px-4 py-10 text-center text-xs text-ink-muted">You’re all caught up.</p>}
-              {data.slice(0, 30).map((n) => (
-                <button key={n.id} onClick={() => openOne(n)} className="flex w-full gap-3 border-b border-line/60 px-4 py-3 text-left last:border-0 hover:bg-canvas">
-                  <span className={cn('mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full', n.readAt ? 'bg-transparent' : 'bg-accent')} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[13px] font-medium text-ink">{n.title}</span>
-                    {n.body && <span className="mt-0.5 block text-xs text-ink-muted line-clamp-2">{n.body}</span>}
-                    <span className="mt-1 block text-2xs text-ink-muted">{relTime(n.createdAt)}</span>
-                  </span>
-                </button>
+            <div className="flex gap-1 px-4 pt-3">
+              {[['All', false], ['Unread', true]].map(([l, v]) => (
+                <button key={l as string} onClick={() => setOnlyUnread(v as boolean)} className={cn('rounded-full px-3 py-1 text-[12px] font-semibold', onlyUnread === v ? 'bg-brand-mint text-brand-night' : 'text-paper/55 hover:text-paper')}>{l as string}</button>
               ))}
+            </div>
+            <div className="max-h-[440px] space-y-1.5 overflow-y-auto p-3 scrollbar-thin">
+              {list.length === 0 && <p className="px-4 py-10 text-center text-xs text-paper/45">Nothing here.</p>}
+              {list.slice(0, 40).map((n) => {
+                const I = iconFor(n);
+                return (
+                  <button key={n.id} onClick={() => openOne(n)} className={cn('flex w-full gap-3 rounded-2xl border px-3 py-2.5 text-left transition-colors', n.readAt ? 'border-transparent hover:bg-white/[0.04]' : 'border-brand-mint/20 bg-brand-mint/[0.07] hover:bg-brand-mint/[0.12]')}>
+                    <span className={cn('mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl', n.readAt ? 'bg-white/[0.06] text-paper/55' : 'bg-brand-mint text-brand-night')}><I className="h-4 w-4" /></span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[13px] font-semibold text-paper">{n.title}</span>
+                      {n.body && <span className="mt-0.5 block text-[12px] text-paper/55 line-clamp-2">{n.body}</span>}
+                      <span className="mt-1 block text-[10.5px] text-paper/40">{relTime(n.createdAt)}</span>
+                    </span>
+                    {!n.readAt && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-mint" />}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </>
