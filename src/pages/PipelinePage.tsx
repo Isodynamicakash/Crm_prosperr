@@ -9,12 +9,16 @@ import { useUsers } from '@/lib/queries';
 import { cn } from '@/lib/cn';
 import { fmtDate, inr, relTime } from '@/lib/format';
 import type { AccountPage, AccountRow, LifecycleStage, Page } from '@/lib/types';
-import { Avatar, Card, PageHeader, Select, Skeleton } from '@/components/ui/ui';
+import { Avatar, Card, EntityTile, PageHeader, Select, Skeleton } from '@/components/ui/ui';
 import { TemperatureBadge, stageLabel } from '@/components/ui/status';
 import { MANUAL_MOVES, StageMoveModal } from '@/features/pipeline/OpportunityPanel';
 
 const COLUMNS: LifecycleStage[] = ['SQL', 'L1', 'MULTITHREADING', 'L2', 'L3', 'NEGOTIATION', 'WON'];
-const dot: Partial<Record<LifecycleStage, string>> = { SQL: 'bg-brand-navy-400', L1: 'bg-brand-navy', MULTITHREADING: 'bg-brand-lime', L2: 'bg-brand-forest-600', L3: 'bg-accent', NEGOTIATION: 'bg-warning', WON: 'bg-success' };
+const lane: Partial<Record<LifecycleStage, string>> = {
+  SQL: 'from-[#CDEBD5] to-[#7CCB8E]', L1: 'from-[#7CCB8E] to-[#23B24A]', MULTITHREADING: 'from-[#23B24A] to-[#1A7F36]', L2: 'from-[#1A7F36] to-[#0E5A2A]',
+  L3: 'from-[#0E5A2A] to-[#053F1A]', NEGOTIATION: 'from-[#053F1A] to-[#202E64]', WON: 'from-[#23B24A] to-[#2BC556]',
+};
+const tempStripe: Record<string, string> = { HOT: 'bg-brand-forest', WARM: 'bg-brand-mint', COLD: 'bg-brand-navy' };
 
 /**
  * Kanban of active pipeline accounts. Most stages move automatically when a meeting outcome is recorded;
@@ -61,7 +65,13 @@ export default function PipelinePage() {
 
   return (
     <div>
-      <PageHeader title="Pipeline" subtitle={`${data?.total ?? 0} active opportunities · ${inr(total)} expected MRR`}
+      <PageHeader title="Pipeline" icon={<KanbanSquare />} eyebrow="Deal flow" subtitle="Drag a deal where the rules allow; meeting outcomes move the rest automatically."
+        stats={[
+          { label: 'Open opportunities', value: data?.total ?? 0, hint: `${(byStage.WON ?? []).length} won this view` },
+          { label: 'Expected MRR', value: inr(total), hint: 'Sum of open deals' },
+          { label: 'Hot deals', value: (data?.items ?? []).filter((a) => a.temperature === 'HOT').length, hint: `${inr((data?.items ?? []).filter((a) => a.temperature === 'HOT').reduce((x, a) => x + Number(a.expectedMrr ?? 0), 0))} at stake`, onClick: () => setTemp(temp === 'HOT' ? '' : 'HOT') },
+          { label: 'No next step', value: (data?.items ?? []).filter((a) => !a.nextStep).length, hint: 'Needs an owner action' },
+        ]}
         actions={<>
           {leader && (
             <Select value={aeId} onChange={(e) => setAeId(e.target.value)} className="w-40">
@@ -71,14 +81,14 @@ export default function PipelinePage() {
           <Select value={temp} onChange={(e) => setTemp(e.target.value)} className="w-32">
             <option value="">Any temp.</option><option value="HOT">Hot</option><option value="WARM">Warm</option><option value="COLD">Cold</option>
           </Select>
-          <div className="inline-flex rounded-lg border border-line bg-canvas p-0.5">
-            <span className="flex h-7 items-center gap-1 rounded-md bg-white px-2 text-xs font-medium shadow-card"><KanbanSquare className="h-3.5 w-3.5" />Board</span>
+          <div data-segmented className="inline-flex rounded-full border border-line bg-white p-1">
+            <span data-on className="flex h-7 items-center gap-1 rounded-full px-3 text-xs font-semibold"><KanbanSquare className="h-3.5 w-3.5" />Board</span>
             <Link to={`/accounts?v=${encodeURIComponent(JSON.stringify({ q: '', status: 'ACTIVE', zone: 'PIPELINE', stage: [], sizeBucket: '', temperature: temp, cityId: '', flagged: false, sort: 'nextStepDue' }))}`}
-              className="flex h-7 items-center gap-1 px-2 text-xs font-medium text-ink-muted hover:text-ink"><List className="h-3.5 w-3.5" />Table</Link>
+              className="flex h-7 items-center gap-1 rounded-full px-3 text-xs font-semibold text-paper/60 hover:text-paper"><List className="h-3.5 w-3.5" />Table</Link>
           </div>
         </>} />
 
-      <div className="-mx-6 overflow-x-auto px-6 pb-4 scrollbar-thin">
+      <div className="-mx-4 overflow-x-auto px-4 pb-4 scrollbar-thin sm:-mx-6 sm:px-6">
         <div className="flex min-w-max gap-3">
           {COLUMNS.map((stage) => {
             const items = byStage[stage] ?? [];
@@ -86,10 +96,16 @@ export default function PipelinePage() {
             const allowed = drag && (MANUAL_MOVES[drag.stage] ?? []).includes(stage);
             return (
               <div key={stage} onDragOver={(e) => { e.preventDefault(); setOver(stage); }} onDragLeave={() => setOver(null)} onDrop={() => drop(stage)}
-                className={cn('flex w-[272px] flex-col rounded-xl bg-black/[0.025] p-2 transition-colors', over === stage && (allowed ? 'bg-accent-soft ring-2 ring-accent/30' : 'bg-black/[0.05]'))}>
-                <div className="flex items-center justify-between px-1.5 pb-2 pt-1">
-                  <p className="flex items-center gap-2 text-[13px] font-semibold"><span className={cn('h-2 w-2 rounded-full', dot[stage])} />{stageLabel[stage]}<span className="font-normal text-ink-muted">{items.length}</span></p>
-                  <span className="text-2xs tabular-nums text-ink-muted">{mrr ? inr(mrr) : ''}</span>
+                className={cn('relative flex w-[288px] flex-col overflow-hidden rounded-[24px] border border-line/80 bg-white/60 p-2.5 backdrop-blur transition-all duration-200',
+                  over === stage && (allowed ? 'border-brand-mint/50 bg-brand-forest-50 shadow-[0_0_0_4px_rgba(35,178,74,.12)]' : 'bg-black/[0.04]'))}>
+                <span className={cn('absolute inset-x-0 top-0 h-1 bg-gradient-to-r', lane[stage])} />
+                <div className="px-2 pb-3 pt-2">
+                  <div className="flex items-center justify-between">
+                    <p className="flex items-center gap-2 font-display text-[15px] font-medium tracking-[-0.01em]">{stageLabel[stage]}
+                      <span className="rounded-full bg-brand-forest px-2 py-0.5 text-[10.5px] font-semibold text-white">{items.length}</span></p>
+                    <span className="font-display text-[14px] font-medium tabular-nums text-ink-soft">{mrr ? inr(mrr) : '—'}</span>
+                  </div>
+                  <div className="mt-2 h-1 overflow-hidden rounded-full bg-black/[0.06]"><div className={cn('h-full rounded-full bg-gradient-to-r transition-[width] duration-700', lane[stage])} style={{ width: `${total ? Math.max(mrr ? 4 : 0, (100 * mrr) / total) : 0}%` }} /></div>
                 </div>
                 <div className="flex min-h-[120px] flex-col gap-2">
                   {isLoading && [0, 1].map((i) => <Skeleton key={i} className="h-24" />)}
@@ -97,21 +113,22 @@ export default function PipelinePage() {
                     const overdue = a.nextStepDue && a.nextStepDue < new Date().toISOString().slice(0, 10);
                     return (
                       <Card key={a.id} draggable onDragStart={() => setDrag(a)} onDragEnd={() => { setDrag(null); setOver(null); }} onClick={() => navigate(`/accounts/${a.id}`)}
-                        className={cn('cursor-pointer p-3 transition-all hover:border-accent/40 hover:shadow-pop', drag?.id === a.id && 'opacity-50')}>
+                        className={cn('group relative cursor-grab overflow-hidden rounded-[18px] p-3.5 pl-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-forest/30 hover:shadow-[0_18px_36px_-20px_rgba(5,63,26,.55)] active:cursor-grabbing', drag?.id === a.id && 'rotate-2 opacity-50')}>
+                        <span className={cn('absolute inset-y-0 left-0 w-1', a.temperature ? tempStripe[a.temperature] : 'bg-black/10')} />
                         <div className="flex items-start justify-between gap-2">
-                          <p className="text-[13px] font-medium leading-5">{a.name}</p>
+                          <span className="flex min-w-0 items-center gap-2.5"><EntityTile name={a.name} size="sm" /><p className="truncate text-[13.5px] font-semibold leading-5 group-hover:text-brand-forest">{a.name}</p></span>
                           {a.flaggedForReview && <Flag className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />}
                         </div>
                         <div className="mt-1.5 flex items-center gap-1.5">
                           <TemperatureBadge t={a.temperature} />
-                          {a.expectedMrr ? <span className="text-xs font-medium tabular-nums">{inr(a.expectedMrr)}</span> : null}
+                          {a.expectedMrr ? <span className="ml-auto font-display text-[15px] font-medium tabular-nums">{inr(a.expectedMrr)}</span> : null}
                         </div>
                         {a.nextStep ? (
                           <p className={cn('mt-2 flex items-start gap-1 text-2xs', overdue ? 'text-danger' : 'text-ink-muted')}>
                             <CalendarClock className="mt-px h-3 w-3 shrink-0" /><span className="line-clamp-2">{fmtDate(a.nextStepDue)} · {a.nextStep}</span>
                           </p>
                         ) : <p className="mt-2 text-2xs text-warning">No next step</p>}
-                        <div className="mt-2 flex items-center justify-between border-t border-line pt-2">
+                        <div className="mt-3 flex items-center justify-between border-t border-line/70 pt-2.5">
                           {a.aeOwner ? <span className="flex items-center gap-1.5 text-2xs text-ink-muted"><Avatar name={a.aeOwner} size="xs" />{a.aeOwner.split(' ')[0]}</span> : <span className="text-2xs text-danger">No AE</span>}
                           <span className="text-2xs text-ink-muted">{relTime(a.lastActivityAt)}</span>
                         </div>

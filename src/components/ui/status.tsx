@@ -32,9 +32,13 @@ export function EngagementBadge({ status }: { status: EngagementStatus }) {
 
 export function TemperatureBadge({ t }: { t?: Temperature | null }) {
   if (!t) return <span className="text-ink-muted">—</span>;
-  const map = { HOT: { tone: 'danger', icon: Flame }, WARM: { tone: 'warning', icon: Sun }, COLD: { tone: 'info', icon: Snowflake } } as const;
-  const { tone, icon: Icon } = map[t];
-  return <Badge tone={tone}><Icon className="h-3 w-3" />{humanize(t)}</Badge>;
+  const map = {
+    HOT: { cls: 'bg-brand-forest text-white', icon: Flame },
+    WARM: { cls: 'bg-[#E6F5EA] text-[#1A7F36] ring-1 ring-inset ring-[#1A7F36]/15', icon: Sun },
+    COLD: { cls: 'bg-brand-navy-50 text-brand-navy ring-1 ring-inset ring-brand-navy/10', icon: Snowflake },
+  } as const;
+  const { cls, icon: Icon } = map[t];
+  return <Badge className={cls}><Icon className="h-3 w-3" />{humanize(t)}</Badge>;
 }
 
 const sqlTone: Record<SqlStatus, Tone> = {
