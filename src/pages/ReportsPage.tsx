@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Download, Target } from 'lucide-react';
+import { BarChart3, Download, Target } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { useAction } from '@/lib/hooks';
@@ -29,7 +29,7 @@ export default function ReportsPage() {
   const r = REPORTS.find((x) => x.key === key)!;
   return (
     <div>
-      <PageHeader title="Reports" subtitle="Every number links back to the accounts behind it." />
+      <PageHeader title="Reports" icon={<BarChart3 />} eyebrow="Analytics" subtitle="Every number links back to the accounts behind it." />
       <div className="grid gap-4 lg:grid-cols-[220px_1fr]">
         <nav className="space-y-0.5">
           {REPORTS.map((x) => (

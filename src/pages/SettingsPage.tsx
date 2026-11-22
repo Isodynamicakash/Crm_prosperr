@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowDown, ArrowUp, Check, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, ClipboardList, Gauge, ListChecks, Mail, MapPin, Pencil, Plus, Settings2, SlidersHorizontal, Trash2, UserSquare2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { useAction } from '@/lib/hooks';
@@ -12,9 +12,11 @@ import { Modal } from '@/components/ui/overlay';
 import { stageLabel } from '@/components/ui/status';
 
 type Section = 'general' | 'picklists' | 'cities' | 'designations' | 'stages' | 'checklists' | 'templates';
-const SECTIONS: { key: Section; label: string }[] = [
-  { key: 'general', label: 'General' }, { key: 'picklists', label: 'Dropdown lists' }, { key: 'cities', label: 'Cities & ICP' },
-  { key: 'designations', label: 'Designations' }, { key: 'stages', label: 'Stage thresholds' }, { key: 'checklists', label: 'Stage requirements' }, { key: 'templates', label: 'Email templates' },
+const SECTIONS: { key: Section; label: string; icon: typeof Gauge; hint: string }[] = [
+  { key: 'general', label: 'General', icon: SlidersHorizontal, hint: 'Windows, limits, digests' }, { key: 'picklists', label: 'Dropdown lists', icon: ClipboardList, hint: 'Outcomes, reasons, sources' },
+  { key: 'cities', label: 'Cities & ICP', icon: MapPin, hint: 'Locations and priority' }, { key: 'designations', label: 'Designations', icon: UserSquare2, hint: 'Title → level mapping' },
+  { key: 'stages', label: 'Stage thresholds', icon: Gauge, hint: 'When a deal is stuck' }, { key: 'checklists', label: 'Stage requirements', icon: ListChecks, hint: 'Exit criteria per stage' },
+  { key: 'templates', label: 'Email templates', icon: Mail, hint: 'Sequences and internal mail' },
 ];
 
 /** Everything the business tunes without a code change (M10-1). */
@@ -22,12 +24,15 @@ export default function SettingsPage() {
   const [s, setS] = useState<Section>('general');
   return (
     <div>
-      <PageHeader title="Settings" subtitle="Changes apply immediately for the whole team." />
-      <div className="grid gap-4 lg:grid-cols-[200px_1fr]">
-        <nav className="space-y-0.5">
+      <PageHeader title="Settings" icon={<Settings2 />} eyebrow="Workspace" subtitle="Everything the business tunes without a code change. Changes apply immediately for the whole team." />
+      <div className="grid gap-4 lg:grid-cols-[250px_1fr]">
+        <nav className="space-y-1 lg:sticky lg:top-2 lg:self-start">
           {SECTIONS.map((x) => (
             <button key={x.key} onClick={() => setS(x.key)}
-              className={cn('w-full rounded-lg px-3 py-2 text-left text-[13px] font-medium text-ink-soft hover:bg-black/[0.04]', s === x.key && 'bg-white text-ink shadow-card ring-1 ring-line')}>{x.label}</button>
+              className={cn('group flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-all hover:bg-white/80', s === x.key && 'bg-brand-forest text-white shadow-[0_10px_24px_-12px_rgba(5,63,26,.8)] hover:bg-brand-forest')}>
+              <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-xl', s === x.key ? 'bg-brand-mint text-brand-night' : 'bg-white text-brand-forest ring-1 ring-line')}><x.icon className="h-4 w-4" /></span>
+              <span className="min-w-0"><span className="block text-[13px] font-semibold">{x.label}</span><span className={cn('block truncate text-[11px]', s === x.key ? 'text-white/60' : 'text-ink-muted')}>{x.hint}</span></span>
+            </button>
           ))}
         </nav>
         <div className="min-w-0">

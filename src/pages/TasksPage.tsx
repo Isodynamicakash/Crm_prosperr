@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
-import { Check, CheckSquare, Clock, Plus } from 'lucide-react';
+import { Check, CheckSquare, Clock, ListTodo, Mail, Phone, Plus, RotateCw, Users } from 'lucide-react';
 import { api } from '@/lib/api';
 import { isLeadership, useAuth } from '@/lib/auth';
 import { useAction } from '@/lib/hooks';
@@ -12,7 +12,7 @@ import { cn } from '@/lib/cn';
 import { celebrate } from '@/lib/celebrate';
 import { addDaysISO, fmtDateTime, humanize, todayISO } from '@/lib/format';
 import type { AccountRow, Page, TaskRow, TaskType } from '@/lib/types';
-import { AnimatedNumber, Badge, Button, Card, Empty, Field, Input, PageHeader, Segmented, Select, SkeletonRows } from '@/components/ui/ui';
+import { AnimatedNumber, Button, Card, Empty, Field, Input, PageHeader, Segmented, Select, SkeletonRows } from '@/components/ui/ui';
 import { Modal } from '@/components/ui/overlay';
 
 type Bucket = 'Overdue' | 'Today' | 'Upcoming';
@@ -69,9 +69,12 @@ export default function TasksPage() {
 
   return (
     <div>
-      <PageHeader title="Tasks" subtitle={status === 'OPEN' ? (
-          <span><AnimatedNumber value={left(groups.Overdue)} /> overdue · <AnimatedNumber value={left(groups.Today)} /> today · <AnimatedNumber value={left(groups.Upcoming)} /> upcoming</span>
-        ) : 'Completed tasks'}
+      <PageHeader title="Tasks" icon={<CheckSquare />} eyebrow="Follow-ups" subtitle={status === 'OPEN' ? 'Created automatically from calls and meetings. Tick them off as you go.' : 'Completed tasks'}
+        stats={status === 'OPEN' ? [
+          { label: 'Overdue', value: <AnimatedNumber value={left(groups.Overdue)} />, hint: 'Do these first' },
+          { label: 'Due today', value: <AnimatedNumber value={left(groups.Today)} />, hint: 'On today’s plate' },
+          { label: 'Upcoming', value: <AnimatedNumber value={left(groups.Upcoming)} />, hint: 'Later this week and beyond' },
+        ] : undefined}
         actions={<>
           {leader && (
             <Select value={who} onChange={(e) => setWho(e.target.value)} className="w-44">
@@ -86,23 +89,23 @@ export default function TasksPage() {
       ) : (
         <div className="space-y-4">
           {(status === 'OPEN' ? (['Overdue', 'Today', 'Upcoming'] as Bucket[]) : (['Overdue', 'Today', 'Upcoming'] as Bucket[])).filter((b) => groups[b].length).map((b) => (
-            <Card key={b}>
-              <p className={cn('px-4 pb-1 pt-3 text-xs font-semibold', b === 'Overdue' && status === 'OPEN' ? 'text-danger' : 'text-ink-soft')}>{status === 'OPEN' ? b : ''} <span className="font-normal text-ink-muted">{groups[b].length}</span></p>
-              <ul className="divide-y divide-line">
+            <Card key={b} className="p-2">
+              {status === 'OPEN' && <p className="flex items-center gap-2 px-3 pb-2 pt-3"><span className={cn('rounded-full px-2.5 py-0.5 text-[11px] font-semibold', b === 'Overdue' ? 'bg-[#FCF4E6] text-[#8A5A0B]' : b === 'Today' ? 'bg-brand-forest text-white' : 'bg-brand-forest-50 text-brand-forest')}>{b}</span><span className="text-xs text-ink-muted">{groups[b].length} task{groups[b].length === 1 ? '' : 's'}</span></p>}
+              <ul className="space-y-1.5 p-1">
                 {groups[b].map((t) => (
-                  <li key={t.id} className={cn('group flex items-center gap-3 px-4 py-2.5 hover:bg-canvas', finished.has(t.id) && 'animate-[row-out_300ms_ease-in_600ms_forwards]')}>
+                  <li key={t.id} className={cn('group flex items-center gap-3 rounded-[16px] border border-line/60 bg-white px-4 py-3 transition-all hover:border-brand-forest/25 hover:shadow-[0_10px_24px_-18px_rgba(5,63,26,.6)]', finished.has(t.id) && 'animate-[row-out_300ms_ease-in_600ms_forwards]')}>
                     {status === 'OPEN' ? (
                       <TaskCheck state={finished.has(t.id) ? 'done' : complete.isPending && complete.variables?.id === t.id ? 'saving' : 'open'}
                         onClick={() => complete.mutate(t)} />
                     ) : <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-success text-white"><Check className="h-3 w-3" strokeWidth={3} /></span>}
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13px] font-medium"><span className={cn(status === 'DONE' && 'text-ink-muted line-through', finished.has(t.id) && 'strike-through text-ink-muted transition-colors')}>{t.title}</span></p>
+                      <p className="truncate text-[13.5px] font-semibold"><span className={cn(status === 'DONE' && 'text-ink-muted line-through', finished.has(t.id) && 'strike-through text-ink-muted transition-colors')}>{t.title}</span></p>
                       <p className="truncate text-xs text-ink-muted">
                         <Link to={`/accounts/${t.accountId}${t.stakeholderId ? `?stakeholder=${t.stakeholderId}` : ''}`} className="hover:text-accent hover:underline">{t.accountName}</Link>
                         {t.stakeholderName && ` · ${t.stakeholderName}`}
                       </p>
                     </div>
-                    <Badge>{humanize(t.type)}</Badge>
+                    <span className="hidden items-center gap-1.5 rounded-full bg-brand-forest-50 px-2.5 py-1 text-[11px] font-semibold text-brand-forest sm:inline-flex">{(() => { const I = typeIcon[t.type] ?? ListTodo; return <I className="h-3 w-3" />; })()}{humanize(t.type)}</span>
                     <span className={cn('w-36 text-right text-xs tabular-nums', b === 'Overdue' && status === 'OPEN' ? 'text-danger' : 'text-ink-muted')}>{fmtDateTime(t.dueAt)}</span>
                     {status === 'OPEN' && <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100" icon={<Clock className="h-3.5 w-3.5" />} onClick={() => snooze.mutate(t)}>Tomorrow</Button>}
                   </li>
@@ -118,6 +121,7 @@ export default function TasksPage() {
 }
 
 const TYPES: TaskType[] = ['CALL', 'FOLLOW_UP', 'SEND_TEMPLATE', 'MULTITHREAD', 'OTHER'];
+const typeIcon: Partial<Record<string, typeof Phone>> = { CALL: Phone, FOLLOW_UP: RotateCw, SEND_TEMPLATE: Mail, MULTITHREAD: Users };
 
 function NewTaskModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [q, setQ] = useState('');

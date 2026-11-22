@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth';
 import { useAction } from '@/lib/hooks';
 import { useUsers } from '@/lib/queries';
 import { humanize, relTime } from '@/lib/format';
+import { cn } from '@/lib/cn';
 import type { Role, UserView } from '@/lib/types';
 import { Avatar, Badge, Button, Card, Empty, Field, Input, PageHeader, Select, SkeletonRows } from '@/components/ui/ui';
 import { Confirm, Modal } from '@/components/ui/overlay';
@@ -35,35 +36,39 @@ export default function TeamPage() {
 
   return (
     <div>
-      <PageHeader title="Team" subtitle={`${data?.filter((u) => u.active).length ?? 0} active people`}
-        actions={admin && <Button variant="primary" icon={<Plus className="h-3.5 w-3.5" />} onClick={() => setEditing('new')}>Add person</Button>} />
-      <Card>
-        {isLoading ? <SkeletonRows /> : !data?.length ? <Empty icon={<Users className="h-5 w-5" />} title="No one here yet" /> : (
-          <table className="w-full text-[13px]">
-            <thead><tr className="border-b border-line text-left text-2xs uppercase tracking-wide text-ink-muted">
-              <th className="px-4 py-2.5 font-medium">Name</th><th className="px-3 font-medium">Role</th><th className="px-3 font-medium">Status</th><th className="px-3 font-medium">Last sign-in</th><th className="px-4" /></tr></thead>
-            <tbody>
-              {grouped.flatMap((g) => g.users).map((u) => (
-                <tr key={u.id} className="group border-b border-line/70 last:border-0 hover:bg-canvas">
-                  <td className="px-4 py-2.5"><div className="flex items-center gap-2.5"><Avatar name={u.fullName} size="md" /><div><p className="font-medium">{u.fullName}{u.id === me?.id && <span className="ml-1 text-ink-muted">(you)</span>}</p><p className="text-2xs text-ink-muted">{u.email}</p></div></div></td>
-                  <td className="px-3"><Badge tone={u.role === 'ADMIN' || u.role === 'MANAGER' ? 'accent' : 'neutral'}>{ROLES.find((r) => r.value === u.role)?.label}</Badge></td>
-                  <td className="px-3">{u.active ? <Badge tone="success" dot>Active</Badge> : <Badge dot>Deactivated</Badge>}</td>
-                  <td className="px-3 text-xs text-ink-muted">{u.lastLoginAt ? relTime(u.lastLoginAt) : 'Never'}</td>
-                  <td className="px-4 text-right">
-                    {admin && u.id !== me?.id && (
-                      <div className="flex justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                        <Button size="sm" variant="ghost" icon={<Pencil className="h-3.5 w-3.5" />} onClick={() => setEditing(u)}>Edit</Button>
-                        {u.active ? <Button size="sm" variant="ghost" icon={<UserX className="h-3.5 w-3.5" />} onClick={() => setDeactivate(u)}>Deactivate</Button>
-                          : <Button size="sm" variant="ghost" icon={<UserCheck className="h-3.5 w-3.5" />} onClick={() => activate.mutate(u.id)}>Reactivate</Button>}
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </Card>
+      <PageHeader title="Team" icon={<Users />} eyebrow="People & access"
+        subtitle={`${data?.filter((u) => u.active).length ?? 0} active people. Everyone signs in with their Prosperr Google account.`}
+        actions={admin && <Button variant="primary" icon={<Plus className="h-3.5 w-3.5" />} onClick={() => setEditing('new')}>Add person</Button>}
+        stats={ROLES.map((r) => ({ label: r.label, value: (data ?? []).filter((u) => u.role === r.value && u.active).length, hint: r.hint }))} />
+      {isLoading ? <Card><SkeletonRows /></Card> : !data?.length ? <Card><Empty icon={<Users className="h-5 w-5" />} title="No one here yet" /></Card> : (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {grouped.flatMap((g) => g.users).map((u) => (
+            <div key={u.id} className={cn('group relative overflow-hidden rounded-[22px] border bg-white p-5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_40px_-26px_rgba(5,63,26,.6)]',
+              u.active ? 'border-line/80 hover:border-brand-forest/25' : 'border-line/60 opacity-70')}>
+              <span className={cn('absolute inset-x-0 top-0 h-1', u.role === 'ADMIN' ? 'bg-brand-navy' : u.role === 'MANAGER' ? 'bg-brand-forest' : u.role === 'AE' ? 'bg-brand-mint' : 'bg-[#7CCB8E]')} />
+              <div className="flex items-start gap-3">
+                <Avatar name={u.fullName} size="md" className="h-11 w-11 text-sm" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-display text-[16px] font-medium tracking-[-0.02em]">{u.fullName}{u.id === me?.id && <span className="ml-1 text-[12px] font-normal text-ink-muted">(you)</span>}</p>
+                  <p className="truncate text-[12px] text-ink-muted">{u.email}</p>
+                </div>
+                {u.active ? <Badge tone="success" dot>Active</Badge> : <Badge dot>Deactivated</Badge>}
+              </div>
+              <div className="mt-4 flex items-center justify-between border-t border-line/70 pt-3 text-[12px]">
+                <span className="rounded-full bg-brand-forest-50 px-2.5 py-1 font-semibold text-brand-forest">{ROLES.find((r) => r.value === u.role)?.label}</span>
+                <span className="text-ink-muted">Signed in {u.lastLoginAt ? relTime(u.lastLoginAt) : 'never'}</span>
+              </div>
+              {admin && u.id !== me?.id && (
+                <div className="mt-3 flex gap-1.5">
+                  <Button size="sm" icon={<Pencil className="h-3.5 w-3.5" />} onClick={() => setEditing(u)}>Edit</Button>
+                  {u.active ? <Button size="sm" variant="ghost" icon={<UserX className="h-3.5 w-3.5" />} onClick={() => setDeactivate(u)}>Deactivate</Button>
+                    : <Button size="sm" variant="ghost" icon={<UserCheck className="h-3.5 w-3.5" />} onClick={() => activate.mutate(u.id)}>Reactivate</Button>}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
       <UserModal user={editing} onClose={() => setEditing(null)} managers={(data ?? []).filter((u) => u.role === 'MANAGER' && u.active)} />
       <Confirm open={!!deactivate} onClose={() => setDeactivate(null)} danger confirmLabel="Deactivate" loading={doDeactivate.isPending}
         onConfirm={() => deactivate && doDeactivate.mutate(deactivate)} title={`Deactivate ${deactivate?.fullName}?`}
