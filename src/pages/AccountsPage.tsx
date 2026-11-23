@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowDownUp, Bookmark, Building2, Download, Flag, Plus, Search, Upload, X } from 'lucide-react';
+import { ArrowDownUp, Bookmark, Building2, Download, Flag, Plus, Search, Upload, UserCheck, X } from 'lucide-react';
 import { ImportWizard } from '@/features/accounts/ImportWizard';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
@@ -12,17 +12,17 @@ import { cn } from '@/lib/cn';
 import { fmtDate, inr, relTime } from '@/lib/format';
 import type { AccountRow, LifecycleStage, Page } from '@/lib/types';
 import { Avatar, Badge, Button, Card, Empty, EntityTile, Input, PageHeader, Segmented, Select, SkeletonRows } from '@/components/ui/ui';
-import { usePulse } from '@/features/dashboard/pulse';
 import { STAGES, StageBadge, StageMeter, StatusBadge, TemperatureBadge, stageLabel } from '@/components/ui/status';
 import { Modal } from '@/components/ui/overlay';
 import { AddAccountModal } from '@/features/accounts/AccountForms';
 
 interface Filters { q: string; status: string; zone: string; stage: LifecycleStage[]; sizeBucket: string; temperature: string; cityId: string; flagged: boolean; sort: string }
 const DEFAULTS: Filters = { q: '', status: 'ACTIVE', zone: '', stage: [], sizeBucket: '', temperature: '', cityId: '', flagged: false, sort: '' };
+const OPEN_ACTIVE_STAGES: LifecycleStage[] = ['PROSPECT', 'SQL', 'L1', 'MULTITHREADING', 'L2', 'L3', 'NEGOTIATION'];
 interface SavedView { id: string; name: string; entity: string; filters: string; shared: boolean }
 
 /** Account list (M8-8): Active by default, quick filters, saved views, export. Click a row to open the account. */
-export default function AccountsPage() {
+export default function AccountsPage({ myLeads = false }: { myLeads?: boolean }) {
   const { user, is } = useAuth();
   // deal temperature is the AE's call after L1; BDRs work prospects, where it is never set
   const showTemp = user?.role !== 'BDR';
@@ -47,34 +47,48 @@ export default function AccountsPage() {
   const query = useMemo(() => ({
     q, status: f.status, zone: f.zone || undefined, stage: f.stage, sizeBucket: f.sizeBucket || undefined,
     temperature: f.temperature || undefined, cityId: f.cityId || undefined, flagged: f.flagged || undefined, sort: f.sort || (scope === 'worked' ? 'myLastTouch' : undefined), page, size: 50,
+    aeId: myLeads && user?.role === 'AE' ? user.id : undefined,
     bdrId: scope === 'mine' && user?.role === 'BDR' ? user.id : undefined,
     workedByMe: scope === 'worked' || undefined,
-  }), [q, f, page, scope, user]);
+  }), [q, f, page, scope, user, myLeads]);
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['accounts', query], queryFn: () => api.get<Page<AccountRow>>('/api/accounts', query), placeholderData: (p) => p,
   });
+  const leadScope = myLeads && user?.role === 'AE' ? { aeId: user.id } : {};
+  const activeAccountsQuery = useQuery({
+    queryKey: ['accounts-count', 'active', leadScope.aeId],
+    queryFn: () => api.get<Page<AccountRow>>('/api/accounts', { ...leadScope, status: 'ACTIVE', stage: OPEN_ACTIVE_STAGES, size: 1 }),
+  });
+  const inactiveCount = useQuery({
+    queryKey: ['accounts-count', 'inactive', leadScope.aeId],
+    queryFn: () => api.get<Page<AccountRow>>('/api/accounts', { ...leadScope, status: 'INACTIVE', size: 1 }),
+  });
+  const wonCount = useQuery({
+    queryKey: ['accounts-count', 'won', leadScope.aeId],
+    queryFn: () => api.get<Page<AccountRow>>('/api/accounts', { ...leadScope, status: 'ACTIVE', stage: ['WON', 'IMPLEMENTATION'], size: 1 }),
+  });
+  const lostCount = useQuery({
+    queryKey: ['accounts-count', 'lost', leadScope.aeId],
+    queryFn: () => api.get<Page<AccountRow>>('/api/accounts', { ...leadScope, status: 'ACTIVE', stage: ['LOST'], size: 1 }),
+  });
   const views = useQuery({ queryKey: ['saved-views'], queryFn: () => api.get<SavedView[]>('/api/saved-views', { entity: 'ACCOUNT' }) });
-  const pulse = usePulse('30');
-  const mix = pulse.data?.stageMix ?? [];
-  const cnt = (...st: LifecycleStage[]) => mix.filter((m) => st.includes(m.stage)).reduce((a, m) => a + Number(m.count), 0);
-  const pipeMrr = mix.filter((m) => !['WON', 'LOST', 'PROSPECT'].includes(m.stage)).reduce((a, m) => a + Number(m.mrr), 0);
 
   const set = <K extends keyof Filters>(k: K, v: Filters[K]) => setF((x) => ({ ...x, [k]: v }));
-  const activeCount = (Object.keys(DEFAULTS) as (keyof Filters)[]).filter((k) => k !== 'q' && k !== 'sort' && JSON.stringify(f[k]) !== JSON.stringify(DEFAULTS[k])).length;
+  const filterCount = (Object.keys(DEFAULTS) as (keyof Filters)[]).filter((k) => k !== 'q' && k !== 'sort' && JSON.stringify(f[k]) !== JSON.stringify(DEFAULTS[k])).length;
   const total = data?.total ?? 0;
   const pages = Math.max(1, Math.ceil(total / 50));
 
   return (
     <div>
-      <PageHeader title="Accounts" icon={<Building2 />} eyebrow="Book of business"
+      <PageHeader title={myLeads ? 'My Leads' : 'Accounts'} icon={myLeads ? <UserCheck className="h-5 w-5" /> : <Building2 />} eyebrow={myLeads ? 'Assigned deals' : 'Book of business'}
         stats={[
-          { label: 'Active accounts', value: cnt(...STAGES).toLocaleString('en-IN'), hint: 'Across every stage', onClick: () => setF({ ...DEFAULTS }) },
-          { label: 'Prospecting', value: cnt('PROSPECT'), hint: 'Not yet an SQL', onClick: () => setF({ ...DEFAULTS, stage: ['PROSPECT'] }) },
-          { label: 'In pipeline', value: cnt('SQL', 'L1', 'MULTITHREADING', 'L2', 'L3', 'NEGOTIATION'), hint: `${inr(pipeMrr)} expected MRR`, onClick: () => setF({ ...DEFAULTS, zone: 'PIPELINE' }) },
-          { label: 'Won', value: cnt('WON', 'IMPLEMENTATION'), hint: 'Closed and handed over', onClick: () => setF({ ...DEFAULTS, stage: ['WON'] }) },
+          { label: 'Active accounts', value: activeAccountsQuery.data?.total.toLocaleString('en-IN') ?? '—', hint: myLeads ? 'Open assigned accounts' : 'Open accounts across stages', onClick: () => setF({ ...DEFAULTS, status: 'ACTIVE', stage: OPEN_ACTIVE_STAGES }) },
+          { label: 'Inactive accounts', value: inactiveCount.data?.total.toLocaleString('en-IN') ?? '—', hint: 'Paused or inactive', onClick: () => setF({ ...DEFAULTS, status: 'INACTIVE' }) },
+          { label: 'Won', value: wonCount.data?.total.toLocaleString('en-IN') ?? '—', hint: 'Closed and handed over', onClick: () => setF({ ...DEFAULTS, status: 'ACTIVE', stage: ['WON', 'IMPLEMENTATION'] }) },
+          { label: 'Lost', value: lostCount.data?.total.toLocaleString('en-IN') ?? '—', hint: 'Closed as lost', onClick: () => setF({ ...DEFAULTS, status: 'ACTIVE', stage: ['LOST'] }) },
         ]}
-        subtitle={is('BDR') ? (scope === 'mine' ? 'Accounts you own: your prospects and the deals you sourced.' : scope === 'worked' ? 'Every company you have already called, emailed or noted, newest first.' : 'Your prospects plus every account in the team pipeline (view only).') : is('AE') ? 'Accounts assigned to you.' : 'Every account across the team.'}
+        subtitle={myLeads ? 'Only accounts assigned to you as the Account Executive.' : is('BDR') ? (scope === 'mine' ? 'Accounts you own: your prospects and the deals you sourced.' : scope === 'worked' ? 'Every company you have already called, emailed or noted, newest first.' : 'Your prospects plus every account in the team pipeline (view only).') : is('AE') ? 'Every visible account across the team pipeline.' : 'Every account across the team.'}
         actions={<>
           <Button icon={<Download className="h-3.5 w-3.5" />} onClick={() => api.download('/api/accounts', { ...query, format: 'csv', page: undefined, size: undefined }, 'accounts.csv').catch((e) => toast.error(e.message))}>Export</Button>
           {(is('BDR') || is('MANAGER', 'ADMIN')) && <Button icon={<Upload className="h-3.5 w-3.5" />} onClick={() => setImporting(true)}>Import</Button>}
@@ -122,8 +136,8 @@ export default function AccountsPage() {
           </Select>
           <Button size="sm" variant={f.flagged ? 'subtle' : 'ghost'} icon={<Flag className="h-3.5 w-3.5" />} onClick={() => set('flagged', !f.flagged)}>Flagged</Button>
           <div className="ml-auto flex items-center gap-1.5">
-            {activeCount > 0 && <Button size="sm" variant="ghost" icon={<X className="h-3.5 w-3.5" />} onClick={() => setF({ ...DEFAULTS, q: f.q })}>Clear</Button>}
-            {activeCount > 0 && <Button size="sm" icon={<Bookmark className="h-3.5 w-3.5" />} onClick={() => setSaving(true)}>Save view</Button>}
+            {filterCount > 0 && <Button size="sm" variant="ghost" icon={<X className="h-3.5 w-3.5" />} onClick={() => setF({ ...DEFAULTS, q: f.q })}>Clear</Button>}
+            {filterCount > 0 && <Button size="sm" icon={<Bookmark className="h-3.5 w-3.5" />} onClick={() => setSaving(true)}>Save view</Button>}
             <Select value={f.sort} onChange={(e) => set('sort', e.target.value)} className="h-8 w-44">
               <option value="">Newest first</option><option value="name">Name A–Z</option><option value="lastActivity">Least recently touched</option><option value="nextStepDue">Next step due</option>
             </Select>
