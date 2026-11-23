@@ -216,7 +216,7 @@ export default function AccountDetailPage() {
       <AddStakeholderModal open={dialog === 'stakeholder'} onClose={() => setDialog(null)} accountId={a.id} stakeholders={stakeholders} />
       <SubmitSqlModal open={dialog === 'sql'} onClose={() => setDialog(null)} accountId={a.id} accountName={a.name} stakeholders={stakeholders} />
       <AssignModal open={dialog === 'assign'} onClose={() => setDialog(null)} accountId={a.id} accountName={a.name} currentAeId={a.aeOwnerId} />
-      <BookMeetingModal open={dialog === 'book'} onClose={() => setDialog(null)} accountId={a.id} stakeholders={stakeholders} />
+      <BookMeetingModal open={dialog === 'book'} onClose={() => setDialog(null)} accountId={a.id} stakeholders={stakeholders} stage={a.stage} />
       <MoveInactiveModal open={dialog === 'inactive'} onClose={() => setDialog(null)} accountId={a.id} />
       <KeepActiveModal open={dialog === 'keep'} onClose={() => setDialog(null)} accountId={a.id} />
       <ReactivateModal open={dialog === 'reactivate'} onClose={() => setDialog(null)} accountId={a.id} stakeholders={stakeholders} />

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, Building2, CalendarClock, CheckSquare, ChevronsLeft, ChevronsRight, ClipboardCheck, LogOut, Menu, Search, UserPlus, X } from 'lucide-react';
+import { Bell, Building2, CalendarClock, CheckSquare, ChevronsLeft, ChevronsRight, ClipboardCheck, Languages, LogOut, Menu, Search, UserPlus, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { LogoMark } from '@/components/brand/Logo';
@@ -13,6 +13,7 @@ import type { NotificationRow } from '@/lib/types';
 import { Avatar } from '@/components/ui/ui';
 import { CommandMenu } from './CommandMenu';
 import { navFor } from './nav';
+import { LANGUAGES, useLanguage, useT, type LangCode } from '@/lib/i18n';
 
 const COLLAPSE_KEY = 'prosperr.sidebar';
 
@@ -22,7 +23,8 @@ export function AppShell() {
   const [cmdOpen, setCmdOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const items = navFor(user?.role);
+  const t = useT();
+  const items = navFor(user?.role).map((n) => ({ ...n, label: t(`nav.${n.to}`, undefined, n.label) }));
 
   useEffect(() => { try { localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0'); } catch { /* ignore */ } }, [collapsed]);
 
@@ -71,22 +73,23 @@ export function AppShell() {
 
       <button onClick={() => { setDrawer(false); setCmdOpen(true); }}
         className={cn('mx-3 mb-3 flex h-10 items-center gap-2 rounded-xl border border-brand-mint/20 bg-brand-mint/[0.08] px-3 text-[12.5px] font-medium text-paper/70 transition-colors hover:border-brand-mint/40 hover:text-paper',
-          c && 'mx-auto w-9 justify-center px-0')} title="Search">
+          c && 'mx-auto w-9 justify-center px-0')} title={t('nav.search')}>
         <Search className="h-3.5 w-3.5 text-brand-mint" />
-        {!c && <><span className="flex-1 text-left">Search…</span>{!mobile && <kbd className="rounded-md bg-brand-mint/15 px-1.5 text-2xs font-semibold text-brand-mint">{IS_MAC ? '⌘K' : 'Ctrl K'}</kbd>}</>}
+        {!c && <><span className="flex-1 text-left">{t('nav.search')}</span>{!mobile && <kbd className="rounded-md bg-brand-mint/15 px-1.5 text-2xs font-semibold text-brand-mint">{IS_MAC ? '⌘K' : 'Ctrl K'}</kbd>}</>}
       </button>
 
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 scrollbar-thin">
         {main.map((n) => <NavItemLink key={n.to} item={n} collapsed={c} />)}
         {workspace.length > 0 && (
           <>
-            {!c ? <p className="px-2.5 pb-1 pt-5 text-2xs font-semibold uppercase tracking-[0.16em] text-brand-mint/70">Workspace</p> : <div className="my-3 border-t border-white/10" />}
+            {!c ? <p className="px-2.5 pb-1 pt-5 text-2xs font-semibold uppercase tracking-[0.16em] text-brand-mint/70">{t('nav.workspace')}</p> : <div className="my-3 border-t border-white/10" />}
             {workspace.map((n) => <NavItemLink key={n.to} item={n} collapsed={c} />)}
           </>
         )}
       </nav>
 
       <div className="border-t border-white/10 p-3 pb-[max(.75rem,env(safe-area-inset-bottom))]">
+        {!c && <LanguagePicker />}
         <div className={cn('flex items-center gap-2.5 rounded-2xl bg-white/[0.04] p-2', c && 'flex-col bg-transparent p-0')}>
           <Avatar name={user?.fullName} size="md" />
           {!c && (
@@ -95,12 +98,12 @@ export function AppShell() {
               <p className="text-2xs font-semibold uppercase tracking-[0.12em] text-brand-mint">{humanize(user?.role)}</p>
             </div>
           )}
-          <button onClick={signOut} title="Sign out" className="flex h-9 w-9 items-center justify-center rounded-full text-paper/60 transition-colors hover:bg-white/10 hover:text-paper"><LogOut className="h-4 w-4" /></button>
+          <button onClick={signOut} title={t('nav.signOut')} className="flex h-9 w-9 items-center justify-center rounded-full text-paper/60 transition-colors hover:bg-white/10 hover:text-paper"><LogOut className="h-4 w-4" /></button>
         </div>
         {!mobile && (
           <button onClick={() => setCollapsed((v) => !v)} title="Collapse sidebar ( [ )"
             className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg py-1 text-2xs text-paper/40 hover:bg-white/[0.06] hover:text-paper">
-            {c ? <ChevronsRight className="h-3.5 w-3.5" /> : <><ChevronsLeft className="h-3.5 w-3.5" />Collapse</>}
+            {c ? <ChevronsRight className="h-3.5 w-3.5" /> : <><ChevronsLeft className="h-3.5 w-3.5" />{t('nav.collapse')}</>}
           </button>
         )}
       </div>
@@ -139,11 +142,27 @@ export function AppShell() {
           </NavLink>
         ))}
         <button onClick={() => setDrawer(true)} className="flex flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl py-1.5 text-[10.5px] font-semibold text-paper/55 active:bg-white/10">
-          <Menu className="h-[18px] w-[18px]" />More
+          <Menu className="h-[18px] w-[18px]" />{t('nav.more')}
         </button>
       </nav>
       <CommandMenu open={cmdOpen} onClose={() => setCmdOpen(false)} />
     </div>
+  );
+}
+
+/** Changes the language of menus and the main working screens; everything else falls back to English. */
+function LanguagePicker() {
+  const { lang, setLang } = useLanguage();
+  const t = useT();
+  return (
+    <label className="mb-2 flex h-9 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-2.5 text-[12px] text-paper/70 focus-within:border-brand-mint/40">
+      <Languages className="h-3.5 w-3.5 shrink-0 text-brand-mint" />
+      <span className="sr-only">{t('nav.language')}</span>
+      <select value={lang} onChange={(e) => setLang(e.target.value as LangCode)} aria-label={t('nav.language')}
+        className="min-w-0 flex-1 cursor-pointer appearance-none bg-transparent font-medium text-paper outline-none [&>option]:bg-[#141614]">
+        {LANGUAGES.map((l) => <option key={l.code} value={l.code}>{l.native}{l.code !== 'en' ? ` · ${l.name}` : ''}</option>)}
+      </select>
+    </label>
   );
 }
 
@@ -166,7 +185,9 @@ function TopBar({ onSearch, onMenu }: { onSearch: () => void; onMenu: () => void
   const { pathname } = useLocation();
   const { user } = useAuth();
   const crumbs = pathname.split('/').filter(Boolean);
-  const item = navFor(user?.role).find((n) => (n.to === '/' ? pathname === '/' : pathname.startsWith(n.to)));
+  const t = useT();
+  const found = navFor(user?.role).find((n) => (n.to === '/' ? pathname === '/' : pathname.startsWith(n.to)));
+  const item = found && { ...found, label: t(`nav.${found.to}`, undefined, found.label) };
   const Icon = item?.icon;
   const title = crumbs[0] === 'accounts' && crumbs[1] ? 'Account' : item?.label ?? 'Home';
   return (
@@ -178,10 +199,10 @@ function TopBar({ onSearch, onMenu }: { onSearch: () => void; onMenu: () => void
         <span className="truncate font-display text-[16px] font-medium tracking-[-0.02em]">{title}</span>
       </div>
       <div className="flex items-center gap-2">
-        <button onClick={onSearch} aria-label="Search" className="flex h-9 w-9 items-center justify-center rounded-full border border-brand-forest/15 bg-brand-forest-50/70 text-brand-forest md:hidden"><Search className="h-4 w-4" /></button>
+        <button onClick={onSearch} aria-label={t('nav.search')} className="flex h-9 w-9 items-center justify-center rounded-full border border-brand-forest/15 bg-brand-forest-50/70 text-brand-forest md:hidden"><Search className="h-4 w-4" /></button>
         <button onClick={onSearch} className="group hidden h-9 w-72 items-center gap-2.5 whitespace-nowrap rounded-full border border-brand-forest/15 bg-brand-forest-50/70 pl-3.5 pr-1.5 text-[13px] font-medium text-brand-forest transition-all hover:border-brand-forest/35 hover:bg-white hover:shadow-[0_8px_20px_-14px_rgba(5,63,26,.7)] md:flex">
           <Search className="h-4 w-4 shrink-0 text-brand-forest/70 group-hover:text-brand-forest" />
-          <span className="min-w-0 flex-1 truncate text-left text-brand-forest/75 group-hover:text-brand-forest">Search accounts, people…</span>
+          <span className="min-w-0 flex-1 truncate text-left text-brand-forest/75 group-hover:text-brand-forest">{t('nav.searchLong')}</span>
           <kbd className="shrink-0 rounded-full bg-brand-forest px-2 py-0.5 font-sans text-[10.5px] font-semibold tracking-wide text-white">{IS_MAC ? '⌘ K' : 'Ctrl K'}</kbd>
         </button>
         <span className="hidden items-center gap-1.5 rounded-full bg-brand-forest-50 px-2.5 py-1 text-[11px] font-semibold text-brand-forest lg:inline-flex" title="Data refreshes automatically">
@@ -197,6 +218,7 @@ const notifIcon: Record<string, typeof Bell> = { SQL: ClipboardCheck, ASSIGN: Us
 const iconFor = (n: NotificationRow) => notifIcon[Object.keys(notifIcon).find((k) => `${n.type} ${n.entityType ?? ''}`.toUpperCase().includes(k)) ?? ''] ?? Bell;
 
 function Notifications() {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [onlyUnread, setOnlyUnread] = useState(false);
   const qc = useQueryClient();
@@ -256,7 +278,7 @@ function Notifications() {
           <div className="fixed inset-x-3 top-16 z-50 sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-[380px] overflow-hidden rounded-[22px] border border-white/10 bg-[#141614]/95 text-paper shadow-[0_30px_80px_-20px_rgba(0,0,0,.7)] backdrop-blur-xl animate-pop-in">
             <div className="flex items-center justify-between border-b border-white/10 px-4 py-3.5">
               <div>
-                <p className="font-display text-[16px] font-medium">Notifications</p>
+                <p className="font-display text-[16px] font-medium">{t('nav.notifications')}</p>
                 <p className="text-[11px] text-paper/45">{unread ? `${unread} unread` : 'You’re all caught up'} · live · every 10 s</p>
               </div>
               {unread > 0 && <button className="rounded-full bg-brand-mint/15 px-2.5 py-1 text-[11px] font-semibold text-brand-mint hover:bg-brand-mint/25" onClick={async () => { await api.post('/api/notifications/read-all'); qc.invalidateQueries({ queryKey: ['notifications'] }); }}>Mark all read</button>}

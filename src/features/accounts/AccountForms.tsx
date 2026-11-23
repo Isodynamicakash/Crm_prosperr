@@ -8,6 +8,11 @@ import { useCities, usePicklist } from '@/lib/queries';
 import type { AccountView, Department, StakeholderView } from '@/lib/types';
 import { Modal } from '@/components/ui/overlay';
 import { Button, Checkbox, Field, Input, Select } from '@/components/ui/ui';
+import { AiAssist } from '@/features/calls/VoiceNote';
+import { useT } from '@/lib/i18n';
+
+interface StakeholderFill { transcript: string; fullName: string | null; designation: string | null; department: Department | null;
+  emails: string[]; phones: string[]; linkedinUrl: string | null }
 
 interface Resolution { account: AccountView; created: boolean; alreadyTaken: { name: string; designation?: string; bdrName: string }[] }
 
@@ -97,23 +102,40 @@ export function AddStakeholderModal({ open, onClose, accountId, stakeholders = [
   const [f, setF] = useState(empty);
   const [emails, setEmails] = useState(['']);
   const [phones, setPhones] = useState(['']);
-  useEffect(() => { if (open) { setF(empty); setEmails(['']); setPhones(['']); } }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [aiFilled, setAiFilled] = useState(false);
+  const t = useT();
+  useEffect(() => { if (open) { setF(empty); setEmails(['']); setPhones(['']); setAiFilled(false); } }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Only fills empty fields, so a half-typed form isn't overwritten.
+  const applyAi = (r: StakeholderFill) => {
+    setF((cur) => ({ ...cur,
+      fullName: cur.fullName || r.fullName || '', designation: cur.designation || r.designation || '',
+      department: cur.department || r.department || '', linkedinUrl: cur.linkedinUrl || r.linkedinUrl || '' }));
+    if (r.emails.length) setEmails((cur) => [...cur.filter(Boolean), ...r.emails.filter((e) => !cur.includes(e))]);
+    if (r.phones.length) setPhones((cur) => [...cur.filter(Boolean), ...r.phones.filter((p) => !cur.includes(p))]);
+    setAiFilled(true);
+  };
 
   const save = useAction(() => api.post<StakeholderView>(`/api/accounts/${accountId}/stakeholders`, {
     fullName: f.fullName.trim(), designation: f.designation.trim() || null, department: f.department || null,
     emails: emails.map((e) => e.trim()).filter(Boolean), phones: phones.map((p) => p.trim()).filter(Boolean),
     linkedinUrl: f.linkedinUrl.trim() || null, referredById: f.referredById || null,
     primarySpoc: f.primarySpoc, decisionMaker: f.decisionMaker,
-  }), { success: 'Stakeholder added', invalidate: [['account', accountId], ['stakeholders', accountId], ['my-day']], onSuccess: onClose });
+  }), { success: t('stakeholder.added'), invalidate: [['account', accountId], ['stakeholders', accountId], ['my-day']], onSuccess: onClose });
 
   return (
-    <Modal open={open} onClose={onClose} title="Add stakeholder" subtitle="Level and department fill in from the designation."
-      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" disabled={!f.fullName.trim()} loading={save.isPending} onClick={() => save.mutate(undefined)}>Add stakeholder</Button></>}>
+    <Modal open={open} onClose={onClose} title={t('stakeholder.add')} subtitle={t('stakeholder.subtitle')}
+      footer={<><Button onClick={onClose}>{t('common.cancel')}</Button><Button variant="primary" disabled={!f.fullName.trim()} loading={save.isPending} onClick={() => save.mutate(undefined)}>{t('stakeholder.add')}</Button></>}>
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Full name" required><Input autoFocus value={f.fullName} onChange={(e) => setF({ ...f, fullName: e.target.value })} /></Field>
-        <Field label="Designation" hint="e.g. CFO, HR Head, Payroll Manager"><Input value={f.designation} onChange={(e) => setF({ ...f, designation: e.target.value })} /></Field>
-        <MultiInput label="Emails" values={emails} onChange={setEmails} placeholder="name@company.com" />
-        <MultiInput label="Phones" values={phones} onChange={setPhones} placeholder="98xxxxxxxx" />
+        <div className="col-span-2">
+          <AiAssist<StakeholderFill> endpoint="/api/ai/fill/STAKEHOLDER" onResult={applyAi} title={t('ai.stakeholderTitle')}
+            example={t('ai.stakeholderExample')} pastePlaceholder={t('ai.stakeholderPaste')} />
+          {aiFilled && <p className="mt-1.5 text-xs text-ink-muted">{t('ai.filledCheck')}</p>}
+        </div>
+        <Field label={t('stakeholder.fullName')} required><Input autoFocus value={f.fullName} onChange={(e) => setF({ ...f, fullName: e.target.value })} /></Field>
+        <Field label={t('stakeholder.designation')} hint="e.g. CFO, HR Head, Payroll Manager"><Input value={f.designation} onChange={(e) => setF({ ...f, designation: e.target.value })} /></Field>
+        <MultiInput label={t('stakeholder.emails')} values={emails} onChange={setEmails} placeholder="name@company.com" />
+        <MultiInput label={t('stakeholder.phones')} values={phones} onChange={setPhones} placeholder="98xxxxxxxx" />
         <Field label="Department" hint="Leave empty to use the designation map">
           <Select value={f.department} onChange={(e) => setF({ ...f, department: e.target.value as Department })}>
             <option value="">Auto</option>

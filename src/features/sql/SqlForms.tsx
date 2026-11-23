@@ -10,6 +10,11 @@ import type { CapacityRow, SqlChecklist, StakeholderView } from '@/lib/types';
 import { Modal } from '@/components/ui/overlay';
 import { Badge, Button, Checkbox, Field, Input, Select, Textarea } from '@/components/ui/ui';
 import { SqlBadge } from '@/components/ui/status';
+import { AiAssist } from '@/features/calls/VoiceNote';
+import { useT } from '@/lib/i18n';
+
+interface SqlFill { transcript: string; budget: string | null; authority: string | null; need: string | null; timeline: string | null;
+  businessRelevance: 'FBP' | 'PAYROLL' | 'BOTH' | null; budgetNote: string | null; authorityNote: string | null; needNote: string | null; timelineNote: string | null }
 
 const criterionLabel: Record<string, string> = {
   LOCATION: 'Location', LICENSES: 'Licenses (taxable bracket)', RIGHT_STAKEHOLDER: 'Right stakeholder', BANT: 'BANT',
@@ -28,6 +33,8 @@ function CriterionIcon({ s }: { s: string }) {
 export function SubmitSqlModal({ open, onClose, accountId, accountName, stakeholders }: {
   open: boolean; onClose: () => void; accountId: string; accountName: string; stakeholders: StakeholderView[];
 }) {
+  const t = useT();
+  const [aiFilled, setAiFilled] = useState(false);
   const budget = usePicklist('BANT_BUDGET');
   const authority = usePicklist('BANT_AUTHORITY');
   const need = usePicklist('BANT_NEED');
@@ -43,7 +50,20 @@ export function SubmitSqlModal({ open, onClose, accountId, accountName, stakehol
     if (!open) return;
     const best = [...stakeholders].sort((a, b) => a.priorityRank - b.priorityRank).find((s) => s.engagement === 'MEETING_SCHEDULED' || s.engagement === 'CONNECTED');
     setF({ ...init, qualifyingStakeholderId: best?.id ?? '', attendees: best ? [best.id] : [] });
+    setAiFilled(false);
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // AI returns option codes; map them to this server's picklist ids. Only empty fields are filled.
+  const applyAi = (r: SqlFill) => {
+    const id = (opts: { id: string; code: string }[] | undefined, code: string | null) => (code && opts?.find((o) => o.code === code)?.id) || '';
+    setF((cur) => ({ ...cur,
+      businessRelevance: r.businessRelevance ?? cur.businessRelevance,
+      budgetId: cur.budgetId || id(budget.data, r.budget), authorityId: cur.authorityId || id(authority.data, r.authority),
+      needId: cur.needId || id(need.data, r.need), timelineId: cur.timelineId || id(timeline.data, r.timeline),
+      budgetNote: cur.budgetNote || r.budgetNote || '', authorityNote: cur.authorityNote || r.authorityNote || '',
+      needNote: cur.needNote || r.needNote || '', timelineNote: cur.timelineNote || r.timelineNote || '' }));
+    setAiFilled(true);
+  };
 
   const body = useMemo(() => {
     const start = localToInstant(f.start);
@@ -85,30 +105,34 @@ export function SubmitSqlModal({ open, onClose, accountId, accountName, stakehol
   const named = (s: StakeholderView) => `${s.firstName} ${s.lastName ?? ''} · ${s.designation ?? '—'}${s.level ? ` (L${s.level})` : ''}`;
 
   return (
-    <Modal open={open} onClose={onClose} width="max-w-4xl" title={`Submit SQL · ${accountName}`} subtitle="Qualify the account and book the L1 meeting in one go."
+    <Modal open={open} onClose={onClose} width="max-w-4xl" title={t('sql.title', { name: accountName })} subtitle={t('sql.subtitle')}
       footer={<>
-        {c && !c.canSubmit && <span className="mr-auto text-xs text-ink-muted">{c.missingFields.length ? `Missing: ${c.missingFields.map(humanize).join(', ')}` : 'Some ICP checks fail'}</span>}
-        <Button onClick={onClose}>Cancel</Button>
-        <Button variant="primary" disabled={!c?.canSubmit || isPastLocal(f.start)} loading={submit.isPending} onClick={() => submit.mutate(undefined)}>Submit SQL &amp; book L1</Button>
+        {c && !c.canSubmit && <span className="mr-auto text-xs text-ink-muted">{c.missingFields.length ? t('sql.missing', { f: c.missingFields.map(humanize).join(', ') }) : t('sql.icpFail')}</span>}
+        <Button onClick={onClose}>{t('common.cancel')}</Button>
+        <Button variant="primary" disabled={!c?.canSubmit || isPastLocal(f.start)} loading={submit.isPending} onClick={() => submit.mutate(undefined)}>{t('sql.submit')}</Button>
       </>}>
       <div className="grid gap-6 md:grid-cols-[1fr_260px]">
         <div className="space-y-5">
+          <div>
+            <AiAssist<SqlFill> endpoint="/api/ai/fill/SQL" onResult={applyAi} title={t('ai.sqlTitle')} example={t('ai.sqlExample')} />
+            {aiFilled && <p className="mt-1.5 text-xs text-ink-muted">{t('ai.filledCheck')}</p>}
+          </div>
           <section className="grid grid-cols-2 gap-3">
-            <Field label="Qualifying stakeholder" required className="col-span-2">
+            <Field label={t('sql.qualifying')} required className="col-span-2">
               <Select value={f.qualifyingStakeholderId} onChange={set('qualifyingStakeholderId')}>
-                <option value="">Select who qualified it…</option>
+                <option value="">{t('sql.selectWho')}</option>
                 {stakeholders.map((s) => <option key={s.id} value={s.id}>{named(s)}</option>)}
               </Select>
             </Field>
-            <Field label="Referred by (if a senior introduced them)">
+            <Field label={t('sql.referredBy')}>
               <Select value={f.referringStakeholderId} onChange={set('referringStakeholderId')}>
-                <option value="">Nobody</option>
+                <option value="">{t('sql.nobody')}</option>
                 {stakeholders.filter((s) => s.id !== f.qualifyingStakeholderId).map((s) => <option key={s.id} value={s.id}>{named(s)}</option>)}
               </Select>
             </Field>
-            <Field label="Business relevance" required>
+            <Field label={t('sql.relevance')} required>
               <Select value={f.businessRelevance} onChange={set('businessRelevance')}>
-                <option value="FBP">Flexible benefits (FBP)</option><option value="PAYROLL">Payroll</option><option value="BOTH">Both</option>
+                <option value="FBP">{t('sql.fbp')}</option><option value="PAYROLL">{t('sql.payroll')}</option><option value="BOTH">{t('sql.both')}</option>
               </Select>
             </Field>
           </section>
@@ -116,16 +140,16 @@ export function SubmitSqlModal({ open, onClose, accountId, accountName, stakehol
           <section>
             <p className="mb-2 text-[13px] font-semibold">BANT</p>
             <div className="grid grid-cols-2 gap-3">
-              {([['Budget', 'budgetId', 'budgetNote', budget.data], ['Authority', 'authorityId', 'authorityNote', authority.data],
-                ['Need', 'needId', 'needNote', need.data], ['Timeline', 'timelineId', 'timelineNote', timeline.data]] as const).map(([label, id, note, opts]) => (
+              {([['sql.budget', 'budgetId', 'budgetNote', budget.data], ['sql.authority', 'authorityId', 'authorityNote', authority.data],
+                ['sql.need', 'needId', 'needNote', need.data], ['sql.timeline', 'timelineId', 'timelineNote', timeline.data]] as const).map(([label, id, note, opts]) => (
                 <div key={id} className="space-y-1.5 rounded-2xl border border-line p-3">
-                  <Field label={label} required>
+                  <Field label={t(label)} required>
                     <Select value={f[id]} onChange={set(id)}>
-                      <option value="">Select…</option>
+                      <option value="">{t('sql.select')}</option>
                       {opts?.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
                     </Select>
                   </Field>
-                  <Input placeholder="Note (optional)" value={f[note]} onChange={set(note)} className="h-7 text-xs" />
+                  <Input placeholder={t('sql.noteOptional')} value={f[note]} onChange={set(note)} className="h-7 text-xs" />
                 </div>
               ))}
             </div>

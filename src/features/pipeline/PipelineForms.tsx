@@ -3,18 +3,27 @@ import { api } from '@/lib/api';
 import { useAction } from '@/lib/hooks';
 import { usePicklist } from '@/lib/queries';
 import { addDaysISO, isPastLocal, localToInstant, nowLocalInput } from '@/lib/format';
-import type { MeetingLevel, MeetingOutcome, StakeholderView } from '@/lib/types';
+import type { LifecycleStage, MeetingLevel, MeetingOutcome, StakeholderView } from '@/lib/types';
+import { useT } from '@/lib/i18n';
+import { AiAssist } from '@/features/calls/VoiceNote';
 import { Modal } from '@/components/ui/overlay';
 import { Button, Checkbox, Field, Input, Select, Textarea } from '@/components/ui/ui';
 
-const OUTCOMES: { value: MeetingOutcome; label: string; hint: string }[] = [
-  { value: 'COMPLETED_QUALIFIED', label: 'Done — moving ahead', hint: 'Stage advances' },
-  { value: 'COMPLETED_FOLLOW_UP', label: 'Done — needs follow-up', hint: 'Add the next step' },
-  { value: 'COMPLETED_NOT_INTERESTED', label: 'Done — not interested', hint: '' },
-  { value: 'NO_SHOW', label: 'No-show', hint: 'BDR gets a reschedule task' },
-  { value: 'RESCHEDULED', label: 'Rescheduled', hint: 'Pick the new time' },
-  { value: 'DISQUALIFIED', label: 'Disqualified', hint: '' },
+const OUTCOMES: { value: MeetingOutcome; hint: boolean }[] = [
+  { value: 'COMPLETED_QUALIFIED', hint: true },
+  { value: 'COMPLETED_FOLLOW_UP', hint: true },
+  { value: 'COMPLETED_NOT_INTERESTED', hint: false },
+  { value: 'NO_SHOW', hint: true },
+  { value: 'RESCHEDULED', hint: true },
+  { value: 'DISQUALIFIED', hint: false },
 ];
+
+interface MeetingFill { transcript: string; outcome: MeetingOutcome | null; notes: string | null; nextStep: string | null; nextStepDue: string | null }
+
+/** The meeting that should come next for a deal at this stage (L1 done -> L2, L2 -> L3). */
+export function nextMeetingLevel(stage?: LifecycleStage): MeetingLevel {
+  return stage === 'L1' || stage === 'MULTITHREADING' ? 'L2' : stage === 'L2' || stage === 'L3' ? 'L3' : stage === 'SQL' || stage === 'PROSPECT' ? 'L1' : 'OTHER';
+}
 
 export interface MeetingRef { id: string; level: MeetingLevel; accountId: string; accountName?: string }
 
@@ -22,13 +31,23 @@ export interface MeetingRef { id: string; level: MeetingLevel; accountId: string
 export function RecordOutcomeModal({ open, onClose, meeting, stakeholders = [] }: {
   open: boolean; onClose: () => void; meeting: MeetingRef | null; stakeholders?: StakeholderView[];
 }) {
+  const t = useT();
   const [outcome, setOutcome] = useState<MeetingOutcome>('COMPLETED_QUALIFIED');
+  const [aiFilled, setAiFilled] = useState(false);
   const [notes, setNotes] = useState('');
   const [nextStep, setNextStep] = useState('');
   const [nextStepDue, setNextStepDue] = useState(addDaysISO(3));
   const [attended, setAttended] = useState<string[]>([]);
   const [newStart, setNewStart] = useState('');
-  useEffect(() => { if (open) { setOutcome('COMPLETED_QUALIFIED'); setNotes(''); setNextStep(''); setNextStepDue(addDaysISO(3)); setAttended([]); setNewStart(''); } }, [open]);
+  useEffect(() => { if (open) { setOutcome('COMPLETED_QUALIFIED'); setNotes(''); setNextStep(''); setNextStepDue(addDaysISO(3)); setAttended([]); setNewStart(''); setAiFilled(false); } }, [open]);
+
+  const applyAi = (f: MeetingFill) => {
+    if (f.outcome) setOutcome(f.outcome);
+    if (f.notes) setNotes(f.notes);
+    if (f.nextStep) setNextStep(f.nextStep);
+    if (f.nextStepDue) setNextStepDue(f.nextStepDue);
+    setAiFilled(true);
+  };
 
   const save = useAction(async () => {
     if (outcome === 'RESCHEDULED') {
@@ -38,36 +57,38 @@ export function RecordOutcomeModal({ open, onClose, meeting, stakeholders = [] }
     return api.post(`/api/meetings/${meeting!.id}/outcome`, {
       outcome, notes: notes || null, nextStep: nextStep || null, nextStepDue: nextStep ? nextStepDue : null, attendedStakeholderIds: attended,
     });
-  }, { success: 'Meeting updated', invalidate: [['account'], ['opportunity'], ['overdue-outcomes'], ['dashboard'], ['accounts'], ['tasks']], onSuccess: onClose });
+  }, { success: t('meeting.updated'), invalidate: [['account'], ['opportunity'], ['overdue-outcomes'], ['dashboard'], ['accounts'], ['tasks']], onSuccess: onClose });
 
   const completed = outcome.startsWith('COMPLETED');
   const blocked = outcome === 'RESCHEDULED' ? !newStart || isPastLocal(newStart) : outcome === 'COMPLETED_FOLLOW_UP' && !nextStep.trim();
 
   return (
-    <Modal open={open} onClose={onClose} title={`Record ${meeting?.level ?? ''} outcome`} subtitle={meeting?.accountName}
-      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" disabled={blocked} loading={save.isPending} onClick={() => save.mutate(undefined)}>Save outcome</Button></>}>
+    <Modal open={open} onClose={onClose} title={t('meeting.record', { level: meeting?.level ?? '' })} subtitle={meeting?.accountName}
+      footer={<><Button onClick={onClose}>{t('common.cancel')}</Button><Button variant="primary" disabled={blocked} loading={save.isPending} onClick={() => save.mutate(undefined)}>{t('meeting.saveOutcome')}</Button></>}>
       <div className="space-y-4">
+        <AiAssist<MeetingFill> endpoint="/api/ai/fill/MEETING" onResult={applyAi} title={t('ai.meetingTitle')} example={t('ai.meetingExample')} />
+        {aiFilled && <p className="-mt-2 text-xs text-ink-muted">{t('ai.filledCheck')}</p>}
         <div className="grid grid-cols-2 gap-2">
           {OUTCOMES.map((o) => (
             <button key={o.value} onClick={() => setOutcome(o.value)}
               className={`rounded-2xl border px-3.5 py-2.5 text-left transition-all ${outcome === o.value ? 'border-brand-forest bg-brand-forest-50 ring-2 ring-brand-forest/15' : 'border-line hover:border-ink-muted/30'}`}>
-              <p className="text-[13px] font-medium">{o.label}</p>
-              {o.hint && <p className="text-2xs text-ink-muted">{o.hint}</p>}
+              <p className="text-[13px] font-medium">{t(`meeting.${o.value}`)}</p>
+              {o.hint && <p className="text-2xs text-ink-muted">{t(`meeting.${o.value}.hint`)}</p>}
             </button>
           ))}
         </div>
         {outcome === 'RESCHEDULED' ? (
-          <Field label="New date & time (IST)" required error={isPastLocal(newStart) ? 'This time is in the past. Pick a future date and time.' : undefined}><Input type="datetime-local" min={nowLocalInput()} value={newStart} onChange={(e) => setNewStart(e.target.value)} /></Field>
+          <Field label={t('meeting.newTime')} required error={isPastLocal(newStart) ? t('meeting.pastTime') : undefined}><Input type="datetime-local" min={nowLocalInput()} value={newStart} onChange={(e) => setNewStart(e.target.value)} /></Field>
         ) : (
           <>
-            <Field label="Notes"><Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Key points, objections, who said what" /></Field>
+            <Field label={t('common.notes')}><Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t('meeting.notesPlaceholder')} /></Field>
             <div className="grid grid-cols-[1fr_160px] gap-3">
-              <Field label="Next step" required={outcome === 'COMPLETED_FOLLOW_UP'}><Input value={nextStep} onChange={(e) => setNextStep(e.target.value)} placeholder="Share commercials with CFO" /></Field>
-              <Field label="Due"><Input type="date" value={nextStepDue} onChange={(e) => setNextStepDue(e.target.value)} /></Field>
+              <Field label={t('meeting.nextStep')} required={outcome === 'COMPLETED_FOLLOW_UP'}><Input value={nextStep} onChange={(e) => setNextStep(e.target.value)} placeholder={t('meeting.nextStepPlaceholder')} /></Field>
+              <Field label={t('common.due')}><Input type="date" value={nextStepDue} onChange={(e) => setNextStepDue(e.target.value)} /></Field>
             </div>
             {completed && stakeholders.length > 0 && (
               <div>
-                <p className="mb-1.5 text-xs font-medium text-ink-soft">Who attended?</p>
+                <p className="mb-1.5 text-xs font-medium text-ink-soft">{t('meeting.whoAttended')}</p>
                 <div className="flex flex-wrap gap-x-4 gap-y-1.5">
                   {stakeholders.map((s) => (
                     <Checkbox key={s.id} checked={attended.includes(s.id)} label={`${s.firstName} ${s.lastName ?? ''}`}
@@ -83,15 +104,16 @@ export function RecordOutcomeModal({ open, onClose, meeting, stakeholders = [] }
   );
 }
 
-export function BookMeetingModal({ open, onClose, accountId, stakeholders = [] }: {
-  open: boolean; onClose: () => void; accountId: string; stakeholders?: StakeholderView[];
+export function BookMeetingModal({ open, onClose, accountId, stakeholders = [], stage }: {
+  open: boolean; onClose: () => void; accountId: string; stakeholders?: StakeholderView[]; stage?: LifecycleStage;
 }) {
-  const [level, setLevel] = useState<MeetingLevel>('L2');
+  const t = useT();
+  const [level, setLevel] = useState<MeetingLevel>(nextMeetingLevel(stage));
   const [start, setStart] = useState('');
   const [duration, setDuration] = useState('45');
   const [link, setLink] = useState('');
   const [attendees, setAttendees] = useState<string[]>([]);
-  useEffect(() => { if (open) { setLevel('L2'); setStart(''); setDuration('45'); setLink(''); setAttendees([]); } }, [open]);
+  useEffect(() => { if (open) { setLevel(nextMeetingLevel(stage)); setStart(''); setDuration('45'); setLink(''); setAttendees([]); } }, [open]);
 
   const save = useAction(() => {
     const s = localToInstant(start)!;
@@ -99,19 +121,19 @@ export function BookMeetingModal({ open, onClose, accountId, stakeholders = [] }
       level, alsoCompletesL2: false, scheduledStart: s, scheduledEnd: new Date(new Date(s).getTime() + Number(duration) * 60000).toISOString(),
       meetingLink: link || null, attendeeStakeholderIds: attendees,
     });
-  }, { success: 'Meeting booked', invalidate: [['account', accountId], ['opportunity'], ['accounts'], ['tasks']], onSuccess: onClose });
+  }, { success: t('meeting.booked'), invalidate: [['account', accountId], ['opportunity'], ['accounts'], ['tasks']], onSuccess: onClose });
 
   return (
-    <Modal open={open} onClose={onClose} title="Book meeting"
-      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" disabled={!start || isPastLocal(start)} loading={save.isPending} onClick={() => save.mutate(undefined)}>Book</Button></>}>
+    <Modal open={open} onClose={onClose} title={t('meeting.book')}
+      footer={<><Button onClick={onClose}>{t('common.cancel')}</Button><Button variant="primary" disabled={!start || isPastLocal(start)} loading={save.isPending} onClick={() => save.mutate(undefined)}>{t('meeting.bookButton')}</Button></>}>
       <div className="grid grid-cols-3 gap-3">
-        <Field label="Level"><Select value={level} onChange={(e) => setLevel(e.target.value as MeetingLevel)}>{(['L1', 'L2', 'L3', 'OTHER'] as const).map((l) => <option key={l}>{l}</option>)}</Select></Field>
-        <Field label="Date & time (IST)" required className="col-span-2" error={isPastLocal(start) ? 'This time is in the past. Pick a future date and time.' : undefined}><Input type="datetime-local" min={nowLocalInput()} value={start} onChange={(e) => setStart(e.target.value)} /></Field>
-        <Field label="Duration"><Select value={duration} onChange={(e) => setDuration(e.target.value)}>{[30, 45, 60, 90].map((m) => <option key={m} value={m}>{m} min</option>)}</Select></Field>
-        <Field label="Meeting link" className="col-span-2"><Input value={link} onChange={(e) => setLink(e.target.value)} /></Field>
+        <Field label={t('meeting.level')}><Select value={level} onChange={(e) => setLevel(e.target.value as MeetingLevel)}>{(['L1', 'L2', 'L3', 'OTHER'] as const).map((l) => <option key={l}>{l}</option>)}</Select></Field>
+        <Field label={t('meeting.dateTime')} required className="col-span-2" error={isPastLocal(start) ? t('meeting.pastTime') : undefined}><Input type="datetime-local" min={nowLocalInput()} value={start} onChange={(e) => setStart(e.target.value)} /></Field>
+        <Field label={t('common.duration')}><Select value={duration} onChange={(e) => setDuration(e.target.value)}>{[30, 45, 60, 90].map((m) => <option key={m} value={m}>{t('common.minutes', { n: m })}</option>)}</Select></Field>
+        <Field label={t('meeting.link')} className="col-span-2"><Input value={link} onChange={(e) => setLink(e.target.value)} /></Field>
         {stakeholders.length > 0 && (
           <div className="col-span-3">
-            <p className="mb-1.5 text-xs font-medium text-ink-soft">Attendees</p>
+            <p className="mb-1.5 text-xs font-medium text-ink-soft">{t('common.attendees')}</p>
             <div className="flex flex-wrap gap-x-4 gap-y-1.5">
               {stakeholders.map((s) => (
                 <Checkbox key={s.id} checked={attendees.includes(s.id)} label={`${s.firstName} ${s.lastName ?? ''}`}
