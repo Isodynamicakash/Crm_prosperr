@@ -39,7 +39,6 @@ export default function TeamPage() {
   const workload = useQuery({ queryKey: ['report', 'workload'], queryFn: () => api.get<{ current?: { ae: string; total: number; weightedLoad: number; l2: number; l3: number; negotiation: number }[] }>('/api/reports/workload'), retry: false });
   const loads = workload.data?.current ?? [];
   const maxLoad = Math.max(1, ...loads.map((l) => Number(l.weightedLoad)));
-  const online = (data ?? []).filter((u) => u.lastLoginAt && Date.now() - new Date(u.lastLoginAt).getTime() < 864e5).length;
   const people = grouped.flatMap((g) => g.users).filter((u) => !roleFilter || u.role === roleFilter);
 
   return (
@@ -51,20 +50,8 @@ export default function TeamPage() {
       {isLoading ? <Card><SkeletonRows /></Card> : !data?.length ? <Card><Empty icon={<Users className="h-5 w-5" />} title="No one here yet" /></Card> : (
         <>
         <div className="mb-4 grid gap-3 md:grid-cols-3">
-          <div className="relative overflow-hidden rounded-[22px] bg-[#141614] p-4 text-paper md:col-span-1">
-            <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-brand-mint/20 blur-2xl" />
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-brand-mint">Signed in today</p>
-            <p className="mt-2 font-display text-[34px] font-medium leading-none tabular-nums">{online}<span className="text-[18px] text-paper/40"> / {data.filter((u) => u.active).length}</span></p>
-            <div className="mt-3 flex -space-x-2">
-              {data.filter((u) => u.active).slice(0, 8).map((u) => (
-                <span key={u.id} className="relative">
-                  <Avatar name={u.fullName} size="sm" className="ring-2 ring-[#141614]" />
-                  {u.lastLoginAt && Date.now() - new Date(u.lastLoginAt).getTime() < 864e5 && <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-brand-mint ring-2 ring-[#141614]" />}
-                </span>
-              ))}
-            </div>
-          </div>
-          <div className="rounded-[22px] border border-line/80 bg-white p-4 md:col-span-2">
+          <SignedInToday users={data.filter((u) => u.active)} />
+          <div className="flex flex-col rounded-[22px] border border-line/80 bg-white p-4 md:col-span-2">
             <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-brand-forest/70">Team mix</p>
             <div className="mt-3 flex h-3 overflow-hidden rounded-full bg-brand-forest-50">
               {grouped.filter((g) => g.users.length).map((g) => (
@@ -78,6 +65,28 @@ export default function TeamPage() {
                   <span className="h-2 w-2 rounded-full" style={{ background: ['#7CCB8E', '#23B24A', '#053F1A', '#202E64'][ROLES.indexOf(ROLES.find((r) => r.value === g.value)!)] }} />{g.label} · {g.users.length}
                 </button>
               ))}
+            </div>
+            <div className="mt-4 grid flex-1 gap-2 sm:grid-cols-2">
+              {grouped.map((g) => {
+                const colour = ['#7CCB8E', '#23B24A', '#053F1A', '#202E64'][ROLES.indexOf(ROLES.find((r) => r.value === g.value)!)];
+                const active = g.users.filter((u) => u.active);
+                return (
+                  <button key={g.value} onClick={() => setRoleFilter(roleFilter === g.value ? '' : g.value)}
+                    className={cn('flex flex-col rounded-2xl border p-3 text-left transition-all', roleFilter === g.value ? 'border-brand-forest/40 bg-brand-forest-50 ring-2 ring-brand-forest/10' : 'border-line/70 hover:border-brand-forest/25')}>
+                    <span className="flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ background: colour }} />
+                      <span className="text-[13px] font-semibold text-ink">{g.label}</span>
+                      <span className="ml-auto font-display text-[20px] font-medium leading-none tabular-nums text-brand-forest">{active.length}</span>
+                    </span>
+                    <span className="mt-1 text-[11.5px] leading-snug text-ink-muted">{g.hint}</span>
+                    <span className="mt-2 flex flex-wrap gap-1">
+                      {active.length ? active.map((u) => (
+                        <span key={u.id} className="rounded-full bg-brand-forest-50 px-2 py-0.5 text-[11px] font-medium text-brand-forest">{u.fullName.split(' ')[0]}</span>
+                      )) : <span className="text-[11px] text-ink-muted">No one yet</span>}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -175,5 +184,58 @@ function UserModal({ user, onClose, managers }: { user: UserView | 'new' | null;
         </div>
       </div>
     </Modal>
+  );
+}
+
+const DAY_MS = 864e5;
+const ROLE_SHORT: Record<string, string> = { BDR: 'BDR', AE: 'AE', MANAGER: 'Manager', ADMIN: 'Admin' };
+
+/** Who has opened the CRM today: an attendance bar, then each person with role and when they last signed in. */
+function SignedInToday({ users }: { users: UserView[] }) {
+  const today = (u: UserView) => !!u.lastLoginAt && Date.now() - new Date(u.lastLoginAt).getTime() < DAY_MS;
+  const sorted = [...users].sort((a, b) => (b.lastLoginAt ? new Date(b.lastLoginAt).getTime() : 0) - (a.lastLoginAt ? new Date(a.lastLoginAt).getTime() : 0));
+  const inToday = users.filter(today).length;
+  const pct = users.length ? Math.round((100 * inToday) / users.length) : 0;
+  const shown = sorted.slice(0, 5);
+  return (
+    <div className="relative overflow-hidden rounded-[22px] bg-[#141614] p-4 text-paper md:col-span-1">
+      <div className="pointer-events-none absolute -right-12 -top-12 h-36 w-36 rounded-full bg-brand-mint/20 blur-2xl" />
+      <div className="relative flex items-center justify-between">
+        <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-mint">
+          <span className="relative flex h-2 w-2"><span className="absolute inset-0 animate-ping rounded-full bg-brand-mint/60" /><span className="relative h-2 w-2 rounded-full bg-brand-mint" /></span>
+          Signed in today
+        </p>
+        <span className="rounded-full bg-brand-mint/15 px-2 py-0.5 text-[11px] font-bold tabular-nums text-brand-mint">{pct}%</span>
+      </div>
+      <p className="relative mt-2 font-display text-[30px] font-medium leading-none tabular-nums">
+        {inToday}<span className="ml-1 text-[15px] font-sans font-medium text-paper/55">of {users.length} people</span>
+      </p>
+      <div className="relative mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
+        <div className="h-full rounded-full bg-brand-mint shadow-[0_0_12px_rgba(35,178,74,.7)] transition-[width] duration-700" style={{ width: `${pct}%` }} />
+      </div>
+      <ul className="relative mt-3 space-y-1.5">
+        {shown.map((u) => {
+          const on = today(u);
+          return (
+            <li key={u.id} className="flex items-center gap-2.5 rounded-xl bg-white/[0.05] px-2.5 py-1.5">
+              <span className="relative shrink-0">
+                <span className={cn('flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold', on ? 'bg-brand-mint text-brand-night' : 'bg-white/15 text-paper/70')}>
+                  {u.fullName.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()}
+                </span>
+                <span className={cn('absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-[#141614]', on ? 'bg-brand-mint' : 'bg-white/25')} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[13px] font-semibold text-paper">{u.fullName}</span>
+                <span className="block text-[11px] text-paper/50">{ROLE_SHORT[u.role] ?? u.role}</span>
+              </span>
+              <span className={cn('shrink-0 text-[11.5px] font-medium tabular-nums', on ? 'text-brand-mint' : 'text-paper/40')}>
+                {u.lastLoginAt ? (on ? relTime(u.lastLoginAt) : 'Not today') : 'Never'}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      {sorted.length > shown.length && <p className="relative mt-2 text-[11.5px] text-paper/50">+{sorted.length - shown.length} more</p>}
+    </div>
   );
 }
