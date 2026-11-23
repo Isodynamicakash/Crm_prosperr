@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
-import { Check, CheckSquare, Clock, ListTodo, Mail, Phone, Plus, RotateCw, Users } from 'lucide-react';
+import { Check, CheckSquare, Clock, ListTodo, Mail, Phone, Plus, RotateCw, Search, Users } from 'lucide-react';
 import { api } from '@/lib/api';
 import { isLeadership, useAuth } from '@/lib/auth';
 import { useAction } from '@/lib/hooks';
@@ -197,13 +197,12 @@ const TYPES: TaskType[] = ['CALL', 'FOLLOW_UP', 'SEND_TEMPLATE', 'MULTITHREAD', 
 const typeIcon: Partial<Record<string, typeof Phone>> = { CALL: Phone, FOLLOW_UP: RotateCw, SEND_TEMPLATE: Mail, MULTITHREAD: Users };
 
 function NewTaskModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [q, setQ] = useState('');
-  const [accountId, setAccountId] = useState('');
+  const [account, setAccount] = useState<AccountRow | null>(null);
+  const accountId = account?.id ?? '';
   const [title, setTitle] = useState('');
   const [type, setType] = useState<TaskType>('FOLLOW_UP');
   const [due, setDue] = useState('');
-  useEffect(() => { if (open) { setQ(''); setAccountId(''); setTitle(''); setType('FOLLOW_UP'); setDue(`${addDaysISO(1)}T10:00`); } }, [open]);
-  const accounts = useQuery({ queryKey: ['accounts', 'pick', q], queryFn: () => api.get<Page<AccountRow>>('/api/accounts', { q, status: 'ALL', size: 20 }), enabled: open });
+  useEffect(() => { if (open) { setAccount(null); setTitle(''); setType('FOLLOW_UP'); setDue(`${addDaysISO(1)}T10:00`); } }, [open]);
   const save = useAction(() => api.post('/api/tasks', { accountId, stakeholderId: null, type, title, dueAt: new Date(due).toISOString(), assigneeId: null }), {
     success: 'Task added', invalidate: [['tasks'], ['my-day']], onSuccess: onClose,
   });
@@ -213,17 +212,63 @@ function NewTaskModal({ open, onClose }: { open: boolean; onClose: () => void })
       <div className="grid grid-cols-2 gap-3">
         <Field label="What needs doing" required className="col-span-2"><Input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Send FBP deck to the CFO" /></Field>
         <Field label="Account" required className="col-span-2">
-          <div className="space-y-1.5">
-            <Input placeholder="Search account…" value={q} onChange={(e) => setQ(e.target.value)} />
-            <Select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-              <option value="">Select…</option>{accounts.data?.items.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </Select>
-          </div>
+          <AccountPicker value={account} onChange={setAccount} />
         </Field>
         <Field label="Type"><Select value={type} onChange={(e) => setType(e.target.value as TaskType)}>{TYPES.map((t) => <option key={t} value={t}>{humanize(t)}</option>)}</Select></Field>
         <Field label="Due" required><Input type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} /></Field>
       </div>
     </Modal>
+  );
+}
+
+/** One box: type to search your accounts, pick from the list; the choice shows as a chip you can clear. */
+function AccountPicker({ value, onChange }: { value: AccountRow | null; onChange: (a: AccountRow | null) => void }) {
+  const [q, setQ] = useState('');
+  const [open, setOpen] = useState(false);
+  const [hi, setHi] = useState(0);
+  const list = useQuery({ queryKey: ['accounts', 'pick', q], queryFn: () => api.get<Page<AccountRow>>('/api/accounts', { q, status: 'ALL', size: 20 }), enabled: open });
+  const items = list.data?.items ?? [];
+  useEffect(() => { setHi(0); }, [q]);
+  const pick = (a: AccountRow) => { onChange(a); setOpen(false); setQ(''); };
+
+  if (value) {
+    return (
+      <div className="flex h-9 items-center gap-2 rounded-xl border border-brand-forest/30 bg-brand-forest-50/60 pl-3 pr-1.5">
+        <Check className="h-3.5 w-3.5 shrink-0 text-brand-forest" strokeWidth={3} />
+        <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">{value.name}
+          {value.city && <span className="font-normal text-ink-muted"> · {value.city}</span>}</span>
+        <button type="button" onClick={() => onChange(null)} className="h-7 rounded-lg px-2 text-xs font-semibold text-brand-forest hover:bg-white">Change</button>
+      </div>
+    );
+  }
+  return (
+    <div className="relative">
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-muted" />
+      <Input placeholder="Type a company name…" value={q} className="pl-9" role="combobox" aria-expanded={open} aria-autocomplete="list"
+        onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onChange={(e) => { setQ(e.target.value); setOpen(true); }}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowDown') { e.preventDefault(); setHi((h) => Math.min(h + 1, items.length - 1)); }
+          else if (e.key === 'ArrowUp') { e.preventDefault(); setHi((h) => Math.max(h - 1, 0)); }
+          else if (e.key === 'Enter' && items[hi]) { e.preventDefault(); pick(items[hi]); }
+          else if (e.key === 'Escape') setOpen(false);
+        }} />
+      {open && (
+        <ul role="listbox" className="absolute inset-x-0 top-[calc(100%+4px)] z-20 max-h-56 overflow-y-auto rounded-xl border border-line bg-white p-1 shadow-[0_12px_32px_-12px_rgba(5,63,26,.35)]">
+          {list.isLoading && <li className="px-3 py-2 text-xs text-ink-muted">Searching…</li>}
+          {!list.isLoading && items.length === 0 && <li className="px-3 py-2 text-xs text-ink-muted">No account matches “{q}”.</li>}
+          {items.map((a, i) => (
+            <li key={a.id} role="option" aria-selected={i === hi}>
+              <button type="button" onMouseDown={(e) => e.preventDefault()} onMouseEnter={() => setHi(i)} onClick={() => pick(a)}
+                className={cn('flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[13px]', i === hi && 'bg-brand-forest-50')}>
+                <span className="min-w-0 flex-1 truncate font-medium">{a.name}</span>
+                <span className="shrink-0 text-[11px] text-ink-muted">{[a.city, humanize(a.stage)].filter(Boolean).join(' · ')}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
