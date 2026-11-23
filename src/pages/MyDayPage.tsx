@@ -10,6 +10,7 @@ import type { MyDayItem, StakeholderView } from '@/lib/types';
 import { Avatar, Button, Empty, Kbd, PageHeader, SkeletonRows } from '@/components/ui/ui';
 import { LogCallModal, type CallTarget } from '@/features/calls/LogCallModal';
 import { SubmitSqlModal } from '@/features/sql/SqlForms';
+import { CallSession } from '@/features/calls/CallSession';
 import { useT } from '@/lib/i18n';
 import { WhatsAppButton } from '@/features/calls/WhatsApp';
 
@@ -53,7 +54,7 @@ export default function MyDayPage() {
   // J/K to move, Enter or L to log the highlighted row.
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
-      if (target || sqlFor || /input|textarea|select/i.test((e.target as HTMLElement).tagName)) return;
+      if (target || sqlFor || session || /input|textarea|select/i.test((e.target as HTMLElement).tagName)) return;
       if (e.key === 'j') setCursor((c) => Math.min(c + 1, rows.length - 1));
       if (e.key === 'k') setCursor((c) => Math.max(c - 1, 0));
       if ((e.key === 'Enter' || e.key === 'l') && rows[cursor]) open(rows[cursor]);
@@ -73,11 +74,10 @@ export default function MyDayPage() {
         return;
       }
     }
-    if (next || session) {
+    if (next) {
       const idx = callable.findIndex((d) => d.stakeholderId === current?.stakeholderId);
       const n = r.nextQueueItem ?? callable[idx + 1];
       if (n?.stakeholderId) { open(n); return; }
-      setSession(false);
     }
     setTarget(null);
   };
@@ -104,9 +104,9 @@ export default function MyDayPage() {
                 <p className="truncate text-[12.5px] text-paper/60">{nx.designation ? `${nx.designation} · ` : ''}{nx.accountName}</p>
               </div>
               <div className="flex w-full gap-2 sm:w-auto">
-                {nx.phone && <WhatsAppButton phone={nx.phone} name={nx.stakeholderName} onOpened={() => { setSession(true); open(nx); }} className="h-10 border-white/15 bg-white/10 px-4 text-paper hover:bg-white/15" />}
+                {nx.phone && <WhatsAppButton phone={nx.phone} name={nx.stakeholderName} onOpened={() => open(nx)} className="h-10 border-white/15 bg-white/10 px-4 text-paper hover:bg-white/15" />}
                 {nx.phone && <a href={`tel:${nx.phone}`} className="flex h-10 flex-1 items-center justify-center gap-2 rounded-full border border-white/15 px-4 text-[13px] font-semibold tabular-nums text-paper hover:bg-white/10 sm:flex-none"><Phone className="h-4 w-4 text-brand-mint" />{nx.phone}</a>}
-                <button onClick={() => { setSession(true); open(nx); }} className="flex h-10 flex-1 items-center justify-center gap-2 rounded-full bg-brand-mint px-5 text-[13px] font-bold text-brand-night shadow-[0_0_24px_rgba(35,178,74,.45)] transition-transform hover:scale-[1.03] sm:flex-none"><Play className="h-4 w-4 shrink-0" /><span className="whitespace-nowrap">{t('myday.start')}<span className="hidden sm:inline"> {t('myday.session')}</span> · {callable.length}</span></button>
+                <button onClick={() => setSession(true)} className="flex h-10 flex-1 items-center justify-center gap-2 rounded-full bg-brand-mint px-5 text-[13px] font-bold text-brand-night shadow-[0_0_24px_rgba(35,178,74,.45)] transition-transform hover:scale-[1.03] sm:flex-none"><Play className="h-4 w-4 shrink-0" /><span className="whitespace-nowrap">{t('myday.start')}<span className="hidden sm:inline"> {t('myday.session')}</span> · {callable.length}</span></button>
               </div>
             </div>
           </div>
@@ -172,6 +172,7 @@ export default function MyDayPage() {
 
       <LogCallModal open={!!target} target={target} saveAndNext onClose={() => { setTarget(null); setSession(false); }} onLogged={afterLog} />
       {sqlFor && <SubmitSqlModal open onClose={() => setSqlFor(null)} {...sqlFor} />}
+      {session && <CallSession items={callable} onExit={() => setSession(false)} />}
     </div>
   );
 }

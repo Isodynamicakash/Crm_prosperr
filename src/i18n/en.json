@@ -166,7 +166,7 @@
   "stakeholder.phones": "Phones",
   "stakeholder.department": "Department",
   "stakeholder.added": "Stakeholder added",
-  "google.connect": "Connect Google Calendar",
+  "google.connect": "Connect Google (Calendar + Gmail)",
   "google.reconnect": "Reconnect Google",
   "google.connected": "Google connected. New meetings will appear on your calendar with a Meet link.",
   "google.connectedAs": "Connected as {email}",

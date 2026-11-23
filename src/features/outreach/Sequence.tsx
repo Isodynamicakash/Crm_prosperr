@@ -82,6 +82,12 @@ export function SequenceModal({ open, onClose, stakeholderId, accountId, enrollm
         </>
       )}>
       {p.isLoading && <p className="py-8 text-center text-sm text-ink-muted">Preparing the emails…</p>}
+      {p.isError && (
+        <div className="flex items-start gap-2.5 rounded-xl bg-canvas px-3 py-3 text-[13px]">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-brand-navy" />
+          <div><p className="font-semibold">Can’t prepare these emails</p><p className="mt-0.5 text-ink-soft">{(p.error as Error).message}</p></div>
+        </div>
+      )}
       {d && (
         <div className="space-y-3">
           {live && <div className="rounded-xl bg-brand-forest-50 px-3 py-2 text-[13px] text-brand-forest">
