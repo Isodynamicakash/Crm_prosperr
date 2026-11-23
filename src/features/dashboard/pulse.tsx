@@ -45,7 +45,7 @@ export interface Pulse {
   feed: { id: string; type: string; remarks?: string; occurredAt: string; by?: string; accountId: string; accountName: string; stakeholder?: string; outcome?: string }[];
 }
 
-const dayLabel = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+const dayLabel = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
 /** Live pulse: refreshes every 30 s and whenever the tab regains focus. */
 export function usePulse(preset: Preset) {
