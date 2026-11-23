@@ -115,7 +115,7 @@ export function AddStakeholderModal({ open, onClose, accountId, stakeholders = [
   // Only fills empty fields, so a half-typed form isn't overwritten.
   const applyAi = (r: StakeholderFill) => {
     setF((cur) => ({ ...cur,
-      fullName: cur.fullName || r.fullName || '', designation: cur.designation || r.designation || '',
+      fullName: cur.fullName || r.fullName || '', designation: cur.designation || closestDesignation(r.designation, designations.data) || r.designation || '',
       department: cur.department || r.department || '', linkedinUrl: cur.linkedinUrl || r.linkedinUrl || '' }));
     if (r.emails.length) setEmails((cur) => [...cur.filter(Boolean), ...r.emails.filter((e) => !cur.includes(e))]);
     if (r.phones.length) setPhones((cur) => [...cur.filter(Boolean), ...r.phones.filter((p) => !cur.includes(p))]);
@@ -144,9 +144,11 @@ export function AddStakeholderModal({ open, onClose, accountId, stakeholders = [
         <Field label={t('stakeholder.designation')}
           hint={matchedDesignation
             ? `Mapped automatically: L${matchedDesignation.level} · ${matchedDesignation.department.charAt(0) + matchedDesignation.department.slice(1).toLowerCase()}`
+            : f.designation ? 'This title isn’t in the list, so level and department stay blank. Pick the closest one if it fits.'
             : 'Choose a designation to fill level and department.'}>
           <Select value={f.designation} onChange={(e) => setF({ ...f, designation: e.target.value, department: '' })}>
             <option value="">Select designation…</option>
+            {f.designation && !matchedDesignation && <option value={f.designation}>{f.designation} · not in the list yet</option>}
             {designations.data?.map((d) => (
               <option key={d.id} value={d.designation}>
                 {d.designation} · L{d.level} · {d.department}
@@ -253,4 +255,22 @@ export function EditStakeholderModal({ open, onClose, accountId, stakeholder }: 
       </div>
     </Modal>
   );
+}
+
+/**
+ * Maps a title the AI read (e.g. "VP - Human Resources") onto the closest designation in the dropdown:
+ * exact match ignoring case and punctuation first, then one containing the other. Null when nothing fits.
+ */
+function closestDesignation(title: string | null | undefined, options?: { designation: string }[]): string | null {
+  if (!title || !options?.length) return null;
+  const norm = (s: string) => s.toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim();
+  const expand = (s: string) => norm(s).replace(/\bvp\b/g, 'vice president').replace(/\bhr\b/g, 'human resources')
+    .replace(/\bsr\b/g, 'senior').replace(/\bmgr\b/g, 'manager').replace(/\bavp\b/g, 'assistant vice president');
+  const t = expand(title);
+  const exact = options.find((o) => expand(o.designation) === t);
+  if (exact) return exact.designation;
+  const partial = options
+    .filter((o) => { const d = expand(o.designation); return d.length > 2 && (t.includes(d) || d.includes(t)); })
+    .sort((x, y) => Math.abs(expand(x.designation).length - t.length) - Math.abs(expand(y.designation).length - t.length));
+  return partial[0]?.designation ?? null;
 }
