@@ -9,6 +9,7 @@ import { cn } from '@/lib/cn';
 import type { LogCallResult, OutcomePlan, PhoneView } from '@/lib/types';
 import { Modal } from '@/components/ui/overlay';
 import { Badge, Button, Field, Input, Select, Textarea } from '@/components/ui/ui';
+import { VoiceNote, type CallNoteSuggestion } from './VoiceNote';
 
 /** Outcomes grouped the way a BDR thinks about a call, so the right one is one click away. */
 const GROUPS: { title: string; codes: string[] }[] = [
@@ -35,15 +36,25 @@ export function LogCallModal({ open, onClose, target, onLogged, saveAndNext }: {
   const [phoneId, setPhoneId] = useState('');
   const [taskDue, setTaskDue] = useState('');
   const [ref, setRef] = useState({ fullName: '', designation: '', email: '', phone: '' });
+  const [aiFilled, setAiFilled] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    setCode(''); setRemark(''); setFollowUpDate(''); setReason(''); setTaskDue('');
+    setCode(''); setRemark(''); setFollowUpDate(''); setReason(''); setTaskDue(''); setAiFilled(false);
     setRef({ fullName: '', designation: '', email: '', phone: '' });
     setPhoneId(target?.phones?.find((p) => p.primary && p.valid)?.id ?? target?.phones?.find((p) => p.valid)?.id ?? '');
   }, [open, target]);
 
   const labels = useMemo(() => Object.fromEntries((outcomes.data ?? []).map((o) => [o.code, o.label])), [outcomes.data]);
+
+  // AI only pre-fills; every field stays editable and nothing is saved until the BDR presses Save.
+  function applySuggestion(s: CallNoteSuggestion) {
+    if (s.outcomeCode && labels[s.outcomeCode]) setCode(s.outcomeCode);
+    if (s.remark) setRemark(s.remark);
+    if (s.followUpDate) setFollowUpDate(s.followUpDate);
+    if (s.reason) setReason(s.reason);
+    setAiFilled(true);
+  }
 
   // Preview shows exactly what the rule table will do before the BDR saves (M2-3: plan editable before save).
   const preview = useQuery({
@@ -90,6 +101,8 @@ export function LogCallModal({ open, onClose, target, onLogged, saveAndNext }: {
         <Button variant="primary" disabled={!!missing} loading={log.isPending && log.variables === false} onClick={() => log.mutate(false)}>Save</Button>
       </>}>
       <div className="space-y-5">
+        <VoiceNote onResult={applySuggestion} />
+        {aiFilled && <p className="-mt-3 text-xs text-ink-muted">Filled from your voice note. Check each field before saving.</p>}
         {target?.phones && target.phones.length > 1 && (
           <Field label="Number dialled">
             <Select value={phoneId} onChange={(e) => setPhoneId(e.target.value)}>
