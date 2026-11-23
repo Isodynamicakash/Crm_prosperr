@@ -128,7 +128,9 @@ function AeHome({ preset, setPreset, first }: HomeProps) {
   const flagged = useQuery({ queryKey: ['to-be-moved'], queryFn: () => api.get<{ id: string; name: string; stage: LifecycleStage; lastActivityAt?: string }[]>('/api/lifecycle/to-be-moved') });
   const s = pulse.data?.series;
   const mrr = ((d?.mrrByTemperature as unknown as { temperature: string; count: number; mrr: number }[] | undefined) ?? []);
-  const openMrr = (pulse.data?.stageMix ?? []).filter((m) => !['WON', 'LOST', 'PROSPECT'].includes(m.stage)).reduce((a, m) => a + Number(m.mrr), 0);
+  const openStages = (pulse.data?.stageMix ?? []).filter((m) => !['WON', 'LOST', 'IMPLEMENTATION'].includes(m.stage));
+  const activeAccounts = openStages.reduce((a, m) => a + Number(m.count), 0);
+  const openMrr = openStages.filter((m) => m.stage !== 'PROSPECT').reduce((a, m) => a + Number(m.mrr), 0);
   const tempColor: Record<string, string> = { HOT: C.forest, WARM: C.mint, COLD: C.navy };
 
   return (
@@ -149,7 +151,7 @@ function AeHome({ preset, setPreset, first }: HomeProps) {
       <CommandHero title={`${greeting()}, ${first}`} subtitle={`Your pipeline pulse · ${today()}`} preset={preset} onPreset={setPreset}
         pulse={s} updatedAt={pulse.dataUpdatedAt} fetching={pulse.isFetching} onRefresh={() => pulse.refetch()}
         kpis={[
-          { label: 'Active accounts', value: d?.active ?? '—', hint: d ? `${d.l1Pending} L1 · ${d.l2Pending} L2 · ${d.l3Pending} L3 pending` : undefined, to: '/pipeline' },
+          { label: 'Active accounts', value: pulse.data ? activeAccounts : (d?.active ?? '—'), hint: 'Open accounts; won, lost and implementation excluded', to: '/pipeline' },
           { label: 'Open MRR', value: inr(openMrr), hint: 'Expected, across open deals' },
           { label: 'Meetings done', value: sum(s, 'meetingsDone'), spark: 'meetingsDone', delta: delta(s, 'meetingsDone') },
           { label: 'Won', value: sum(s, 'wins'), spark: 'wins', delta: delta(s, 'wins'), hint: d?.followUpsOverdue ? `${d.followUpsOverdue} follow-ups overdue` : `${d?.followUpsDueToday ?? 0} follow-ups today`, to: '/tasks' },
@@ -169,7 +171,7 @@ function AeHome({ preset, setPreset, first }: HomeProps) {
         <ActivityTrendCard s={s} mode="meetings" className="xl:col-span-2" />
         <ChartCard title="Workload" subtitle="What needs you next">
           <ul className="space-y-3">
-            {[['L1 pending', d?.l1Pending], ['L2 pending', d?.l2Pending], ['L3 pending', d?.l3Pending], ['Need multithreading', d?.accountsNeedingMultithreading], ['Follow-ups today', d?.followUpsDueToday]].map(([l, v]) => (
+            {[['L1 meetings awaiting outcome', d?.l1Pending], ['L2-ready accounts', d?.l2Pending], ['L3-ready accounts', d?.l3Pending], ['Multithreading needed', d?.accountsNeedingMultithreading], ['Follow-ups today', d?.followUpsDueToday]].map(([l, v]) => (
               <li key={l as string}>
                 <div className="mb-1 flex justify-between text-[12.5px]"><span className="text-ink-soft">{l}</span><span className="font-semibold tabular-nums">{Number(v ?? 0)}</span></div>
                 <Meter value={Number(v ?? 0)} max={Math.max(1, Number(d?.active ?? 1))} />
