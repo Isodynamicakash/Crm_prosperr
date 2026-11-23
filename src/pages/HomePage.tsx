@@ -11,7 +11,7 @@ import { Button, Empty } from '@/components/ui/ui';
 import { stageLabel } from '@/components/ui/status';
 import { C, ChartCard, Donut, EmptyChart, Funnel, GroupedBars, Meter, RadialGauge } from '@/components/charts/kit';
 import { ActivityTrendCard, CommandHero, HeatmapCard, LiveFeedCard, OutcomeMixCard, StageMixCard, delta, periodParams, sum, usePulse, type Preset } from '@/features/dashboard/pulse';
-import { Scoreboard } from '@/features/dashboard/Scoreboard';
+import { MyScoreboard, Scoreboard } from '@/features/dashboard/Scoreboard';
 import { RecordOutcomeModal, type MeetingRef } from '@/features/pipeline/PipelineForms';
 import { AddAccountModal } from '@/features/accounts/AccountForms';
 
@@ -74,6 +74,8 @@ function BdrHome({ preset, setPreset, first }: HomeProps) {
           </div>
         </div>
       </CommandHero>
+
+      <MyScoreboard preset={preset} />
 
       <div className="grid gap-4 xl:grid-cols-3">
         <ActivityTrendCard s={s} className="xl:col-span-2" />
