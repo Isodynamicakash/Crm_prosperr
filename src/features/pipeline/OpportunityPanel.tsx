@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AlertTriangle, Check, Lightbulb, Link2, Trophy, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -35,7 +35,24 @@ export function OpportunityPanel({ opportunityId, canEdit }: { opportunityId: st
   const [attachFor, setAttachFor] = useState<ChecklistRow | null>(null);
   const [tab, setTab] = useState<string | null>(null);
   const o = data?.opportunity;
-  useEffect(() => { if (o) setF(o); }, [o]);
+  // Live sync refreshes this card; keep the user's unsaved edits instead of resetting them to the server copy.
+  // If someone else changed the deal meanwhile, the version check on save catches it.
+  const base = useRef<Partial<Opp> | null>(null);
+  useEffect(() => {
+    if (!o) return;
+    setF((cur) => {
+      const editing = base.current && JSON.stringify(pick(cur)) !== JSON.stringify(pick(base.current));
+      base.current = o;
+      return editing ? cur : o;
+    });
+  }, [o]);
+  const unsaved = !!o && canEdit && JSON.stringify(pick(f)) !== JSON.stringify(pick(o));
+  useEffect(() => {
+    if (!unsaved) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [unsaved]);
 
   const save = useAction(() => api.patch(`/api/opportunities/${opportunityId}`, {
     temperature: f.temperature ?? null, expectedMrr: f.expectedMrr ?? null, licenseCount: f.licenseCount ?? null,
@@ -100,7 +117,7 @@ export function OpportunityPanel({ opportunityId, canEdit }: { opportunityId: st
           )}
         </div>
         {canEdit && dirty && (
-          <div className="flex justify-end gap-2"><Button size="sm" onClick={() => setF(o)}>Discard</Button><Button size="sm" variant="primary" loading={save.isPending} onClick={() => save.mutate(undefined)}>Save changes</Button></div>
+          <div className="flex items-center justify-end gap-2 rounded-xl bg-brand-forest-50 px-3 py-2 ring-1 ring-brand-forest/20"><span className="mr-auto flex items-center gap-1.5 text-xs font-semibold text-brand-forest"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-mint" />Unsaved changes</span><Button size="sm" onClick={() => setF(o)}>Discard</Button><Button size="sm" variant="primary" loading={save.isPending} onClick={() => save.mutate(undefined)}>Save changes</Button></div>
         )}
 
         <Journey stage={o.stage} />
