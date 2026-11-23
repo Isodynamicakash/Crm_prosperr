@@ -11,7 +11,9 @@ interface Board { from: string; to: string; bdrs: BdrRow[]; aes: AeRow[] }
 
 const n = (v: unknown) => Number(v ?? 0);
 const fmtDay = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-const fmtNum = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
+/** Targets are pro-rated by day (e.g. 20 a month over 23 of its 30 days = 15.3), shown as whole numbers. */
+const fmtNum = (v: number) => (v > 0 && v < 1 ? '1' : String(Math.round(v)));
+const PRORATE = 'Target shared out by day: a monthly or weekly target counts only for the days of it inside the period you picked';
 
 /** Who did what in the chosen period: L1 booked and L1/L2/L3 done per BDR (against target) and per AE. */
 export function Scoreboard({ preset }: { preset: Preset }) {
@@ -54,10 +56,10 @@ export function Scoreboard({ preset }: { preset: Preset }) {
                   <tr key={r.userId} className="border-b border-line/60 last:border-0">
                     <td className="py-2.5 pr-3 font-medium">{r.name}</td>
                     <td className="px-2 text-right tabular-nums">{n(r.calls)}</td>
-                    <td className="px-2 text-right tabular-nums">{n(r.l1Booked)}{r.l1BookedTarget != null && <span className="text-ink-muted"> / {fmtNum(n(r.l1BookedTarget))}</span>}</td>
+                    <td className="px-2 text-right tabular-nums">{n(r.l1Booked)}{r.l1BookedTarget != null && <span className="text-ink-muted" title={PRORATE}> / {fmtNum(n(r.l1BookedTarget))}</span>}</td>
                     <td className="px-2">
                       <div className="flex items-center gap-2">
-                        <span className="w-14 shrink-0 tabular-nums"><b>{n(r.l1Done)}</b>{shown != null && <span className="text-ink-muted"> / {shown}</span>}</span>
+                        <span className="w-14 shrink-0 tabular-nums"><b>{n(r.l1Done)}</b>{shown != null && <span className="text-ink-muted" title={PRORATE}> / {shown}</span>}</span>
                         {pct != null ? (
                           <>
                             <span className="h-2 min-w-[80px] flex-1 overflow-hidden rounded-full bg-brand-forest-50">
@@ -68,8 +70,8 @@ export function Scoreboard({ preset }: { preset: Preset }) {
                         ) : <span className="text-xs text-ink-muted">no target</span>}
                       </div>
                     </td>
-                    <td className="px-2 text-right tabular-nums">{n(r.l2Done)}{r.l2DoneTarget != null && <span className="text-ink-muted"> / {fmtNum(n(r.l2DoneTarget))}</span>}</td>
-                    <td className="px-2 text-right tabular-nums">{n(r.l3Done)}{r.l3DoneTarget != null && <span className="text-ink-muted"> / {fmtNum(n(r.l3DoneTarget))}</span>}</td>
+                    <td className="px-2 text-right tabular-nums">{n(r.l2Done)}{r.l2DoneTarget != null && <span className="text-ink-muted" title={PRORATE}> / {fmtNum(n(r.l2DoneTarget))}</span>}</td>
+                    <td className="px-2 text-right tabular-nums">{n(r.l3Done)}{r.l3DoneTarget != null && <span className="text-ink-muted" title={PRORATE}> / {fmtNum(n(r.l3DoneTarget))}</span>}</td>
                   </tr>
                 );
               })}
@@ -77,7 +79,7 @@ export function Scoreboard({ preset }: { preset: Preset }) {
                 <tr className="bg-canvas/60 font-semibold">
                   <td className="py-2 pr-3">Team</td><td className="px-2 text-right tabular-nums">{tot(bdrs, 'calls')}</td>
                   <td className="px-2 text-right tabular-nums">{tot(bdrs, 'l1Booked')}</td>
-                  <td className="px-2 tabular-nums">{tot(bdrs, 'l1Done')}{bdrs.some((r) => r.l1DoneTarget != null) && <span className="font-normal text-ink-muted"> / {fmtNum(tot(bdrs, 'l1DoneTarget'))}</span>}</td>
+                  <td className="px-2 tabular-nums">{tot(bdrs, 'l1Done')}{bdrs.some((r) => r.l1DoneTarget != null) && <span className="font-normal text-ink-muted" title={PRORATE}> / {fmtNum(tot(bdrs, 'l1DoneTarget'))}</span>}</td>
                   <td className="px-2 text-right tabular-nums">{tot(bdrs, 'l2Done')}</td><td className="px-2 text-right tabular-nums">{tot(bdrs, 'l3Done')}</td>
                 </tr>
               )}
@@ -127,7 +129,7 @@ function Goal({ label, done, target, hint }: { label: string; done: number; targ
     <div className="rounded-2xl border border-line/80 bg-canvas/50 p-3.5">
       <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-muted">{label}</p>
       <p className="mt-1 font-display text-[26px] font-medium leading-none tabular-nums">
-        {done}{target != null && <span className="text-[15px] text-ink-muted"> / {fmtNum(target)}</span>}
+        {done}{target != null && <span className="text-[15px] text-ink-muted" title={PRORATE}> / {fmtNum(target)}</span>}
       </p>
       {pct != null ? (
         <div className="mt-2.5 flex items-center gap-2">
@@ -151,14 +153,14 @@ export function MyScoreboard({ preset, bdrId }: { preset: Preset; bdrId?: string
   const me = q.data?.me;
   const t = (v: number | null | undefined) => (v == null ? null : n(v));
   const cell = (done: unknown, target: number | null | undefined) => (
-    <td className="px-2 text-right tabular-nums">{n(done)}{target != null && <span className="text-ink-muted"> / {fmtNum(n(target))}</span>}</td>
+    <td className="px-2 text-right tabular-nums">{n(done)}{target != null && <span className="text-ink-muted" title={PRORATE}> / {fmtNum(n(target))}</span>}</td>
   );
 
   return (
     <section className="rounded-[24px] border border-line/80 bg-white p-4 sm:p-5">
       <p className="flex items-center gap-2 font-display text-[18px] font-medium tracking-[-0.02em]"><Users className="h-4 w-4 text-brand-forest" />My numbers vs target</p>
       <p className="text-xs text-ink-muted">
-        {preset.startsWith('custom:') || !q.data ? periodLabel(preset) : `${periodLabel(preset)} · ${fmtDay(q.data.from)} to ${fmtDay(q.data.to)}`} · targets are prorated to the days you picked
+        {preset.startsWith('custom:') || !q.data ? periodLabel(preset) : `${periodLabel(preset)} · ${fmtDay(q.data.from)} to ${fmtDay(q.data.to)}`} · whole-month picks use the full monthly target
       </p>
       {q.isLoading && <p className="py-6 text-center text-xs text-ink-muted">Loading…</p>}
       {me && (
