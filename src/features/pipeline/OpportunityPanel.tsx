@@ -40,11 +40,11 @@ export function OpportunityPanel({ opportunityId, canEdit }: { opportunityId: st
   const base = useRef<Partial<Opp> | null>(null);
   useEffect(() => {
     if (!o) return;
-    setF((cur) => {
-      const editing = base.current && JSON.stringify(pick(cur)) !== JSON.stringify(pick(base.current));
-      base.current = o;
-      return editing ? cur : o;
-    });
+    // Read and move the "last server copy" outside the state updater: React may run an updater twice (StrictMode),
+    // and a ref changed inside it made the second run think the form was being edited, leaving it blank.
+    const prev = base.current;
+    base.current = o;
+    setF((cur) => (prev && JSON.stringify(pick(cur)) !== JSON.stringify(pick(prev)) ? cur : o));
   }, [o]);
   const unsaved = !!o && canEdit && JSON.stringify(pick(f)) !== JSON.stringify(pick(o));
   useEffect(() => {

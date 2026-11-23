@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { CalendarCheck2, CheckCircle2, ClipboardCheck, Handshake, PhoneCall, Trophy, UserCheck, type LucideIcon } from 'lucide-react';
 import { ease } from '@/lib/animations';
@@ -8,62 +6,32 @@ import { CountUp } from '@/lib/animations/components';
 import { TiltCard } from './Brand3D';
 
 const SAMPLE_KPIS = [
-  { label: 'Calls logged', to: 128 },
-  { label: 'SQLs approved', to: 9 },
-  { label: 'Meetings booked', to: 14 },
+  { label: 'Calls logged', to: 142 },
+  { label: 'SQLs approved', to: 11 },
+  { label: 'Meetings booked', to: 17 },
 ];
 
+/** Illustrative activity for the sign-in page: fictional companies and people, never real CRM data. */
 const SAMPLE_EVENTS: { icon: LucideIcon; text: string; time: string }[] = [
-  { icon: PhoneCall, text: 'Priya logged a call with Northwind · L1 booked', time: 'now' },
+  { icon: PhoneCall, text: 'Priya booked an L1 with the CFO of Northwind Labs', time: 'now' },
   { icon: ClipboardCheck, text: 'SQL for Kestrel Fintech approved by Meera', time: '2m' },
-  { icon: UserCheck, text: 'Orbit Pay assigned to Arjun (AE)', time: '6m' },
-  { icon: CalendarCheck2, text: 'L2 with Lumen Health moved to Thu 11:00', time: '12m' },
-  { icon: CheckCircle2, text: 'Follow-up created automatically for Rahul M.', time: '15m' },
-  { icon: Trophy, text: 'Sterling Foods marked Closed Won', time: '21m' },
+  { icon: UserCheck, text: 'Orbit Pay assigned to Arjun (AE)', time: '5m' },
+  { icon: CalendarCheck2, text: 'L2 with Lumen Health moved to Thu 11:00', time: '9m' },
+  { icon: PhoneCall, text: 'Rohan reached the HR head at Tidewater Logistics', time: '12m' },
+  { icon: CheckCircle2, text: 'Follow-up set for Ananya at Brightline Retail', time: '15m' },
+  { icon: Handshake, text: 'Cobalt Systems moved to negotiation · 420 licences', time: '19m' },
+  { icon: CalendarCheck2, text: 'L1 with Harbor Analytics held · CFO and payroll lead joined', time: '24m' },
+  { icon: Trophy, text: 'Sterling Foods marked Closed Won · ₹1.8L MRR', time: '31m' },
+  { icon: PhoneCall, text: 'Kabir started a calling session · 24 leads queued', time: '38m' },
+  { icon: ClipboardCheck, text: 'SQL submitted for Vertex Biotech · BANT complete', time: '44m' },
+  { icon: UserCheck, text: 'Second stakeholder added at Quartz Media (Head of Payroll)', time: '52m' },
 ];
 
-interface PublicStats { period: 'TODAY' | 'WEEK' | 'MONTH'; kpis: { calls: number; sqls: number; meetings: number }; recent: { kind: string; at: string }[] }
-
-/** What each event kind says on the public page: never a company or person name. */
-const KIND: Record<string, { icon: LucideIcon; text: string }> = {
-  CALL: { icon: PhoneCall, text: 'A call was logged' },
-  CALL_L1: { icon: PhoneCall, text: 'A call booked an L1 meeting' },
-  STAGE_SQL: { icon: ClipboardCheck, text: 'An SQL was submitted' },
-  STAGE_L1: { icon: CalendarCheck2, text: 'An L1 meeting was held' },
-  STAGE_L2: { icon: CalendarCheck2, text: 'A deal moved to L2' },
-  STAGE_L3: { icon: CalendarCheck2, text: 'A deal moved to L3' },
-  STAGE_NEGOTIATION: { icon: Handshake, text: 'A deal reached negotiation' },
-  STAGE_WON: { icon: Trophy, text: 'A deal was won' },
-  ASSIGNED: { icon: UserCheck, text: 'An account was assigned to an AE' },
-  TASK: { icon: CheckCircle2, text: 'A follow-up was created automatically' },
-};
-const PERIOD = { TODAY: 'Today across the team', WEEK: 'This week across the team', MONTH: 'This month across the team' } as const;
-
-function ago(iso: string) {
-  const m = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
-  if (m < 1) return 'now';
-  if (m < 60) return `${m}m`;
-  if (m < 60 * 24) return `${Math.round(m / 60)}h`;
-  if (m < 60 * 24 * 30) return `${Math.round(m / 1440)}d`;
-  return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-}
-
-/** Left side of the sign-in page: the pitch, a live team panel and the role chips, all on one left edge. */
+/** Left side of the sign-in page: the pitch, a sample team panel and the role chips, all on one left edge. */
 export function LoginScene() {
   const reduce = useReducedMotion();
-  const stats = useQuery({
-    queryKey: ['public-stats'], queryFn: () => api.get<PublicStats>('/public/stats'),
-    staleTime: 60_000, refetchInterval: 60_000, retry: 1,
-  });
-  const live = stats.data;
-  const kpis = live ? [
-    { label: 'Calls logged', to: live.kpis.calls },
-    { label: 'SQLs', to: live.kpis.sqls },
-    { label: 'Meetings booked', to: live.kpis.meetings },
-  ] : SAMPLE_KPIS;
-  const events = live && live.recent.length
-    ? live.recent.map((e) => ({ ...(KIND[e.kind] ?? KIND.CALL), time: ago(e.at) }))
-    : SAMPLE_EVENTS;
+  const kpis = SAMPLE_KPIS;
+  const events = SAMPLE_EVENTS;
   const [start, setStart] = useState(0);
   useEffect(() => {
     if (reduce || events.length <= 3) return;
@@ -90,7 +58,7 @@ export function LoginScene() {
             <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
             <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-brand-mint/20 blur-3xl" />
             <div className="relative flex items-center justify-between">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-paper/50">{live ? PERIOD[live.period] : 'Today across the team'}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-paper/50">Today across the team</p>
               <span className="flex items-center gap-1.5 rounded-full bg-brand-mint/15 px-2.5 py-1 text-[11px] font-semibold text-brand-mint">
                 <span className="relative flex h-1.5 w-1.5"><span className="absolute h-full w-full rounded-full bg-brand-mint motion-safe:animate-ping" /><span className="relative h-1.5 w-1.5 rounded-full bg-brand-mint" /></span>Live
               </span>
@@ -119,7 +87,7 @@ export function LoginScene() {
                 </li>
               ))}
             </ul>
-            <p className="relative mt-3 text-[10.5px] uppercase tracking-[0.14em] text-paper/30">{live ? 'Live team activity · no client details shown' : 'Illustrative sample data'}</p>
+            <p className="relative mt-3 text-[10.5px] uppercase tracking-[0.14em] text-paper/30">Illustrative sample data</p>
           </div>
         </TiltCard>
       </motion.div>
