@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
-import { Pencil, Plus, UserCheck, UserX, Users } from 'lucide-react';
+import { Pencil, Plus, Shuffle, UserCheck, UserX, Users } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useAction } from '@/lib/hooks';
 import { useUsers } from '@/lib/queries';
-import { humanize, relTime } from '@/lib/format';
+import { relTime } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import type { Role, UserView } from '@/lib/types';
 import { Avatar, Badge, Button, Card, Empty, Field, Input, PageHeader, Select, SkeletonRows } from '@/components/ui/ui';
@@ -20,17 +19,19 @@ const ROLES: { value: Role; label: string; hint: string }[] = [
 ];
 
 /** Only the admin creates people and decides their role; everyone then signs in with Google. */
+import { HandoverModal } from '@/features/team/Handover';
+
 export default function TeamPage() {
   const { is, user: me } = useAuth();
   const admin = is('ADMIN');
   const { data, isLoading } = useUsers();
   const [editing, setEditing] = useState<UserView | 'new' | null>(null);
   const [deactivate, setDeactivate] = useState<UserView | null>(null);
-  const [owned, setOwned] = useState<{ user: UserView; rows: { accountId: string; name: string; ownership: string; stage: string }[] } | null>(null);
+  const [handover, setHandover] = useState<UserView | null>(null);
   const activate = useAction((id: string) => api.post(`/api/admin/users/${id}/activate`), { success: 'User reactivated', invalidate: [['users']] });
   const doDeactivate = useAction((u: UserView) => api.post<{ accountId: string; name: string; ownership: string; stage: string }[]>(`/api/admin/users/${u.id}/deactivate`).then((rows) => ({ u, rows })), {
     success: 'User deactivated — they can no longer sign in', invalidate: [['users']],
-    onSuccess: ({ u, rows }) => { setDeactivate(null); if (rows.length) setOwned({ user: u, rows }); },
+    onSuccess: ({ u, rows }) => { setDeactivate(null); if (rows.length) setHandover(u); },
   });
 
   const grouped = ROLES.map((r) => ({ ...r, users: (data ?? []).filter((u) => u.role === r.value) }));
@@ -117,11 +118,12 @@ export default function TeamPage() {
                 <span className="rounded-full bg-brand-forest-50 px-2.5 py-1 font-semibold text-brand-forest">{ROLES.find((r) => r.value === u.role)?.label}</span>
                 <span className={cn('font-medium', isOnline ? 'text-brand-forest' : 'text-ink-muted')}>Signed in {u.lastLoginAt ? relTime(u.lastLoginAt) : 'never'}</span>
               </div>
-              {admin && u.id !== me?.id && (
-                <div className="mt-3 flex gap-1.5">
-                  <Button size="sm" icon={<Pencil className="h-3.5 w-3.5" />} onClick={() => setEditing(u)}>Edit</Button>
-                  {u.active ? <Button size="sm" variant="ghost" icon={<UserX className="h-3.5 w-3.5" />} onClick={() => setDeactivate(u)}>Deactivate</Button>
-                    : <Button size="sm" variant="ghost" icon={<UserCheck className="h-3.5 w-3.5" />} onClick={() => activate.mutate(u.id)}>Reactivate</Button>}
+              {(admin || is('MANAGER')) && u.id !== me?.id && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {admin && <Button size="sm" icon={<Pencil className="h-3.5 w-3.5" />} onClick={() => setEditing(u)}>Edit</Button>}
+                  {(u.role === 'AE' || u.role === 'BDR') && <Button size="sm" variant="ghost" icon={<Shuffle className="h-3.5 w-3.5" />} onClick={() => setHandover(u)}>Hand over</Button>}
+                  {admin && (u.active ? <Button size="sm" variant="ghost" icon={<UserX className="h-3.5 w-3.5" />} onClick={() => setDeactivate(u)}>Deactivate</Button>
+                    : <Button size="sm" variant="ghost" icon={<UserCheck className="h-3.5 w-3.5" />} onClick={() => activate.mutate(u.id)}>Reactivate</Button>)}
                 </div>
               )}
             </div>
@@ -133,18 +135,8 @@ export default function TeamPage() {
       <UserModal user={editing} onClose={() => setEditing(null)} managers={(data ?? []).filter((u) => u.role === 'MANAGER' && u.active)} />
       <Confirm open={!!deactivate} onClose={() => setDeactivate(null)} danger confirmLabel="Deactivate" loading={doDeactivate.isPending}
         onConfirm={() => deactivate && doDeactivate.mutate(deactivate)} title={`Deactivate ${deactivate?.fullName}?`}
-        body="They lose access immediately. You’ll see the accounts they own so you can reassign them. Their history stays." />
-      <Modal open={!!owned} onClose={() => setOwned(null)} title={`${owned?.user.fullName} owned ${owned?.rows.length} accounts`} subtitle="Open each one to reassign it." width="max-w-xl"
-        footer={<Button onClick={() => setOwned(null)}>Done</Button>}>
-        <ul className="divide-y divide-line rounded-lg border border-line">
-          {owned?.rows.map((r) => (
-            <li key={r.accountId} className="flex items-center justify-between px-3 py-2 text-[13px]">
-              <Link to={`/accounts/${r.accountId}`} className="font-medium hover:text-accent">{r.name}</Link>
-              <span className="text-xs text-ink-muted">{humanize(r.ownership)} · {humanize(r.stage)}</span>
-            </li>
-          ))}
-        </ul>
-      </Modal>
+        body="They lose access immediately and their email sequences pause. Next you’ll get a plan to spread their accounts across the team. Their history stays." />
+      <HandoverModal user={handover} onClose={() => setHandover(null)} />
     </div>
   );
 }
