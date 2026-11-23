@@ -23,6 +23,8 @@ interface SavedView { id: string; name: string; entity: string; filters: string;
 /** Account list (M8-8): Active by default, quick filters, saved views, export. Click a row to open the account. */
 export default function AccountsPage() {
   const { user, is } = useAuth();
+  // deal temperature is the AE's call after L1; BDRs work prospects, where it is never set
+  const showTemp = user?.role !== 'BDR';
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [f, setF] = useState<Filters>(() => ({ ...DEFAULTS, ...(params.get('v') ? JSON.parse(params.get('v')!) : {}) }));
@@ -102,9 +104,11 @@ export default function AccountsPage() {
           <Select value={f.sizeBucket} onChange={(e) => set('sizeBucket', e.target.value)} className="w-28">
             <option value="">Any size</option>{['SMALL', 'MEDIUM', 'LARGE', 'ENTERPRISE'].map((s) => <option key={s} value={s}>{s.charAt(0) + s.slice(1).toLowerCase()}</option>)}
           </Select>
-          <Select value={f.temperature} onChange={(e) => set('temperature', e.target.value)} className="w-28">
-            <option value="">Any temp.</option><option value="HOT">Hot</option><option value="WARM">Warm</option><option value="COLD">Cold</option>
-          </Select>
+          {showTemp && (
+            <Select value={f.temperature} onChange={(e) => set('temperature', e.target.value)} className="w-28">
+              <option value="">Any temp.</option><option value="HOT">Hot</option><option value="WARM">Warm</option><option value="COLD">Cold</option>
+            </Select>
+          )}
           <Select value={f.cityId} onChange={(e) => set('cityId', e.target.value)} className="w-32">
             <option value="">Any city</option>{cities.data?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </Select>
@@ -138,7 +142,7 @@ export default function AccountsPage() {
                       </div>
                       {a.expectedMrr ? <span className="shrink-0 font-display text-[15px] font-medium tabular-nums text-brand-forest">{inr(a.expectedMrr)}</span> : null}
                     </div>
-                    <div className="mt-2.5 flex flex-wrap items-center gap-1.5"><StageBadge stage={a.stage} />{a.status === 'INACTIVE' && <StatusBadge status="INACTIVE" />}<TemperatureBadge t={a.temperature} /></div>
+                    <div className="mt-2.5 flex flex-wrap items-center gap-1.5"><StageBadge stage={a.stage} />{a.status === 'INACTIVE' && <StatusBadge status="INACTIVE" />}{showTemp && <TemperatureBadge t={a.temperature} />}</div>
                     <div className="mt-2"><StageMeter stage={a.stage} /></div>
                     <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-line/60 pt-2.5 text-[11.5px]">
                       <span className="min-w-0 truncate text-ink-soft">
@@ -156,7 +160,7 @@ export default function AccountsPage() {
               <thead>
                 <tr className="border-b border-line text-left text-2xs uppercase tracking-wide text-ink-muted">
                   <th className="px-4 py-2.5 font-medium">Account</th><th className="px-3 font-medium">Stage</th><th className="px-3 font-medium">Owner</th>
-                  <th className="px-3 font-medium">Temp.</th><th className="px-3 text-right font-medium">MRR</th><th className="px-3 font-medium">Next step</th>
+                  {showTemp && <th className="px-3 font-medium" title="Deal temperature set by the AE: how likely the deal is to close">Temp.</th>}<th className="px-3 text-right font-medium">MRR</th><th className="px-3 font-medium">Next step</th>
                   <th className="px-4 text-right font-medium">Last activity</th>
                 </tr>
               </thead>
@@ -184,7 +188,7 @@ export default function AccountsPage() {
                           {!a.aeOwner && !a.bdrs && <span className="text-ink-muted">—</span>}
                         </div>
                       </td>
-                      <td className="px-3"><TemperatureBadge t={a.temperature} /></td>
+                      {showTemp && <td className="px-3"><TemperatureBadge t={a.temperature} /></td>}
                       <td className="px-3 text-right">{a.expectedMrr ? <span className="font-display text-[15px] font-medium tabular-nums">{inr(a.expectedMrr)}</span> : <span className="text-ink-muted">—</span>}</td>
                       <td className="max-w-[220px] px-3">
                         {a.status === 'INACTIVE' ? <span className="text-xs text-ink-muted">{a.inactiveReason}{a.revisitOn && ` · revisit ${fmtDate(a.revisitOn)}`}</span>

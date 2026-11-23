@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowDownRight, ArrowUpRight, CalendarCheck2, CalendarRange, ClipboardCheck, PhoneCall, RefreshCw, Trophy, type LucideIcon } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, CalendarCheck2, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, ClipboardCheck, PhoneCall, RefreshCw, Trophy, type LucideIcon } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { relTime } from '@/lib/format';
@@ -20,8 +20,18 @@ export function periodParams(p: Preset): Record<string, string> {
   return { preset: p };
 }
 const fmtDay = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' });
+/** Last day of a month as YYYY-MM-DD (month is 1-12). */
+const monthEnd = (y: number, m: number) => `${y}-${String(m).padStart(2, '0')}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`;
+/** `custom:` range covering exactly one calendar month, else null. */
+export function wholeMonth(p: Preset): { y: number; m: number } | null {
+  if (!p.startsWith('custom:')) return null;
+  const [, from, to] = p.split(':'); const y = Number(from.slice(0, 4)), m = Number(from.slice(5, 7));
+  return from.endsWith('-01') && to === monthEnd(y, m) ? { y, m } : null;
+}
 export function periodLabel(p: Preset) {
   if (!p.startsWith('custom:')) return PRESETS.find((x) => x.value === p)?.label ?? '';
+  const wm = wholeMonth(p);
+  if (wm) return new Date(wm.y, wm.m - 1, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
   const [, from, to] = p.split(':'); return `${fmtDay(from)} – ${fmtDay(to)}`;
 }
 export const PRESETS: { value: Preset; label: string }[] = [{ value: '7', label: '7 days' }, { value: '30', label: '30 days' }, { value: 'month', label: 'This month' }, { value: 'quarter', label: 'Quarter' }];
@@ -209,31 +219,64 @@ export function LiveFeedCard({ feed, className }: { feed?: Pulse['feed']; classN
   );
 }
 
-/** Fixed periods plus "Custom": any from-to date range, applied to every number on the page. */
+/** Fixed periods, a month picker, and "Custom": any from-to date range, applied to every number on the page. */
 function PeriodPicker({ preset, onPreset }: { preset: Preset; onPreset: (p: Preset) => void }) {
-  const custom = preset.startsWith('custom:');
+  const month = wholeMonth(preset);
+  const custom = preset.startsWith('custom:') && !month;
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  const thisY = Number(today.slice(0, 4)), thisM = Number(today.slice(5, 7));
   const monthStart = `${today.slice(0, 8)}01`;
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState<'month' | 'custom' | null>(null);
+  const [year, setYear] = useState(month?.y ?? thisY);
   const [from, setFrom] = useState(custom ? preset.split(':')[1] : monthStart);
   const [to, setTo] = useState(custom ? preset.split(':')[2] : today);
   useEffect(() => { if (custom) { setFrom(preset.split(':')[1]); setTo(preset.split(':')[2]); } }, [preset, custom]);
+  useEffect(() => { if (month) setYear(month.y); }, [month?.y]); // eslint-disable-line react-hooks/exhaustive-deps
   const valid = !!from && !!to && from <= to;
+  const on = 'bg-brand-mint text-brand-night shadow-[0_0_18px_rgba(35,178,74,.45)]';
+  const pickMonth = (m: number) => { onPreset(`custom:${year}-${String(m).padStart(2, '0')}-01:${monthEnd(year, m)}`); setOpen(null); };
   return (
     <div className="flex flex-col items-end gap-2">
       <div className="inline-flex flex-wrap justify-end rounded-full border border-white/10 bg-white/[0.05] p-1 backdrop-blur">
         {PRESETS.map((o) => (
-          <button key={o.value} onClick={() => { setOpen(false); onPreset(o.value); }}
+          <button key={o.value} onClick={() => { setOpen(null); onPreset(o.value); }}
             className={cn('h-8 rounded-full px-3.5 text-xs font-semibold transition-all duration-200',
-              preset === o.value ? 'bg-brand-mint text-brand-night shadow-[0_0_18px_rgba(35,178,74,.45)]' : 'text-paper/60 hover:text-paper')}>{o.label}</button>
+              preset === o.value ? on : 'text-paper/60 hover:text-paper')}>{o.label}</button>
         ))}
-        <button onClick={() => setOpen((v) => !v)} aria-expanded={open}
+        <button onClick={() => setOpen((v) => (v === 'month' ? null : 'month'))} aria-expanded={open === 'month'}
           className={cn('flex h-8 items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold transition-all duration-200',
-            custom ? 'bg-brand-mint text-brand-night shadow-[0_0_18px_rgba(35,178,74,.45)]' : 'text-paper/60 hover:text-paper')}>
+            month ? on : 'text-paper/60 hover:text-paper')}>
+          <CalendarDays className="h-3.5 w-3.5" />{month ? periodLabel(preset) : 'Month'}
+        </button>
+        <button onClick={() => setOpen((v) => (v === 'custom' ? null : 'custom'))} aria-expanded={open === 'custom'}
+          className={cn('flex h-8 items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold transition-all duration-200',
+            custom ? on : 'text-paper/60 hover:text-paper')}>
           <CalendarRange className="h-3.5 w-3.5" />{custom ? periodLabel(preset) : 'Custom'}
         </button>
       </div>
-      {open && (
+      {open === 'month' && (
+        <div className="w-[264px] rounded-2xl border border-white/10 bg-[#101311]/90 p-2.5 backdrop-blur">
+          <div className="mb-2 flex items-center justify-between">
+            <button onClick={() => setYear((y) => y - 1)} aria-label="Previous year" className="grid h-7 w-7 place-items-center rounded-full text-paper/70 hover:bg-white/10"><ChevronLeft className="h-4 w-4" /></button>
+            <span className="text-xs font-semibold text-paper">{year}</span>
+            <button onClick={() => setYear((y) => y + 1)} disabled={year >= thisY} aria-label="Next year" className="grid h-7 w-7 place-items-center rounded-full text-paper/70 hover:bg-white/10 disabled:opacity-30"><ChevronRight className="h-4 w-4" /></button>
+          </div>
+          <div className="grid grid-cols-4 gap-1">
+            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
+              const future = year > thisY || (year === thisY && m > thisM);
+              const sel = month?.y === year && month?.m === m;
+              return (
+                <button key={m} disabled={future} onClick={() => pickMonth(m)}
+                  className={cn('h-8 rounded-lg text-xs font-semibold transition-colors disabled:opacity-25',
+                    sel ? 'bg-brand-mint text-brand-night' : year === thisY && m === thisM ? 'border border-brand-mint/50 text-paper hover:bg-white/10' : 'text-paper/75 hover:bg-white/10')}>
+                  {new Date(2000, m - 1, 1).toLocaleDateString('en-IN', { month: 'short' })}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      {open === 'custom' && (
         <div className="flex flex-wrap items-end gap-2 rounded-2xl border border-white/10 bg-[#101311]/90 p-2.5 backdrop-blur">
           <label className="text-[11px] text-paper/60">From
             <input type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)}
@@ -241,7 +284,7 @@ function PeriodPicker({ preset, onPreset }: { preset: Preset; onPreset: (p: Pres
           <label className="text-[11px] text-paper/60">To
             <input type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)}
               className="mt-1 block h-8 rounded-lg border border-white/15 bg-white/[0.06] px-2 text-xs text-paper [color-scheme:dark]" /></label>
-          <button disabled={!valid} onClick={() => { onPreset(`custom:${from}:${to}`); setOpen(false); }}
+          <button disabled={!valid} onClick={() => { onPreset(`custom:${from}:${to}`); setOpen(null); }}
             className="h-8 rounded-full bg-brand-mint px-4 text-xs font-bold text-brand-night disabled:opacity-40">Apply</button>
         </div>
       )}
