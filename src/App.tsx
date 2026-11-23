@@ -13,6 +13,7 @@ const AccountDetailPage = lazy(() => import('@/pages/AccountDetailPage'));
 const PipelinePage = lazy(() => import('@/pages/PipelinePage'));
 const SqlPage = lazy(() => import('@/pages/SqlPage'));
 const TasksPage = lazy(() => import('@/pages/TasksPage'));
+const SequencesPage = lazy(() => import('@/pages/SequencesPage'));
 const ReportsPage = lazy(() => import('@/pages/ReportsPage'));
 const TeamPage = lazy(() => import('@/pages/TeamPage'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
@@ -51,6 +52,7 @@ export default function App() {
         <Route path="accounts/:id" element={<AccountDetailPage />} />
         <Route path="pipeline" element={<Guard roles={['AE', 'MANAGER', 'ADMIN']}><PipelinePage /></Guard>} />
         <Route path="sql" element={<Guard roles={['BDR', 'MANAGER', 'ADMIN']}><SqlPage /></Guard>} />
+        <Route path="sequences" element={<Guard roles={['BDR', 'MANAGER', 'ADMIN']}><SequencesPage /></Guard>} />
         <Route path="tasks" element={<TasksPage />} />
         <Route path="reports" element={<Guard roles={['MANAGER', 'ADMIN']}><ReportsPage /></Guard>} />
         <Route path="team" element={<Guard roles={['MANAGER', 'ADMIN']}><TeamPage /></Guard>} />

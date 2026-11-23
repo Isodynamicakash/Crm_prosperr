@@ -6,11 +6,12 @@ import { useAction, useDebounced } from '@/lib/hooks';
 import { usePicklist } from '@/lib/queries';
 import { cn } from '@/lib/cn';
 import { fmtDateTime, humanize, isPastLocal, localToInstant, nowLocalInput } from '@/lib/format';
-import type { CapacityRow, SqlChecklist, StakeholderView } from '@/lib/types';
+import type { AccountView, CapacityRow, SqlChecklist, StakeholderView } from '@/lib/types';
 import { Modal } from '@/components/ui/overlay';
 import { Badge, Button, Checkbox, Field, Input, Select, Textarea } from '@/components/ui/ui';
 import { SqlBadge } from '@/components/ui/status';
 import { AiAssist } from '@/features/calls/VoiceNote';
+import { EditAccountModal } from '@/features/accounts/AccountForms';
 import { BusyStrip } from '@/features/integrations/Google';
 import { useAuth } from '@/lib/auth';
 import { useT } from '@/lib/i18n';
@@ -32,8 +33,15 @@ function CriterionIcon({ s }: { s: string }) {
  * Submit SQL + book L1 in one step (M4-3/M4-4). The ICP checklist re-checks live as the BDR fills the form,
  * so they see exactly why it would pass or fail before they press submit.
  */
-export function SubmitSqlModal({ open, onClose, accountId, accountName, stakeholders }: {
-  open: boolean; onClose: () => void; accountId: string; accountName: string; stakeholders: StakeholderView[];
+/** Missing SQL fields that live on the account (fixed in Edit account, not in the SQL form). */
+const ACCOUNT_FIELDS = new Set(['city', 'cityId', 'licensePotential', 'employeeCount', 'industry', 'industryId', 'website']);
+
+/** licensePotential -> "License potential", l1Booking -> "L1 booking", BANT stays BANT. */
+const fieldLabel = (k: string) => (k.toLowerCase() === 'bant' ? 'BANT' : k === k.toUpperCase() ? k
+  : (k.charAt(0).toUpperCase() + k.slice(1)).replace(/([a-z0-9])([A-Z])/g, (_, a, b) => `${a} ${b.toLowerCase()}`));
+
+export function SubmitSqlModal({ open, onClose, accountId, accountName, stakeholders, account }: {
+  open: boolean; onClose: () => void; accountId: string; accountName: string; stakeholders: StakeholderView[]; account?: AccountView;
 }) {
   const t = useT();
   const { user } = useAuth();
@@ -103,6 +111,7 @@ export function SubmitSqlModal({ open, onClose, accountId, accountName, stakehol
 
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
   const c = check.data;
+  const [fixing, setFixing] = useState(false);
   const needsIntent = c?.criteria.some((x) => x.code === 'LOCATION' && x.status !== 'PASS');
   const needsSmall = c?.criteria.some((x) => x.code === 'LICENSES' && x.status !== 'PASS');
   const named = (s: StakeholderView) => `${s.firstName} ${s.lastName ?? ''} · ${s.designation ?? '—'}${s.level ? ` (L${s.level})` : ''}`;
@@ -110,10 +119,12 @@ export function SubmitSqlModal({ open, onClose, accountId, accountName, stakehol
   return (
     <Modal open={open} onClose={onClose} width="max-w-4xl" title={t('sql.title', { name: accountName })} subtitle={t('sql.subtitle')}
       footer={<>
-        {c && !c.canSubmit && <span className="mr-auto text-xs text-ink-muted">{c.missingFields.length ? t('sql.missing', { f: c.missingFields.map(humanize).join(', ') }) : t('sql.icpFail')}</span>}
+        {c && !c.canSubmit && <span className="mr-auto flex items-center gap-2 text-xs text-ink-muted">{c.missingFields.length ? t('sql.missing', { f: c.missingFields.map(fieldLabel).join(', ') }) : t('sql.icpFail')}
+          {account && c.missingFields.some((k) => ACCOUNT_FIELDS.has(k)) && <button type="button" onClick={() => setFixing(true)} className="font-semibold text-brand-forest hover:underline">Fill in now</button>}</span>}
         <Button onClick={onClose}>{t('common.cancel')}</Button>
         <Button variant="primary" disabled={!c?.canSubmit || isPastLocal(f.start)} loading={submit.isPending} onClick={() => submit.mutate(undefined)}>{t('sql.submit')}</Button>
       </>}>
+      {account && <EditAccountModal open={fixing} onClose={() => setFixing(false)} account={account} focus={c?.missingFields} />}
       <div className="grid gap-6 md:grid-cols-[1fr_260px]">
         <div className="space-y-5">
           <div>

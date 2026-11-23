@@ -17,6 +17,61 @@ interface StakeholderFill { transcript: string; fullName: string | null; designa
 
 interface Resolution { account: AccountView; created: boolean; alreadyTaken: { name: string; designation?: string; bdrName: string }[] }
 
+/** Edit company details (city, size, licences...). Needed before an SQL can be submitted; logged in the audit trail. */
+export function EditAccountModal({ open, onClose, account, focus }: { open: boolean; onClose: () => void; account: AccountView; focus?: string[] }) {
+  const cities = useCities();
+  const industries = usePicklist('INDUSTRY');
+  const sources = usePicklist('LEAD_SOURCE');
+  const from = (a: AccountView) => ({ name: a.name ?? '', website: a.website ?? '', cityId: a.cityId ?? '', industryId: a.industryId ?? '',
+    leadSourceId: a.leadSourceId ?? '', employeeCount: a.employeeCount?.toString() ?? '', licensePotential: a.licensePotential?.toString() ?? '' });
+  const [f, setF] = useState(() => from(account));
+  useEffect(() => { if (open) setF(from(account)); }, [open, account]);
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value });
+  const want = (k: string) => focus?.includes(k);
+  const save = useAction(() => api.patch(`/api/accounts/${account.id}`, {
+    name: f.name.trim() !== account.name ? f.name.trim() || null : null,
+    website: f.website.trim() && f.website.trim() !== (account.website ?? '') ? f.website.trim() : null,
+    cityId: f.cityId && f.cityId !== account.cityId ? f.cityId : null,
+    industryId: f.industryId && f.industryId !== account.industryId ? f.industryId : null,
+    leadSourceId: f.leadSourceId && f.leadSourceId !== account.leadSourceId ? f.leadSourceId : null,
+    employeeCount: f.employeeCount !== '' && Number(f.employeeCount) !== account.employeeCount ? Number(f.employeeCount) : null,
+    licensePotential: f.licensePotential !== '' && Number(f.licensePotential) !== account.licensePotential ? Number(f.licensePotential) : null,
+    version: account.version,
+  }), { success: 'Account updated', invalidate: [['account', account.id], ['accounts'], ['sql-checklist', account.id]], onSuccess: onClose });
+  const ring = (k: string) => (want(k) && !f[k as keyof typeof f] ? 'ring-2 ring-brand-mint/60' : '');
+
+  return (
+    <Modal open={open} onClose={onClose} title="Edit account" subtitle={focus?.length ? 'Fill in the highlighted fields to submit the SQL.' : account.name}
+      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" disabled={!f.name.trim()} loading={save.isPending} onClick={() => save.mutate(undefined)}>Save</Button></>}>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Company name" required className="col-span-2"><Input value={f.name} onChange={set('name')} /></Field>
+        <Field label="Website" className="col-span-2"><Input value={f.website} onChange={set('website')} placeholder="acme.com" /></Field>
+        <Field label="City" required={want('city')}>
+          <Select value={f.cityId} onChange={set('cityId')} className={ring('cityId') || ring('city')}>
+            <option value="">Select…</option>
+            {cities.data?.map((c) => <option key={c.id} value={c.id}>{c.name}{c.priority !== 'NONE' ? ` · ${c.priority}` : ''}</option>)}
+          </Select>
+        </Field>
+        <Field label="Industry">
+          <Select value={f.industryId} onChange={set('industryId')}>
+            <option value="">Select…</option>
+            {industries.data?.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+          </Select>
+        </Field>
+        <Field label="Employees"><Input type="number" min={0} value={f.employeeCount} onChange={set('employeeCount')} /></Field>
+        <Field label="License potential" hint="Sets the size bucket" required={want('licensePotential')}>
+          <Input type="number" min={0} value={f.licensePotential} onChange={set('licensePotential')} className={ring('licensePotential')} /></Field>
+        <Field label="Lead source" className="col-span-2">
+          <Select value={f.leadSourceId} onChange={set('leadSourceId')}>
+            <option value="">Select…</option>
+            {sources.data?.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+          </Select>
+        </Field>
+      </div>
+    </Modal>
+  );
+}
+
 /** New prospect. If the company already exists (same domain), the BDR joins it and sees who is already being worked. */
 export function AddAccountModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();

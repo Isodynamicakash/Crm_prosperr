@@ -1,4 +1,5 @@
 import { WhatsAppButton } from '@/features/calls/WhatsApp';
+import { SequenceButton, SequenceModal } from '@/features/outreach/Sequence';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -18,7 +19,7 @@ import { TopoLines } from '@/components/brand/TopoLines';
 import { Confirm, Modal } from '@/components/ui/overlay';
 import { EngagementBadge, StageBadge, StageJourney, StatusBadge, TemperatureBadge } from '@/components/ui/status';
 import { LogCallModal, type CallTarget } from '@/features/calls/LogCallModal';
-import { AddStakeholderModal, EditStakeholderModal } from '@/features/accounts/AccountForms';
+import { AddStakeholderModal, EditAccountModal, EditStakeholderModal } from '@/features/accounts/AccountForms';
 import { AssignModal, SubmitSqlModal } from '@/features/sql/SqlForms';
 import { BookMeetingModal, KeepActiveModal, MoveInactiveModal, ReactivateModal, RecordOutcomeModal, RescheduleMeetingModal, type MeetingRef } from '@/features/pipeline/PipelineForms';
 import { OpportunityPanel } from '@/features/pipeline/OpportunityPanel';
@@ -27,7 +28,7 @@ const DEPT_ORDER: Department[] = ['FINANCE', 'HR', 'PAYROLL', 'OTHER'];
 interface Coverage { function: Department; engaged: boolean; bestLevel?: number; stakeholders: number }
 interface Multithreading { coverage: Partial<Record<Department, Coverage>>; needsMultithreading: boolean; onlyJuniorEngaged: boolean; suggestedNext?: { id: string; name: string; department?: string; level?: number } | null }
 
-type Dialog = null | 'stakeholder' | 'sql' | 'assign' | 'book' | 'inactive' | 'keep' | 'reactivate' | 'activity';
+type Dialog = null | 'stakeholder' | 'sql' | 'assign' | 'book' | 'inactive' | 'keep' | 'reactivate' | 'activity' | 'edit';
 
 /** One page per account: who's who, what happened, what's next — with every action one click away. */
 export default function AccountDetailPage() {
@@ -41,6 +42,7 @@ export default function AccountDetailPage() {
   const industries = usePicklist('INDUSTRY');
   const [dialog, setDialog] = useState<Dialog>(null);
   const [call, setCall] = useState<CallTarget | null>(null);
+  const [seqFor, setSeqFor] = useState<string | null>(null);
   const [outcomeFor, setOutcomeFor] = useState<MeetingRef | null>(null);
   const [rescheduleFor, setRescheduleFor] = useState<(MeetingRef & { scheduledStart?: string; meetingLink?: string }) | null>(null);
   const highlight = params.get('stakeholder');
@@ -199,7 +201,10 @@ export default function AccountDetailPage() {
           )}
 
           <Card className="p-4">
-            <p className="mb-3 text-[13px] font-semibold">Details</p>
+            <p className="mb-3 flex items-center justify-between text-[13px] font-semibold">Details
+              {((canWorkProspect && !inPipeline) || canAeAct) && a.status === 'ACTIVE' && (
+                <button onClick={() => setDialog('edit')} className="flex items-center gap-1 text-xs font-semibold text-brand-forest hover:underline"><Pencil className="h-3 w-3" />Edit</button>
+              )}</p>
             <dl className="space-y-2 text-[13px]">
               {[['City', city ? `${city.name}${city.priority !== 'NONE' ? ` · ${city.priority}` : ''}` : '—'], ['Industry', industry?.label ?? '—'],
                 ['Employees', num(a.employeeCount)], ['License potential', num(a.licensePotential)], ['Intent', humanize(a.intentRating)],
@@ -213,9 +218,11 @@ export default function AccountDetailPage() {
       </div>
 
       <LogCallModal open={!!call} target={call} onClose={() => setCall(null)}
-        onLogged={(r) => { if (r.openL1Booking && !inPipeline) setDialog('sql'); }} />
+        onLogged={(r) => { if (r.openL1Booking && !inPipeline) setDialog('sql'); else if (r.offerSequence && call) setSeqFor(call.stakeholderId); }} />
+      {seqFor && <SequenceModal open onClose={() => setSeqFor(null)} stakeholderId={seqFor} accountId={a.id} />}
       <AddStakeholderModal open={dialog === 'stakeholder'} onClose={() => setDialog(null)} accountId={a.id} stakeholders={stakeholders} />
-      <SubmitSqlModal open={dialog === 'sql'} onClose={() => setDialog(null)} accountId={a.id} accountName={a.name} stakeholders={stakeholders} />
+      <SubmitSqlModal open={dialog === 'sql'} onClose={() => setDialog(null)} accountId={a.id} accountName={a.name} stakeholders={stakeholders} account={a} />
+      <EditAccountModal open={dialog === 'edit'} onClose={() => setDialog(null)} account={a} />
       <AssignModal open={dialog === 'assign'} onClose={() => setDialog(null)} accountId={a.id} accountName={a.name} currentAeId={a.aeOwnerId} />
       <BookMeetingModal open={dialog === 'book'} onClose={() => setDialog(null)} accountId={a.id} stakeholders={stakeholders} stage={a.stage} aeId={a.aeOwnerId} />
       <MoveInactiveModal open={dialog === 'inactive'} onClose={() => setDialog(null)} accountId={a.id} />
@@ -273,6 +280,7 @@ function StakeholderRow({ s, onCall, highlight, accountId }: { s: StakeholderVie
         )}
         {phone && !s.doNotContact && !s.masked && <WhatsAppButton phone={phone.e164} name={s.firstName} onOpened={onCall} compact />}
         {!s.doNotContact && !s.masked && <Button size="sm" variant="subtle" icon={<PhoneCall className="h-3.5 w-3.5" />} onClick={onCall}>Log</Button>}
+        {!s.doNotContact && !s.masked && <SequenceButton stakeholderId={s.id} accountId={accountId} hasEmail={s.emails.some((e) => e.valid !== false)} />}
         {!s.masked && (
           <div className="relative">
             <Button size="icon" variant="ghost" onClick={() => setMenu((m) => !m)}><MoreHorizontal className="h-4 w-4" /></Button>

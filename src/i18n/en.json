@@ -4,6 +4,7 @@
   "nav./accounts": "Accounts",
   "nav./pipeline": "Pipeline",
   "nav./sql": "SQLs",
+  "nav./sequences": "Sequences",
   "nav./tasks": "Tasks",
   "nav./reports": "Reports",
   "nav./team": "Team",
