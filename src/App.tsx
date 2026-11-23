@@ -10,6 +10,7 @@ const HomePage = lazy(() => import('@/pages/HomePage'));
 const MyDayPage = lazy(() => import('@/pages/MyDayPage'));
 const AccountsPage = lazy(() => import('@/pages/AccountsPage'));
 const AccountDetailPage = lazy(() => import('@/pages/AccountDetailPage'));
+const MeetingsPage = lazy(() => import('@/pages/MeetingsPage'));
 const PipelinePage = lazy(() => import('@/pages/PipelinePage'));
 const SqlPage = lazy(() => import('@/pages/SqlPage'));
 const TasksPage = lazy(() => import('@/pages/TasksPage'));
@@ -49,6 +50,8 @@ export default function App() {
         <Route index element={<HomePage />} />
         <Route path="my-day" element={<Guard roles={['BDR']}><MyDayPage /></Guard>} />
         <Route path="accounts" element={<AccountsPage />} />
+        <Route path="my-leads" element={<Guard roles={['AE']}><AccountsPage myLeads /></Guard>} />
+        <Route path="meetings" element={<Guard roles={['AE']}><MeetingsPage /></Guard>} />
         <Route path="accounts/:id" element={<AccountDetailPage />} />
         <Route path="pipeline" element={<Guard roles={['AE', 'MANAGER', 'ADMIN']}><PipelinePage /></Guard>} />
         <Route path="sql" element={<Guard roles={['BDR', 'MANAGER', 'ADMIN']}><SqlPage /></Guard>} />
