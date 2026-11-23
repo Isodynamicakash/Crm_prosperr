@@ -180,5 +180,13 @@
   "whatsapp.logIt": "Log this WhatsApp call",
   "ai.uploadVoice": "Upload a voice note",
   "ai.uploadHint": "A WhatsApp voice note or any audio file",
-  "ai.badAudio": "This browser couldn’t read that audio file. Try Chrome, or send it as .mp3 or .m4a."
+  "ai.badAudio": "This browser couldn’t read that audio file. Try Chrome, or send it as .mp3 or .m4a.",
+  "csv.addMany": "Adding several people? Upload a CSV",
+  "csv.found": "{n} people found (columns: {cols}).",
+  "csv.skipped": "{n} rows skipped (no name or e-mail).",
+  "csv.addN": "Add {n} people",
+  "csv.added": "{n} people added",
+  "csv.failed": "{n} couldn’t be added:",
+  "csv.noColumns": "Couldn’t find a name or e-mail column in that CSV.",
+  "csv.tooMany": "Up to {n} people per CSV. For bigger lists use Import."
 }

@@ -9,6 +9,7 @@ import type { AccountView, Department, StakeholderView } from '@/lib/types';
 import { Modal } from '@/components/ui/overlay';
 import { Button, Checkbox, Field, Input, Select } from '@/components/ui/ui';
 import { AiAssist } from '@/features/calls/VoiceNote';
+import { StakeholderCsv } from './StakeholderCsv';
 import { useT } from '@/lib/i18n';
 
 interface StakeholderFill { transcript: string; fullName: string | null; designation: string | null; department: Department | null;
@@ -139,6 +140,7 @@ export function AddStakeholderModal({ open, onClose, accountId, stakeholders = [
           <AiAssist<StakeholderFill> endpoint="/api/ai/fill/STAKEHOLDER" onResult={applyAi} title={t('ai.stakeholderTitle')}
             example={t('ai.stakeholderExample')} pastePlaceholder={t('ai.stakeholderPaste')} />
           {aiFilled && <p className="mt-1.5 text-xs text-ink-muted">{t('ai.filledCheck')}</p>}
+          <StakeholderCsv accountId={accountId} designations={designations.data} onDone={onClose} />
         </div>
         <Field label={t('stakeholder.fullName')} required><Input autoFocus value={f.fullName} onChange={(e) => setF({ ...f, fullName: e.target.value })} /></Field>
         <Field label={t('stakeholder.designation')}
@@ -261,7 +263,7 @@ export function EditStakeholderModal({ open, onClose, accountId, stakeholder }: 
  * Maps a title the AI read (e.g. "VP - Human Resources") onto the closest designation in the dropdown:
  * exact match ignoring case and punctuation first, then one containing the other. Null when nothing fits.
  */
-function closestDesignation(title: string | null | undefined, options?: { designation: string }[]): string | null {
+export function closestDesignation(title: string | null | undefined, options?: { designation: string }[]): string | null {
   if (!title || !options?.length) return null;
   const norm = (s: string) => s.toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim();
   const expand = (s: string) => norm(s).replace(/\bvp\b/g, 'vice president').replace(/\bhr\b/g, 'human resources')
