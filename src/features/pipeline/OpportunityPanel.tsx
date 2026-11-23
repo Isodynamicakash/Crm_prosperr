@@ -34,6 +34,7 @@ export function OpportunityPanel({ opportunityId, canEdit }: { opportunityId: st
   const [move, setMove] = useState<LifecycleStage | null>(null);
   const [attachFor, setAttachFor] = useState<ChecklistRow | null>(null);
   const [tab, setTab] = useState<string | null>(null);
+  const [checklistOverrides, setChecklistOverrides] = useState<Record<string, boolean>>({});
   const o = data?.opportunity;
   // Live sync refreshes this card; keep the user's unsaved edits instead of resetting them to the server copy.
   // If someone else changed the deal meanwhile, the version check on save catches it.
@@ -60,9 +61,37 @@ export function OpportunityPanel({ opportunityId, canEdit }: { opportunityId: st
     nextStepDue: f.nextStepDue ?? null, expectedCloseDate: f.expectedCloseDate ?? null, version: o?.version,
   }), { success: 'Opportunity saved', invalidate: [['opportunity', opportunityId], ['account'], ['accounts']] });
 
-  const tick = useAction((p: { item: ChecklistRow; done: boolean; attachmentId?: string }) =>
-    api.put(`/api/opportunities/${opportunityId}/checklist/${p.item.id}`, { done: p.done, note: null, attachmentId: p.attachmentId ?? null }),
-  { invalidate: [['opportunity', opportunityId], ['account']] });
+  const tick = useAction(async (p: { item: ChecklistRow; done: boolean; attachmentId?: string }) => {
+    try {
+      return await api.put<ChecklistRow[]>(
+        `/api/opportunities/${opportunityId}/checklist/${p.item.id}`,
+        { done: p.done, note: null, attachmentId: p.attachmentId ?? null },
+      );
+    } catch (error) {
+      setChecklistOverrides((cur) => {
+        const next = { ...cur };
+        delete next[p.item.id];
+        return next;
+      });
+      throw error;
+    }
+  }, { invalidate: [['opportunity', opportunityId], ['account']] });
+
+  useEffect(() => {
+    if (!data) return;
+    setChecklistOverrides((cur) => {
+      let changed = false;
+      const next = { ...cur };
+      for (const [itemId, optimisticDone] of Object.entries(cur)) {
+        const serverItem = data.checklist.find((item) => item.id === itemId);
+        if (serverItem && serverItem.done === optimisticDone) {
+          delete next[itemId];
+          changed = true;
+        }
+      }
+      return changed ? next : cur;
+    });
+  }, [data]);
 
   if (!data || !o) return <Card className="p-4 text-xs text-ink-muted">Loading opportunity…</Card>;
   const dirty = JSON.stringify(pick(f)) !== JSON.stringify(pick(o));
@@ -70,6 +99,7 @@ export function OpportunityPanel({ opportunityId, canEdit }: { opportunityId: st
   const defaultTab = CHECKLIST_FOR[o.stage] ?? checklistStages[0];
   const activeTab = tab && checklistStages.includes(tab) ? tab : defaultTab;
   const stageItems = data.checklist.filter((c) => c.stage === activeTab);
+  const effectiveDone = (item: ChecklistRow) => checklistOverrides[item.id] ?? item.done;
   const guide = NEXT_STEP[o.stage];
   const moves = MANUAL_MOVES[o.stage] ?? [];
 
@@ -132,31 +162,44 @@ export function OpportunityPanel({ opportunityId, canEdit }: { opportunityId: st
             <div className="mb-2 flex items-center justify-between gap-2">
               <div className="min-w-0 flex-1">
                 <p className="font-display text-[15px] font-medium">Stage requirements</p>
-                <div className="mt-1.5 flex items-center gap-2"><div className="h-1.5 w-40 overflow-hidden rounded-full bg-black/[0.06]"><div className="h-full rounded-full bg-gradient-to-r from-brand-forest to-brand-mint transition-[width] duration-700" style={{ width: `${stageItems.length ? (100 * stageItems.filter((c) => c.done).length) / stageItems.length : 0}%` }} /></div>
-                  <span className="text-[11px] text-ink-muted">{stageItems.filter((c) => c.done).length} of {stageItems.length} done</span></div>
+                <div className="mt-1.5 flex items-center gap-2"><div className="h-1.5 w-40 overflow-hidden rounded-full bg-black/[0.06]"><div className="h-full rounded-full bg-gradient-to-r from-brand-forest to-brand-mint transition-[width] duration-700" style={{ width: `${stageItems.length ? (100 * stageItems.filter((c) => effectiveDone(c)).length) / stageItems.length : 0}%` }} /></div>
+                  <span className="text-[11px] text-ink-muted">{stageItems.filter((c) => effectiveDone(c)).length} of {stageItems.length} done</span></div>
               </div>
               <Segmented value={activeTab} onChange={setTab}
                 options={checklistStages.map((st) => {
                   const items = data.checklist.filter((c) => c.stage === st);
-                  return { value: st, label: `${st} · ${items.filter((c) => c.done).length}/${items.length}` };
+                    return { value: st, label: `${st} · ${items.filter((c) => effectiveDone(c)).length}/${items.length}` };
                 })} />
             </div>
             <ul className="space-y-1.5">
-              {stageItems.map((c) => (
+              {stageItems.map((c) => {
+                const done = effectiveDone(c);
+                return (
                 <li key={c.id}>
-                  <button disabled={!canEdit || tick.isPending}
-                    onClick={() => (c.done ? tick.mutate({ item: c, done: false }) : c.requiresAttachment ? setAttachFor(c) : tick.mutate({ item: c, done: true }))}
-                    className={cn('group flex w-full items-center gap-3 rounded-2xl border px-3.5 py-2.5 text-left transition-all disabled:cursor-default', c.done ? 'border-brand-mint/30 bg-[#E6F5EA]/60' : 'border-line/70 bg-white hover:border-brand-forest/30')}>
-                    <span className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors', c.done ? 'border-brand-mint bg-brand-mint text-white' : 'border-line group-hover:border-brand-forest')}>
-                      {c.done && <Check className="h-3 w-3" />}
+                  <button disabled={!canEdit}
+                    onClick={() => {
+                      if (done) {
+                        setChecklistOverrides((cur) => ({ ...cur, [c.id]: false }));
+                        tick.mutate({ item: c, done: false });
+                      } else if (c.requiresAttachment) {
+                        setAttachFor(c);
+                      } else {
+                        setChecklistOverrides((cur) => ({ ...cur, [c.id]: true }));
+                        tick.mutate({ item: c, done: true });
+                      }
+                    }}
+                    className={cn('group flex w-full items-center gap-3 rounded-2xl border px-3.5 py-2.5 text-left transition-all disabled:cursor-default', done ? 'border-brand-mint/30 bg-[#E6F5EA]/60' : 'border-line/70 bg-white hover:border-brand-forest/30')}>
+                    <span className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors', done ? 'border-brand-mint bg-brand-mint text-white' : 'border-line group-hover:border-brand-forest')}>
+                      {done && <Check className="h-3 w-3" />}
                     </span>
-                    <span className={cn('flex-1 text-[13px] font-medium', c.done && 'text-ink-muted line-through')}>{c.label}</span>
+                    <span className={cn('flex-1 text-[13px] font-medium', done && 'text-ink-muted line-through')}>{c.label}</span>
                     {c.exitStep && <span className="rounded-full bg-brand-forest px-2 py-0.5 text-2xs font-semibold text-white">Needed to move on</span>}
-                    {c.requiresAttachment && !c.done && <span title="Needs a file or link"><Link2 className="h-3.5 w-3.5 text-ink-muted" /></span>}
-                    {c.done && <span className="text-2xs text-ink-muted">{c.doneBy} · {fmtDate(c.doneAt)}</span>}
+                    {c.requiresAttachment && !done && <span title="Needs a file or link"><Link2 className="h-3.5 w-3.5 text-ink-muted" /></span>}
+                    {done && <span className="text-2xs text-ink-muted">{c.doneBy} · {fmtDate(c.doneAt)}</span>}
                   </button>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           </div>
         )}
@@ -166,7 +209,13 @@ export function OpportunityPanel({ opportunityId, canEdit }: { opportunityId: st
       </div>
       <StageMoveModal open={!!move} target={move} onClose={() => setMove(null)} opportunityId={opportunityId} />
       <AttachModal item={attachFor} onClose={() => setAttachFor(null)} accountId={o.accountId} opportunityId={opportunityId}
-        onAttached={(attachmentId) => { if (attachFor) tick.mutate({ item: attachFor, done: true, attachmentId }); setAttachFor(null); }} />
+        onAttached={(attachmentId) => {
+          if (attachFor) {
+            setChecklistOverrides((cur) => ({ ...cur, [attachFor.id]: true }));
+            tick.mutate({ item: attachFor, done: true, attachmentId });
+          }
+          setAttachFor(null);
+        }} />
     </Card>
   );
 }
