@@ -14,6 +14,7 @@ import { TemperatureBadge, stageLabel } from '@/components/ui/status';
 import { MANUAL_MOVES, StageMoveModal } from '@/features/pipeline/OpportunityPanel';
 
 const COLUMNS: LifecycleStage[] = ['SQL', 'L1', 'MULTITHREADING', 'L2', 'L3', 'NEGOTIATION', 'WON'];
+const OPEN_PIPELINE_STAGES: LifecycleStage[] = ['SQL', 'L1', 'MULTITHREADING', 'L2', 'L3', 'NEGOTIATION'];
 const lane: Partial<Record<LifecycleStage, string>> = {
   SQL: 'from-[#CDEBD5] to-[#7CCB8E]', L1: 'from-[#7CCB8E] to-[#23B24A]', MULTITHREADING: 'from-[#23B24A] to-[#1A7F36]', L2: 'from-[#1A7F36] to-[#0E5A2A]',
   L3: 'from-[#0E5A2A] to-[#053F1A]', NEGOTIATION: 'from-[#053F1A] to-[#202E64]', WON: 'from-[#23B24A] to-[#2BC556]',
@@ -29,7 +30,7 @@ export default function PipelinePage() {
   const navigate = useNavigate();
   const leader = isLeadership(user?.role);
   const users = useUsers(leader);
-  const [aeId, setAeId] = useState('');
+  const [aeId, setAeId] = useState(() => (user?.role === 'AE' ? user.id : ''));
   const [temp, setTemp] = useState('');
   const [drag, setDrag] = useState<AccountRow | null>(null);
   const [over, setOver] = useState<LifecycleStage | null>(null);
@@ -61,16 +62,19 @@ export default function PipelinePage() {
     } catch (e) { toast.error((e as Error).message); }
   };
 
-  const total = data?.items.reduce((s, a) => s + Number(a.expectedMrr ?? 0), 0) ?? 0;
+  const openDeals = (data?.items ?? []).filter((a) => OPEN_PIPELINE_STAGES.includes(a.stage));
+  const total = openDeals.reduce((s, a) => s + Number(a.expectedMrr ?? 0), 0);
+  const hotDeals = openDeals.filter((a) => a.temperature === 'HOT');
+  const noNextStep = openDeals.filter((a) => !a.nextStep).length;
 
   return (
     <div>
       <PageHeader title="Pipeline" icon={<KanbanSquare />} eyebrow="Deal flow" subtitle="Drag a deal where the rules allow; meeting outcomes move the rest automatically."
         stats={[
-          { label: 'Open opportunities', value: data?.total ?? 0, hint: `${(byStage.WON ?? []).length} won this view` },
+          { label: 'Open opportunities', value: openDeals.length, hint: 'SQL through Negotiation' },
           { label: 'Expected MRR', value: inr(total), hint: 'Sum of open deals' },
-          { label: 'Hot deals', value: (data?.items ?? []).filter((a) => a.temperature === 'HOT').length, hint: `${inr((data?.items ?? []).filter((a) => a.temperature === 'HOT').reduce((x, a) => x + Number(a.expectedMrr ?? 0), 0))} at stake`, onClick: () => setTemp(temp === 'HOT' ? '' : 'HOT') },
-          { label: 'No next step', value: (data?.items ?? []).filter((a) => !a.nextStep).length, hint: 'Needs an owner action' },
+          { label: 'Hot deals', value: hotDeals.length, hint: `${inr(hotDeals.reduce((x, a) => x + Number(a.expectedMrr ?? 0), 0))} at stake`, onClick: () => setTemp(temp === 'HOT' ? '' : 'HOT') },
+          { label: 'No next step', value: noNextStep, hint: 'Needs an owner action' },
         ]}
         actions={<>
           {leader && (
