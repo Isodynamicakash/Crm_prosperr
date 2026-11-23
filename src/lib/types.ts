@@ -32,6 +32,7 @@ export interface AccountRow {
   status: 'ACTIVE' | 'INACTIVE'; zone: 'PROSPECTING' | 'PIPELINE'; aeOwner?: string; bdrs?: string; temperature?: Temperature;
   expectedMrr?: number; nextStep?: string; nextStepDue?: string; lastActivityAt?: string; inactiveReason?: string;
   revisitOn?: string; flaggedForReview: boolean; createdAt: string;
+  myLastTouchAt?: string; myCalls?: number; workedByOthers?: string;
 }
 export interface Page<T> { items: T[]; total: number; page: number; size: number }
 
@@ -72,6 +73,7 @@ export interface OpportunitySummary {
 export interface AccountPage {
   account: AccountView;
   owners: { role: string; id: string; name: string }[];
+  workedBy?: { userId: string; name: string; role: string; me: boolean; calls: number; touches: number; lastAt: string }[];
   stakeholdersByDepartment: Partial<Record<Department, StakeholderView[]>>;
   meetings: MeetingRow[];
   opportunity: OpportunitySummary | null;

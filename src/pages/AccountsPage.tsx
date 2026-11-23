@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowDownUp, Bookmark, Building2, Download, Flag, Plus, Search, X } from 'lucide-react';
+import { ArrowDownUp, Bookmark, Building2, Download, Flag, Plus, Search, Upload, X } from 'lucide-react';
+import { ImportWizard } from '@/features/accounts/ImportWizard';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -30,13 +31,14 @@ export default function AccountsPage() {
   const [f, setF] = useState<Filters>(() => ({ ...DEFAULTS, ...(params.get('v') ? JSON.parse(params.get('v')!) : {}) }));
   const [page, setPage] = useState(0);
   // BDRs see every pipeline account (read-only) plus their own prospects; "Mine" narrows to accounts they work
-  const [mine, setMine] = useState(user?.role === 'BDR');
+  const [scope, setScope] = useState<'mine' | 'worked' | 'all'>(user?.role === 'BDR' ? 'mine' : 'all');
+  const [importing, setImporting] = useState(false);
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
   const cities = useCities();
   const q = useDebounced(f.q, 250);
 
-  useEffect(() => { setPage(0); }, [mine, q, f.status, f.zone, f.stage, f.sizeBucket, f.temperature, f.cityId, f.flagged, f.sort]);
+  useEffect(() => { setPage(0); }, [scope, q, f.status, f.zone, f.stage, f.sizeBucket, f.temperature, f.cityId, f.flagged, f.sort]);
   useEffect(() => {
     const changed = JSON.stringify(f) !== JSON.stringify(DEFAULTS);
     setParams(changed ? { v: JSON.stringify(f) } : {}, { replace: true });
@@ -44,9 +46,10 @@ export default function AccountsPage() {
 
   const query = useMemo(() => ({
     q, status: f.status, zone: f.zone || undefined, stage: f.stage, sizeBucket: f.sizeBucket || undefined,
-    temperature: f.temperature || undefined, cityId: f.cityId || undefined, flagged: f.flagged || undefined, sort: f.sort || undefined, page, size: 50,
-    bdrId: mine && user?.role === 'BDR' ? user.id : undefined,
-  }), [q, f, page, mine, user]);
+    temperature: f.temperature || undefined, cityId: f.cityId || undefined, flagged: f.flagged || undefined, sort: f.sort || (scope === 'worked' ? 'myLastTouch' : undefined), page, size: 50,
+    bdrId: scope === 'mine' && user?.role === 'BDR' ? user.id : undefined,
+    workedByMe: scope === 'worked' || undefined,
+  }), [q, f, page, scope, user]);
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['accounts', query], queryFn: () => api.get<Page<AccountRow>>('/api/accounts', query), placeholderData: (p) => p,
@@ -71,9 +74,10 @@ export default function AccountsPage() {
           { label: 'In pipeline', value: cnt('SQL', 'L1', 'MULTITHREADING', 'L2', 'L3', 'NEGOTIATION'), hint: `${inr(pipeMrr)} expected MRR`, onClick: () => setF({ ...DEFAULTS, zone: 'PIPELINE' }) },
           { label: 'Won', value: cnt('WON', 'IMPLEMENTATION'), hint: 'Closed and handed over', onClick: () => setF({ ...DEFAULTS, stage: ['WON'] }) },
         ]}
-        subtitle={is('BDR') ? (mine ? 'Accounts you work: your prospects and the deals you sourced.' : 'Your prospects plus every account in the team pipeline (view only).') : is('AE') ? 'Accounts assigned to you.' : 'Every account across the team.'}
+        subtitle={is('BDR') ? (scope === 'mine' ? 'Accounts you own: your prospects and the deals you sourced.' : scope === 'worked' ? 'Every company you have already called, emailed or noted, newest first.' : 'Your prospects plus every account in the team pipeline (view only).') : is('AE') ? 'Accounts assigned to you.' : 'Every account across the team.'}
         actions={<>
           <Button icon={<Download className="h-3.5 w-3.5" />} onClick={() => api.download('/api/accounts', { ...query, format: 'csv', page: undefined, size: undefined }, 'accounts.csv').catch((e) => toast.error(e.message))}>Export</Button>
+          {(is('BDR') || is('MANAGER', 'ADMIN')) && <Button icon={<Upload className="h-3.5 w-3.5" />} onClick={() => setImporting(true)}>Import</Button>}
           {(is('BDR') || is('MANAGER', 'ADMIN')) && <Button variant="primary" icon={<Plus className="h-3.5 w-3.5" />} onClick={() => setAdding(true)}>New account</Button>}
         </>} />
 
@@ -95,7 +99,7 @@ export default function AccountsPage() {
             <Search className="pointer-events-none absolute left-3.5 top-2.5 h-4 w-4 text-ink-muted" />
             <Input value={f.q} onChange={(e) => set('q', e.target.value)} placeholder="Search accounts…" className="rounded-full pl-10" />
           </div>
-          {is('BDR') && <Segmented value={mine ? 'mine' : 'all'} onChange={(v) => setMine(v === 'mine')} options={[{ value: 'mine', label: 'Mine' }, { value: 'all', label: 'Everyone' }]} />}
+          {is('BDR') && <Segmented value={scope} onChange={setScope} options={[{ value: 'mine', label: 'Mine' }, { value: 'worked', label: 'Worked by me' }, { value: 'all', label: 'Everyone' }]} />}
           <Segmented value={f.status} onChange={(v) => set('status', v)} options={[{ value: 'ACTIVE', label: 'Active' }, { value: 'INACTIVE', label: 'Inactive' }, { value: 'ALL', label: 'All' }]} />
           {!is('AE') && (
             <Select value={f.zone} onChange={(e) => set('zone', e.target.value)} className="w-32">
@@ -181,6 +185,7 @@ export default function AccountsPage() {
                               {a.name}{a.flaggedForReview && <Flag className="h-3 w-3 text-warning" />}
                             </p>
                             <p className="truncate text-2xs text-ink-muted">{[a.city, a.sizeBucket && a.sizeBucket.toLowerCase(), a.licensePotential && `${a.licensePotential} licenses`].filter(Boolean).join(' · ')}</p>
+                            <WorkedLine a={a} />
                           </div>
                         </div>
                       </td>
@@ -221,6 +226,7 @@ export default function AccountsPage() {
       </Card>
 
       <AddAccountModal open={adding} onClose={() => setAdding(false)} />
+      <ImportWizard open={importing} onClose={() => setImporting(false)} />
       <SaveViewModal open={saving} onClose={() => setSaving(false)} filters={f} canShare={is('MANAGER', 'ADMIN')} />
     </div>
   );
@@ -241,5 +247,17 @@ function SaveViewModal({ open, onClose, filters, canShare }: { open: boolean; on
         {canShare && <label className="flex items-center gap-2 text-[13px]"><input type="checkbox" className="accent-accent" checked={shared} onChange={(e) => setShared(e.target.checked)} />Share with the team</label>}
       </div>
     </Modal>
+  );
+}
+
+/** "You: 3 calls · 2d ago · also Paramita" so a BDR sees at a glance which companies they (or others) already worked. */
+function WorkedLine({ a }: { a: AccountRow }) {
+  const calls = Number(a.myCalls ?? 0);
+  if (!a.myLastTouchAt && !a.workedByOthers) return null;
+  return (
+    <p className="mt-0.5 flex items-center gap-1.5 truncate text-2xs">
+      {a.myLastTouchAt && <span className="rounded-full bg-brand-forest-50 px-1.5 py-px font-semibold text-brand-forest">You · {calls ? `${calls} call${calls > 1 ? 's' : ''} · ` : ''}{relTime(a.myLastTouchAt)}</span>}
+      {a.workedByOthers && <span className="truncate text-ink-muted">Also worked by {a.workedByOthers}</span>}
+    </p>
   );
 }

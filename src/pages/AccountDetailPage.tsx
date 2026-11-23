@@ -181,6 +181,22 @@ export default function AccountDetailPage() {
             </div>
           </Card>
 
+          {(data.workedBy?.length ?? 0) > 0 && (
+            <Card className="p-4">
+              <p className="mb-1 text-[13px] font-semibold">Already worked by</p>
+              <p className="mb-3 text-xs text-ink-muted">Check before calling, so two people don’t chase the same contacts.</p>
+              <ul className="space-y-2.5">
+                {data.workedBy!.map((w) => (
+                  <li key={w.userId} className="flex items-center gap-2.5 text-[13px]">
+                    <Avatar name={w.name} />
+                    <span className="min-w-0 flex-1"><span className="font-semibold">{w.me ? 'You' : w.name}</span> <span className="text-ink-muted">· {humanize(w.role)}</span>
+                      <span className="block text-xs text-ink-muted">{Number(w.calls)} call{Number(w.calls) === 1 ? '' : 's'} · {Number(w.touches)} touch{Number(w.touches) === 1 ? '' : 'es'} · last {relTime(w.lastAt)}</span></span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
           {mt.data && (
             <Card className="p-4">
               <p className="mb-3 flex items-center justify-between font-display text-[16px] font-medium">Coverage {mt.data.needsMultithreading && <Badge className="bg-brand-forest text-white">Multithread</Badge>}</p>
