@@ -1,6 +1,7 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowDownRight, ArrowUpRight, CalendarCheck2, ClipboardCheck, PhoneCall, RefreshCw, Trophy, type LucideIcon } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, CalendarCheck2, CalendarRange, ClipboardCheck, PhoneCall, RefreshCw, Trophy, type LucideIcon } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { relTime } from '@/lib/format';
@@ -10,7 +11,19 @@ import { TopoLines } from '@/components/brand/TopoLines';
 import { AreaTrend, C, ChartCard, ComboBars, Donut, EmptyChart, HeatStrip, LiveBadge, Sparkline } from '@/components/charts/kit';
 import { inr } from '@/lib/format';
 
-export type Preset = '7' | '30' | 'month' | 'quarter';
+/** A fixed period, or `custom:YYYY-MM-DD:YYYY-MM-DD` for any date range (both days included). */
+export type Preset = '7' | '30' | 'month' | 'quarter' | `custom:${string}`;
+
+/** Query parameters for a period: the preset name, or from/to for a custom range. */
+export function periodParams(p: Preset): Record<string, string> {
+  if (p.startsWith('custom:')) { const [, from, to] = p.split(':'); return { from, to }; }
+  return { preset: p };
+}
+const fmtDay = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' });
+export function periodLabel(p: Preset) {
+  if (!p.startsWith('custom:')) return PRESETS.find((x) => x.value === p)?.label ?? '';
+  const [, from, to] = p.split(':'); return `${fmtDay(from)} – ${fmtDay(to)}`;
+}
 export const PRESETS: { value: Preset; label: string }[] = [{ value: '7', label: '7 days' }, { value: '30', label: '30 days' }, { value: 'month', label: 'This month' }, { value: 'quarter', label: 'Quarter' }];
 
 export interface PulseDay { day: string; calls: number; connects: number; sqls: number; meetingsBooked: number; meetingsDone: number; wins: number; label: string }
@@ -29,7 +42,7 @@ export function usePulse(preset: Preset) {
   return useQuery({
     queryKey: ['dashboard', 'pulse', preset],
     queryFn: async () => {
-      const p = await api.get<Pulse>('/api/dashboards/pulse', { preset });
+      const p = await api.get<Pulse>('/api/dashboards/pulse', periodParams(preset));
       return { ...p, series: p.series.map((d) => ({ ...d, calls: +d.calls, connects: +d.connects, sqls: +d.sqls, meetingsBooked: +d.meetingsBooked, meetingsDone: +d.meetingsDone, wins: +d.wins, label: dayLabel(d.day) })) };
     },
     refetchInterval: 30_000,
@@ -69,13 +82,7 @@ export function CommandHero({ title, subtitle, preset, onPreset, kpis, pulse, up
           <h1 className="mt-3 font-display text-[30px] font-medium leading-tight tracking-[-0.04em] sm:text-[38px]">{title}</h1>
           <p className="mt-1 text-[13.5px] text-paper/55">{subtitle}</p>
         </div>
-        <div className="inline-flex rounded-full border border-white/10 bg-white/[0.05] p-1 backdrop-blur">
-          {PRESETS.map((o) => (
-            <button key={o.value} onClick={() => onPreset(o.value)}
-              className={cn('h-8 rounded-full px-3.5 text-xs font-semibold transition-all duration-200',
-                preset === o.value ? 'bg-brand-mint text-brand-night shadow-[0_0_18px_rgba(35,178,74,.45)]' : 'text-paper/60 hover:text-paper')}>{o.label}</button>
-          ))}
-        </div>
+        <PeriodPicker preset={preset} onPreset={onPreset} />
       </div>
       <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         {kpis.map((k) => {
@@ -199,5 +206,45 @@ export function LiveFeedCard({ feed, className }: { feed?: Pulse['feed']; classN
         </ul>
       )}
     </ChartCard>
+  );
+}
+
+/** Fixed periods plus "Custom": any from-to date range, applied to every number on the page. */
+function PeriodPicker({ preset, onPreset }: { preset: Preset; onPreset: (p: Preset) => void }) {
+  const custom = preset.startsWith('custom:');
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  const monthStart = `${today.slice(0, 8)}01`;
+  const [open, setOpen] = useState(false);
+  const [from, setFrom] = useState(custom ? preset.split(':')[1] : monthStart);
+  const [to, setTo] = useState(custom ? preset.split(':')[2] : today);
+  useEffect(() => { if (custom) { setFrom(preset.split(':')[1]); setTo(preset.split(':')[2]); } }, [preset, custom]);
+  const valid = !!from && !!to && from <= to;
+  return (
+    <div className="flex flex-col items-end gap-2">
+      <div className="inline-flex flex-wrap justify-end rounded-full border border-white/10 bg-white/[0.05] p-1 backdrop-blur">
+        {PRESETS.map((o) => (
+          <button key={o.value} onClick={() => { setOpen(false); onPreset(o.value); }}
+            className={cn('h-8 rounded-full px-3.5 text-xs font-semibold transition-all duration-200',
+              preset === o.value ? 'bg-brand-mint text-brand-night shadow-[0_0_18px_rgba(35,178,74,.45)]' : 'text-paper/60 hover:text-paper')}>{o.label}</button>
+        ))}
+        <button onClick={() => setOpen((v) => !v)} aria-expanded={open}
+          className={cn('flex h-8 items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold transition-all duration-200',
+            custom ? 'bg-brand-mint text-brand-night shadow-[0_0_18px_rgba(35,178,74,.45)]' : 'text-paper/60 hover:text-paper')}>
+          <CalendarRange className="h-3.5 w-3.5" />{custom ? periodLabel(preset) : 'Custom'}
+        </button>
+      </div>
+      {open && (
+        <div className="flex flex-wrap items-end gap-2 rounded-2xl border border-white/10 bg-[#101311]/90 p-2.5 backdrop-blur">
+          <label className="text-[11px] text-paper/60">From
+            <input type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)}
+              className="mt-1 block h-8 rounded-lg border border-white/15 bg-white/[0.06] px-2 text-xs text-paper [color-scheme:dark]" /></label>
+          <label className="text-[11px] text-paper/60">To
+            <input type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)}
+              className="mt-1 block h-8 rounded-lg border border-white/15 bg-white/[0.06] px-2 text-xs text-paper [color-scheme:dark]" /></label>
+          <button disabled={!valid} onClick={() => { onPreset(`custom:${from}:${to}`); setOpen(false); }}
+            className="h-8 rounded-full bg-brand-mint px-4 text-xs font-bold text-brand-night disabled:opacity-40">Apply</button>
+        </div>
+      )}
+    </div>
   );
 }

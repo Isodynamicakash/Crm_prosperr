@@ -10,7 +10,8 @@ import type { Achievement, LifecycleStage, MyDayItem, QueueRow } from '@/lib/typ
 import { Button, Empty } from '@/components/ui/ui';
 import { stageLabel } from '@/components/ui/status';
 import { C, ChartCard, Donut, EmptyChart, Funnel, GroupedBars, Meter, RadialGauge } from '@/components/charts/kit';
-import { ActivityTrendCard, CommandHero, HeatmapCard, LiveFeedCard, OutcomeMixCard, StageMixCard, delta, sum, usePulse, type Preset } from '@/features/dashboard/pulse';
+import { ActivityTrendCard, CommandHero, HeatmapCard, LiveFeedCard, OutcomeMixCard, StageMixCard, delta, periodParams, sum, usePulse, type Preset } from '@/features/dashboard/pulse';
+import { Scoreboard } from '@/features/dashboard/Scoreboard';
 import { RecordOutcomeModal, type MeetingRef } from '@/features/pipeline/PipelineForms';
 import { AddAccountModal } from '@/features/accounts/AccountForms';
 
@@ -42,7 +43,7 @@ function BdrHome({ preset, setPreset, first }: HomeProps) {
   const navigate = useNavigate();
   const [adding, setAdding] = useState(false);
   const pulse = usePulse(preset);
-  const { data: d } = useQuery({ queryKey: ['dashboard', 'bdr', preset], queryFn: () => api.get<BdrDash>('/api/dashboards/bdr', { preset }), ...LIVE });
+  const { data: d } = useQuery({ queryKey: ['dashboard', 'bdr', preset], queryFn: () => api.get<BdrDash>('/api/dashboards/bdr', periodParams(preset)), ...LIVE });
   const day = useQuery({ queryKey: ['my-day'], queryFn: () => api.get<MyDayItem[]>('/api/my-day'), ...LIVE });
   const s = pulse.data?.series;
   const due = (day.data ?? []).filter((x) => x.section === 'OVERDUE' || x.section === 'DUE_TODAY');
@@ -120,7 +121,7 @@ function BdrHome({ preset, setPreset, first }: HomeProps) {
 function AeHome({ preset, setPreset, first }: HomeProps) {
   const [outcomeFor, setOutcomeFor] = useState<MeetingRef | null>(null);
   const pulse = usePulse(preset);
-  const { data: d } = useQuery({ queryKey: ['dashboard', 'ae', preset], queryFn: () => api.get<Record<string, never>>('/api/dashboards/ae', { preset }), ...LIVE });
+  const { data: d } = useQuery({ queryKey: ['dashboard', 'ae', preset], queryFn: () => api.get<Record<string, never>>('/api/dashboards/ae', periodParams(preset)), ...LIVE });
   const overdue = useQuery({ queryKey: ['overdue-outcomes'], queryFn: () => api.get<{ id: string; level: 'L1' | 'L2' | 'L3' | 'OTHER'; scheduledStart: string; accountId: string; accountName: string }[]>('/api/meetings/overdue-outcomes'), ...LIVE });
   const flagged = useQuery({ queryKey: ['to-be-moved'], queryFn: () => api.get<{ id: string; name: string; stage: LifecycleStage; lastActivityAt?: string }[]>('/api/lifecycle/to-be-moved') });
   const s = pulse.data?.series;
@@ -213,7 +214,7 @@ const AE_STAGES: LifecycleStage[] = ['SQL', 'L1', 'L2', 'L3', 'NEGOTIATION', 'WO
 function LeaderHome({ preset, setPreset, first }: HomeProps) {
   const navigate = useNavigate();
   const pulse = usePulse(preset);
-  const { data: d } = useQuery({ queryKey: ['dashboard', 'lead', preset], queryFn: () => api.get<Leadership>('/api/dashboards/leadership', { preset }), ...LIVE });
+  const { data: d } = useQuery({ queryKey: ['dashboard', 'lead', preset], queryFn: () => api.get<Leadership>('/api/dashboards/leadership', periodParams(preset)), ...LIVE });
   const queue = useQuery({ queryKey: ['queue'], queryFn: () => api.get<QueueRow[]>('/api/assignment/queue'), ...LIVE });
   const hygiene = useQuery({ queryKey: ['dashboard', 'hygiene'], queryFn: () => api.get<Record<string, unknown[]>>('/api/dashboards/hygiene'), ...LIVE });
   const s = pulse.data?.series;
@@ -250,6 +251,8 @@ function LeaderHome({ preset, setPreset, first }: HomeProps) {
           </button>
         )}
       </CommandHero>
+
+      <Scoreboard preset={preset} />
 
       <div className="grid gap-4 xl:grid-cols-3">
         <ActivityTrendCard s={s} mode="team" className="xl:col-span-2" />
