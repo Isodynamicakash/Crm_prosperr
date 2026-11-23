@@ -163,5 +163,21 @@
   "stakeholder.emails": "ਈਮੇਲ",
   "stakeholder.phones": "ਫੋਨ",
   "stakeholder.department": "ਵਿਭਾਗ",
-  "stakeholder.added": "ਸਟੇਕਹੋਲਡਰ ਸ਼ਾਮਲ ਕੀਤਾ ਗਿਆ"
+  "stakeholder.added": "ਸਟੇਕਹੋਲਡਰ ਸ਼ਾਮਲ ਕੀਤਾ ਗਿਆ",
+  "google.connect": "ਗੂਗਲ ਕੈਲੰਡਰ ਕਨੈਕਟ ਕਰੋ",
+  "google.reconnect": "ਗੂਗਲ ਦੁਬਾਰਾ ਕਨੈਕਟ ਕਰੋ",
+  "google.connected": "ਗੂਗਲ ਕਨੈਕਟ ਹੋ ਗਿਆ ਹੈ। ਨਵੀਆਂ ਮੀਟਿੰਗਾਂ ਤੁਹਾਡੇ ਕੈਲੰਡਰ 'ਤੇ ਮੀਟ ਲਿੰਕ ਨਾਲ ਦਿਖਾਈ ਦੇਣਗੀਆਂ।",
+  "google.connectedAs": "{email} ਵਜੋਂ ਕਨੈਕਟ ਕੀਤਾ ਗਿਆ",
+  "google.failed": "ਗੂਗਲ ਕਨੈਕਟ ਨਹੀਂ ਹੋ ਸਕਿਆ। ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।",
+  "google.checking": "ਕੈਲੰਡਰ ਚੈੱਕ ਕੀਤੇ ਜਾ ਰਹੇ ਹਨ…",
+  "google.noCalendars": "ਚੈੱਕ ਕਰਨ ਲਈ ਕੋਈ ਕਨੈਕਟਡ ਕੈਲੰਡਰ ਨਹੀਂ ਹੈ। ਸਾਈਡਬਾਰ ਤੋਂ ਗੂਗਲ ਕਨੈਕਟ ਕਰੋ।",
+  "google.clash": "{names} ਦੇ ਕੈਲੰਡਰ ਨਾਲ ਟਕਰਾਅ",
+  "google.free": "ਇਸ ਸਮੇਂ ਹਰ ਕੋਈ ਫ੍ਰੀ ਹੈ",
+  "google.freeAllDay": "ਪੂਰਾ ਦਿਨ ਫ੍ਰੀ",
+  "whatsapp.open": "ਵਟਸਐਪ",
+  "whatsapp.greeting": "ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ {name}, ਮੈਂ Prosperr ਤੋਂ {me} ਬੋਲ ਰਿਹਾ ਹਾਂ।",
+  "whatsapp.logIt": "ਇਸ ਵਟਸਐਪ ਕਾਲ ਨੂੰ ਲੌਗ ਕਰੋ",
+  "ai.uploadVoice": "ਵੌਇਸ ਨੋਟ ਅੱਪਲੋਡ ਕਰੋ",
+  "ai.uploadHint": "ਵਟਸਐਪ ਵੌਇਸ ਨੋਟ ਜਾਂ ਕੋਈ ਆਡੀਓ ਫਾਈਲ",
+  "ai.badAudio": "ਇਹ ਬ੍ਰਾਊਜ਼ਰ ਉਸ ਆਡੀਓ ਫਾਈਲ ਨੂੰ ਨਹੀਂ ਪੜ੍ਹ ਸਕਿਆ। ਕ੍ਰੋਮ ਦੀ ਕੋਸ਼ਿਸ਼ ਕਰੋ, ਜਾਂ ਇਸਨੂੰ .mp3 ਜਾਂ .m4a ਵਜੋਂ ਭੇਜੋ।"
 }

@@ -163,5 +163,21 @@
   "stakeholder.emails": "ইমেইলসমূহ",
   "stakeholder.phones": "ফোন নম্বৰসমূহ",
   "stakeholder.department": "বিভাগ",
-  "stakeholder.added": "ষ্টেকহোল্ডাৰ যোগ কৰা হ'ল"
+  "stakeholder.added": "ষ্টেকহোল্ডাৰ যোগ কৰা হ'ল",
+  "google.connect": "গুগল কেলেণ্ডাৰ সংযোগ কৰক",
+  "google.reconnect": "গুগল পুনৰ সংযোগ কৰক",
+  "google.connected": "গুগল সংযোগ কৰা হৈছে। নতুন মিটিংসমূহ আপোনাৰ কেলেণ্ডাৰত Meet লিংকৰ সৈতে দেখা যাব।",
+  "google.connectedAs": "{email} হিচাপে সংযোগ কৰা হৈছে",
+  "google.failed": "গুগল সংযোগ কৰিব পৰা নগ'ল। পুনৰ চেষ্টা কৰক।",
+  "google.checking": "কেলেণ্ডাৰ পৰীক্ষা কৰা হৈছে…",
+  "google.noCalendars": "পৰীক্ষা কৰিবলৈ কোনো সংযোগ কৰা কেলেণ্ডাৰ নাই। চাইডবাৰৰ পৰা গুগল সংযোগ কৰক।",
+  "google.clash": "{names} ৰ কেলেণ্ডাৰৰ সৈতে সংঘাত",
+  "google.free": "এই সময়ত সকলো মুক্ত",
+  "google.freeAllDay": "গোটেই দিনটো মুক্ত",
+  "whatsapp.open": "হোৱাটছএপ",
+  "whatsapp.greeting": "নমস্কাৰ {name}, মই প্ৰছপাৰৰ পৰা {me}।",
+  "whatsapp.logIt": "এই হোৱাটছএপ কলটো লগ কৰক",
+  "ai.uploadVoice": "এটা ভইচ নোট আপলোড কৰক",
+  "ai.uploadHint": "এটা হোৱাটছএপ ভইচ নোট বা যিকোনো অডিঅ' ফাইল",
+  "ai.badAudio": "এই ব্ৰাউজাৰটোৱে সেই অডিঅ' ফাইলটো পঢ়িব পৰা নাই। ক্ৰ'ম চেষ্টা কৰক, বা ইয়াক .mp3 বা .m4a হিচাপে পঠিয়াওক।"
 }

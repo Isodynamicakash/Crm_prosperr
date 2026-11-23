@@ -164,5 +164,21 @@
   "stakeholder.emails": "ইমেইল",
   "stakeholder.phones": "ফোন",
   "stakeholder.department": "বিভাগ",
-  "stakeholder.added": "স্টেকহোল্ডার যোগ করা হয়েছে"
+  "stakeholder.added": "স্টেকহোল্ডার যোগ করা হয়েছে",
+  "google.connect": "গুগল ক্যালেন্ডার কানেক্ট করুন",
+  "google.reconnect": "গুগল পুনরায় কানেক্ট করুন",
+  "google.connected": "গুগল কানেক্টেড। নতুন মিটিংগুলো আপনার ক্যালেন্ডারে একটি মিট লিংকসহ দেখা যাবে।",
+  "google.connectedAs": "{email} হিসেবে কানেক্টেড",
+  "google.failed": "গুগল কানেক্ট করা যায়নি। আবার চেষ্টা করুন।",
+  "google.checking": "ক্যালেন্ডার চেক করা হচ্ছে…",
+  "google.noCalendars": "চেক করার মতো কোনো কানেক্টেড ক্যালেন্ডার নেই। সাইডবার থেকে গুগল কানেক্ট করুন।",
+  "google.clash": "{names}-এর ক্যালেন্ডারের সাথে ক্ল্যাশ করছে",
+  "google.free": "এই সময়ে সবাই ফ্রি আছেন",
+  "google.freeAllDay": "সারাদিন ফ্রি",
+  "whatsapp.open": "হোয়াটসঅ্যাপ",
+  "whatsapp.greeting": "হাই {name}, আমি Prosperr থেকে {me}.",
+  "whatsapp.logIt": "এই হোয়াটসঅ্যাপ কল লগ করুন",
+  "ai.uploadVoice": "ভয়েস নোট আপলোড করুন",
+  "ai.uploadHint": "একটি হোয়াটসঅ্যাপ ভয়েস নোট বা যেকোনো অডিও ফাইল",
+  "ai.badAudio": "এই ব্রাউজারটি ওই অডিও ফাইলটি পড়তে পারেনি। ক্রোম ব্যবহার করে দেখুন, অথবা .mp3 বা .m4a হিসেবে পাঠান।"
 }

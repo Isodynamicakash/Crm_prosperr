@@ -6,6 +6,8 @@ import { addDaysISO, isPastLocal, localToInstant, nowLocalInput } from '@/lib/fo
 import type { LifecycleStage, MeetingLevel, MeetingOutcome, StakeholderView } from '@/lib/types';
 import { useT } from '@/lib/i18n';
 import { AiAssist } from '@/features/calls/VoiceNote';
+import { BusyStrip } from '@/features/integrations/Google';
+import { useAuth } from '@/lib/auth';
 import { Modal } from '@/components/ui/overlay';
 import { Button, Checkbox, Field, Input, Select, Textarea } from '@/components/ui/ui';
 
@@ -104,10 +106,11 @@ export function RecordOutcomeModal({ open, onClose, meeting, stakeholders = [] }
   );
 }
 
-export function BookMeetingModal({ open, onClose, accountId, stakeholders = [], stage }: {
-  open: boolean; onClose: () => void; accountId: string; stakeholders?: StakeholderView[]; stage?: LifecycleStage;
+export function BookMeetingModal({ open, onClose, accountId, stakeholders = [], stage, aeId }: {
+  open: boolean; onClose: () => void; accountId: string; stakeholders?: StakeholderView[]; stage?: LifecycleStage; aeId?: string;
 }) {
   const t = useT();
+  const { user } = useAuth();
   const [level, setLevel] = useState<MeetingLevel>(nextMeetingLevel(stage));
   const [start, setStart] = useState('');
   const [duration, setDuration] = useState('45');
@@ -131,6 +134,7 @@ export function BookMeetingModal({ open, onClose, accountId, stakeholders = [], 
         <Field label={t('meeting.dateTime')} required className="col-span-2" error={isPastLocal(start) ? t('meeting.pastTime') : undefined}><Input type="datetime-local" min={nowLocalInput()} value={start} onChange={(e) => setStart(e.target.value)} /></Field>
         <Field label={t('common.duration')}><Select value={duration} onChange={(e) => setDuration(e.target.value)}>{[30, 45, 60, 90].map((m) => <option key={m} value={m}>{t('common.minutes', { n: m })}</option>)}</Select></Field>
         <Field label={t('meeting.link')} className="col-span-2"><Input value={link} onChange={(e) => setLink(e.target.value)} /></Field>
+        {start && <div className="col-span-3"><BusyStrip local={start} durationMin={Number(duration)} userIds={[user?.id, aeId]} /></div>}
         {stakeholders.length > 0 && (
           <div className="col-span-3">
             <p className="mb-1.5 text-xs font-medium text-ink-soft">{t('common.attendees')}</p>

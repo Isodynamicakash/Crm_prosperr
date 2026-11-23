@@ -163,5 +163,21 @@
   "stakeholder.emails": "ઈમેલ",
   "stakeholder.phones": "ફોન",
   "stakeholder.department": "વિભાગ",
-  "stakeholder.added": "સ્ટેકહોલ્ડર ઉમેરાયા"
+  "stakeholder.added": "સ્ટેકહોલ્ડર ઉમેરાયા",
+  "google.connect": "ગૂગલ કેલેન્ડર કનેક્ટ કરો",
+  "google.reconnect": "ગૂગલ ફરીથી કનેક્ટ કરો",
+  "google.connected": "ગૂગલ કનેક્ટ થઈ ગયું છે. મીટ લિંક સાથેની નવી મીટિંગ્સ તમારા કેલેન્ડરમાં દેખાશે.",
+  "google.connectedAs": "{email} તરીકે કનેક્ટ થયેલ છે",
+  "google.failed": "ગૂગલ કનેક્ટ કરી શક્યા નથી. ફરી પ્રયાસ કરો.",
+  "google.checking": "કેલેન્ડર્સ ચેક કરી રહ્યા છીએ…",
+  "google.noCalendars": "ચેક કરવા માટે કોઈ કનેક્ટ થયેલા કેલેન્ડર નથી. સાઇડબારમાંથી ગૂગલ કનેક્ટ કરો.",
+  "google.clash": "{names} ના કેલેન્ડર સાથે સમયનો ટકરાવ",
+  "google.free": "આ સમયે બધા ફ્રી છે",
+  "google.freeAllDay": "આખો દિવસ ફ્રી",
+  "whatsapp.open": "વોટ્સએપ",
+  "whatsapp.greeting": "હેલો {name}, હું પ્રોસ્પરથી {me} છું.",
+  "whatsapp.logIt": "આ વોટ્સએપ કૉલ લોગ કરો",
+  "ai.uploadVoice": "વોઇસ નોટ અપલોડ કરો",
+  "ai.uploadHint": "વોટ્સએપ વોઇસ નોટ અથવા કોઈપણ ઑડિયો ફાઇલ",
+  "ai.badAudio": "આ બ્રાઉઝર તે ઑડિયો ફાઇલ વાંચી શક્યું નથી. ક્રોમ ટ્રાય કરો, અથવા તેને .mp3 અથવા .m4a તરીકે મોકલો."
 }

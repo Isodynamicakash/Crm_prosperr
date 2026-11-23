@@ -164,5 +164,21 @@
   "stakeholder.emails": "ای میلز",
   "stakeholder.phones": "فون نمبرز",
   "stakeholder.department": "ڈیپارٹمنٹ",
-  "stakeholder.added": "اسٹیک ہولڈر شامل ہو گیا"
+  "stakeholder.added": "اسٹیک ہولڈر شامل ہو گیا",
+  "google.connect": "گوگل کیلنڈر کنیکٹ کریں",
+  "google.reconnect": "گوگل دوبارہ کنیکٹ کریں",
+  "google.connected": "گوگل کنیکٹ ہو گیا۔ نئی میٹنگز آپ کے کیلنڈر پر میٹ لنک کے ساتھ ظاہر ہوں گی۔",
+  "google.connectedAs": "{email} کے طور پر کنیکٹ ہوا",
+  "google.failed": "گوگل کنیکٹ نہیں ہو سکا۔ دوبارہ کوشش کریں۔",
+  "google.checking": "کیلنڈرز چیک ہو رہے ہیں…",
+  "google.noCalendars": "چیک کرنے کے لیے کوئی کنیکٹڈ کیلنڈر نہیں ہے۔ سائیڈ بار سے گوگل کنیکٹ کریں۔",
+  "google.clash": "{names} کے کیلنڈر سے ٹکراؤ ہے",
+  "google.free": "اس وقت سب فری ہیں",
+  "google.freeAllDay": "سارا دن فری",
+  "whatsapp.open": "واٹس ایپ",
+  "whatsapp.greeting": "ہیلو {name}، میں Prosperr سے {me} ہوں",
+  "whatsapp.logIt": "اس واٹس ایپ کال کو لاگ کریں",
+  "ai.uploadVoice": "وائس نوٹ اپ لوڈ کریں",
+  "ai.uploadHint": "واٹس ایپ وائس نوٹ یا کوئی آڈیو فائل",
+  "ai.badAudio": "یہ براؤزر اس آڈیو فائل کو پڑھ نہیں سکا۔ کروم آزمائیں، یا اسے .mp3 یا .m4a کے طور پر بھیجیں۔"
 }

@@ -164,5 +164,21 @@
   "stakeholder.emails": "Emails",
   "stakeholder.phones": "Phones",
   "stakeholder.department": "Department",
-  "stakeholder.added": "Stakeholder added"
+  "stakeholder.added": "Stakeholder added",
+  "google.connect": "Connect Google Calendar",
+  "google.reconnect": "Reconnect Google",
+  "google.connected": "Google connected. New meetings will appear on your calendar with a Meet link.",
+  "google.connectedAs": "Connected as {email}",
+  "google.failed": "Couldn’t connect Google. Try again.",
+  "google.checking": "Checking calendars…",
+  "google.noCalendars": "No connected calendars to check. Connect Google from the sidebar.",
+  "google.clash": "Clashes with {names}’s calendar",
+  "google.free": "Everyone’s free at this time",
+  "google.freeAllDay": "free all day",
+  "whatsapp.open": "WhatsApp",
+  "whatsapp.greeting": "Hi {name}, this is {me} from Prosperr. ",
+  "whatsapp.logIt": "Log this WhatsApp call",
+  "ai.uploadVoice": "Upload a voice note",
+  "ai.uploadHint": "A WhatsApp voice note or any audio file",
+  "ai.badAudio": "This browser couldn’t read that audio file. Try Chrome, or send it as .mp3 or .m4a."
 }

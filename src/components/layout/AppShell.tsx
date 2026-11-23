@@ -14,6 +14,7 @@ import { Avatar } from '@/components/ui/ui';
 import { CommandMenu } from './CommandMenu';
 import { navFor } from './nav';
 import { LANGUAGES, useLanguage, useT, type LangCode } from '@/lib/i18n';
+import { GoogleConnect } from '@/features/integrations/Google';
 
 const COLLAPSE_KEY = 'prosperr.sidebar';
 
@@ -89,6 +90,7 @@ export function AppShell() {
       </nav>
 
       <div className="border-t border-white/10 p-3 pb-[max(.75rem,env(safe-area-inset-bottom))]">
+        {!c && <GoogleConnect />}
         {!c && <LanguagePicker />}
         <div className={cn('flex items-center gap-2.5 rounded-2xl bg-white/[0.04] p-2', c && 'flex-col bg-transparent p-0')}>
           <Avatar name={user?.fullName} size="md" />

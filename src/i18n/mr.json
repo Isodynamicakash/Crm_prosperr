@@ -163,5 +163,21 @@
   "stakeholder.emails": "ईमेल्स",
   "stakeholder.phones": "फोन नंबर",
   "stakeholder.department": "विभाग",
-  "stakeholder.added": "स्टेकहोल्डर जोडला"
+  "stakeholder.added": "स्टेकहोल्डर जोडला",
+  "google.connect": "गुगल कॅलेंडर जोडा",
+  "google.reconnect": "गुगल पुन्हा जोडा",
+  "google.connected": "गुगल कनेक्ट झाले. नवीन मीटिंग्ज तुमच्या कॅलेंडरवर मीट लिंकसह दिसतील.",
+  "google.connectedAs": "{email} म्हणून कनेक्ट केले",
+  "google.failed": "गुगल कनेक्ट करता आले नाही. पुन्हा प्रयत्न करा.",
+  "google.checking": "कॅलेंडर्स तपासत आहे…",
+  "google.noCalendars": "तपासण्यासाठी कोणतेही कनेक्ट केलेले कॅलेंडर्स नाहीत. साईडबारमधून गुगल जोडा.",
+  "google.clash": "{names} च्या कॅलेंडरशी संघर्ष",
+  "google.free": "या वेळी सर्वजण मोकळे आहेत",
+  "google.freeAllDay": "संपूर्ण दिवस मोकळा",
+  "whatsapp.open": "व्हॉट्सॲप",
+  "whatsapp.greeting": "हाय {name}, मी प्रोस्परर (Prosperr) मधून {me} बोलत आहे.",
+  "whatsapp.logIt": "या व्हॉट्सॲप कॉलची नोंद करा",
+  "ai.uploadVoice": "व्हॉइस नोट अपलोड करा",
+  "ai.uploadHint": "व्हॉट्सॲप व्हॉइस नोट किंवा कोणतीही ऑडिओ फाईल",
+  "ai.badAudio": "या ब्राउझरला ती ऑडिओ फाईल वाचता आली नाही. क्रोम (Chrome) वापरून पहा, किंवा .mp3 किंवा .m4a म्हणून पाठवा."
 }

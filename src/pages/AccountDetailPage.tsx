@@ -1,3 +1,4 @@
+import { WhatsAppButton } from '@/features/calls/WhatsApp';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -216,7 +217,7 @@ export default function AccountDetailPage() {
       <AddStakeholderModal open={dialog === 'stakeholder'} onClose={() => setDialog(null)} accountId={a.id} stakeholders={stakeholders} />
       <SubmitSqlModal open={dialog === 'sql'} onClose={() => setDialog(null)} accountId={a.id} accountName={a.name} stakeholders={stakeholders} />
       <AssignModal open={dialog === 'assign'} onClose={() => setDialog(null)} accountId={a.id} accountName={a.name} currentAeId={a.aeOwnerId} />
-      <BookMeetingModal open={dialog === 'book'} onClose={() => setDialog(null)} accountId={a.id} stakeholders={stakeholders} stage={a.stage} />
+      <BookMeetingModal open={dialog === 'book'} onClose={() => setDialog(null)} accountId={a.id} stakeholders={stakeholders} stage={a.stage} aeId={a.aeOwnerId} />
       <MoveInactiveModal open={dialog === 'inactive'} onClose={() => setDialog(null)} accountId={a.id} />
       <KeepActiveModal open={dialog === 'keep'} onClose={() => setDialog(null)} accountId={a.id} />
       <ReactivateModal open={dialog === 'reactivate'} onClose={() => setDialog(null)} accountId={a.id} stakeholders={stakeholders} />
@@ -270,6 +271,7 @@ function StakeholderRow({ s, onCall, highlight, accountId }: { s: StakeholderVie
             <Button size="sm" icon={<Phone className="h-3.5 w-3.5" />}><span className="tabular-nums">{phone.e164}</span></Button>
           </a>
         )}
+        {phone && !s.doNotContact && !s.masked && <WhatsAppButton phone={phone.e164} name={s.firstName} onOpened={onCall} compact />}
         {!s.doNotContact && !s.masked && <Button size="sm" variant="subtle" icon={<PhoneCall className="h-3.5 w-3.5" />} onClick={onCall}>Log</Button>}
         {!s.masked && (
           <div className="relative">

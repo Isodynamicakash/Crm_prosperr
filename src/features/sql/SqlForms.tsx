@@ -11,6 +11,8 @@ import { Modal } from '@/components/ui/overlay';
 import { Badge, Button, Checkbox, Field, Input, Select, Textarea } from '@/components/ui/ui';
 import { SqlBadge } from '@/components/ui/status';
 import { AiAssist } from '@/features/calls/VoiceNote';
+import { BusyStrip } from '@/features/integrations/Google';
+import { useAuth } from '@/lib/auth';
 import { useT } from '@/lib/i18n';
 
 interface SqlFill { transcript: string; budget: string | null; authority: string | null; need: string | null; timeline: string | null;
@@ -34,6 +36,7 @@ export function SubmitSqlModal({ open, onClose, accountId, accountName, stakehol
   open: boolean; onClose: () => void; accountId: string; accountName: string; stakeholders: StakeholderView[];
 }) {
   const t = useT();
+  const { user } = useAuth();
   const [aiFilled, setAiFilled] = useState(false);
   const budget = usePicklist('BANT_BUDGET');
   const authority = usePicklist('BANT_AUTHORITY');
@@ -177,6 +180,7 @@ export function SubmitSqlModal({ open, onClose, accountId, accountName, stakehol
             <p className="mb-2 text-[13px] font-semibold">L1 meeting</p>
             <div className="grid grid-cols-3 gap-3">
               <Field label="Date & time (IST)" required className="col-span-2" error={isPastLocal(f.start) ? 'This time is in the past. Pick a future date and time.' : undefined}><Input type="datetime-local" min={nowLocalInput()} value={f.start} onChange={set('start')} /></Field>
+              {f.start && <div className="col-span-2"><BusyStrip local={f.start} durationMin={Number(f.durationMin)} userIds={[user?.id]} /></div>}
               <Field label="Duration">
                 <Select value={f.durationMin} onChange={set('durationMin')}>{[30, 45, 60].map((m) => <option key={m} value={m}>{m} min</option>)}</Select>
               </Field>

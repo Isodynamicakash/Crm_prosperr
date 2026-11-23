@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Keyboard, Loader2, Mic, Sparkles, Square } from 'lucide-react';
+import { Keyboard, Loader2, Mic, Sparkles, Square, Upload } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { useT } from '@/lib/i18n';
@@ -43,6 +43,7 @@ export function AiAssist<T extends { transcript: string }>({ endpoint, onResult,
   const rec = useRef<MediaRecorder | null>(null);
   const chunks = useRef<Blob[]>([]);
   const timer = useRef<number | null>(null);
+  const fileInput = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => () => stopTracks(), []);
 
@@ -93,7 +94,10 @@ export function AiAssist<T extends { transcript: string }>({ endpoint, onResult,
   async function sendAudio(blob: Blob) {
     await run(async () => {
       const fd = new FormData();
-      fd.append('audio', await toWav16k(blob), 'note.wav');
+      let wav: Blob;
+      try { wav = await toWav16k(blob); }
+      catch { throw new Error(t('ai.badAudio')); }
+      fd.append('audio', wav, 'note.wav');
       return api.post<T>(endpoint, fd);
     });
   }
@@ -124,6 +128,16 @@ export function AiAssist<T extends { transcript: string }>({ endpoint, onResult,
             {!micSupported ? t('ai.noMic') : state === 'recording' ? t('ai.tapToStop') : (example ?? t('ai.anyLanguage'))}
           </p>
         </div>
+        {state === 'idle' && (
+          <>
+            <input ref={fileInput} type="file" accept="audio/*,.opus,.ogg,.m4a,.mp3,.wav,.aac" className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) { setError(null); setHeard(null); void sendAudio(f); } }} />
+            <button type="button" onClick={() => fileInput.current?.click()} title={t('ai.uploadHint')} aria-label={t('ai.uploadVoice')}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-line bg-white text-ink-soft transition-colors hover:border-brand-forest/40 hover:text-brand-forest">
+              <Upload className="h-3.5 w-3.5" />
+            </button>
+          </>
+        )}
         {allowPaste && state === 'idle' && (
           <button type="button" onClick={() => setTyping((v) => !v)} title={t('ai.typeInstead')}
             className={cn('flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors',
