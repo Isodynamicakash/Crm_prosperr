@@ -135,19 +135,13 @@ export function AddStakeholderModal({ open, onClose, accountId, stakeholders = [
     <Modal open={open} onClose={onClose} title={t('stakeholder.add')} subtitle={t('stakeholder.subtitle')}
       footer={<><Button onClick={onClose}>{t('common.cancel')}</Button><Button variant="primary" disabled={!f.fullName.trim()} loading={save.isPending} onClick={() => save.mutate(undefined)}>{t('stakeholder.add')}</Button></>}>
       <div className="grid grid-cols-2 gap-3">
-<<<<<<< Updated upstream
         <div className="col-span-2">
           <AiAssist<StakeholderFill> endpoint="/api/ai/fill/STAKEHOLDER" onResult={applyAi} title={t('ai.stakeholderTitle')}
             example={t('ai.stakeholderExample')} pastePlaceholder={t('ai.stakeholderPaste')} />
           {aiFilled && <p className="mt-1.5 text-xs text-ink-muted">{t('ai.filledCheck')}</p>}
         </div>
         <Field label={t('stakeholder.fullName')} required><Input autoFocus value={f.fullName} onChange={(e) => setF({ ...f, fullName: e.target.value })} /></Field>
-        <Field label={t('stakeholder.designation')} hint="e.g. CFO, HR Head, Payroll Manager"><Input value={f.designation} onChange={(e) => setF({ ...f, designation: e.target.value })} /></Field>
-        <MultiInput label={t('stakeholder.emails')} values={emails} onChange={setEmails} placeholder="name@company.com" />
-        <MultiInput label={t('stakeholder.phones')} values={phones} onChange={setPhones} placeholder="98xxxxxxxx" />
-=======
-        <Field label="Full name" required><Input autoFocus value={f.fullName} onChange={(e) => setF({ ...f, fullName: e.target.value })} /></Field>
-        <Field label="Designation"
+        <Field label={t('stakeholder.designation')}
           hint={matchedDesignation
             ? `Mapped automatically: L${matchedDesignation.level} · ${matchedDesignation.department.charAt(0) + matchedDesignation.department.slice(1).toLowerCase()}`
             : 'Choose a designation to fill level and department.'}>
@@ -160,9 +154,8 @@ export function AddStakeholderModal({ open, onClose, accountId, stakeholders = [
             ))}
           </Select>
         </Field>
-        <MultiInput label="Emails" values={emails} onChange={setEmails} placeholder="name@company.com" />
-        <MultiInput label="Phones" values={phones} onChange={setPhones} placeholder="98xxxxxxxx" />
->>>>>>> Stashed changes
+        <MultiInput label={t('stakeholder.emails')} values={emails} onChange={setEmails} placeholder="name@company.com" />
+        <MultiInput label={t('stakeholder.phones')} values={phones} onChange={setPhones} placeholder="98xxxxxxxx" />
         <Field label="Department" hint="Leave empty to use the designation map">
           <Select value={f.department} onChange={(e) => setF({ ...f, department: e.target.value as Department })}>
             <option value="">Auto</option>
