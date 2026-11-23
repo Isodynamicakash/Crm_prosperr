@@ -123,7 +123,7 @@ export function CardHeader({ title, subtitle, action, className }: { title: Reac
   );
 }
 
-export interface HeroStat { label: string; value: ReactNode; hint?: ReactNode; onClick?: () => void }
+export interface HeroStat { label: string; value: ReactNode; hint?: ReactNode; onClick?: () => void; active?: boolean }
 
 /**
  * Page hero: the dark contour surface from the landing page, with an optional eyebrow, icon, stats row and actions.
@@ -160,7 +160,7 @@ export function PageHeader({ title, subtitle, actions, eyebrow, icon, stats, chi
             );
             const cls = 'relative min-w-[138px] shrink-0 snap-start overflow-hidden rounded-[18px] border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-left backdrop-blur transition-all duration-300 before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-brand-mint/50 before:to-transparent sm:min-w-0';
             return st.onClick
-              ? <button key={st.label} onClick={st.onClick} className={cn(cls, 'hover:-translate-y-0.5 hover:border-brand-mint/30 hover:bg-white/[0.07]')}>{body}</button>
+              ? <button key={st.label} onClick={st.onClick} className={cn(cls, 'hover:-translate-y-0.5 hover:border-brand-mint/30 hover:bg-white/[0.07]', st.active && 'border-brand-mint/50 bg-brand-mint/[0.12] ring-1 ring-brand-mint/20')}>{body}</button>
               : <div key={st.label} className={cls}>{body}</div>;
           })}
         </div>
