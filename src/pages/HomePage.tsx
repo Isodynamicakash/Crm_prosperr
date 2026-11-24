@@ -76,7 +76,7 @@ function BdrHome({ preset, setPreset, first }: HomeProps) {
         </div>
       </CommandHero>
 
-      <VoiceAssistant />
+      <VoiceAssistant mode="coach" preset={preset} />
 
       <MyScoreboard preset={preset} />
 

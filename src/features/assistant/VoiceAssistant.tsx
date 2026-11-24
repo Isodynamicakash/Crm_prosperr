@@ -5,6 +5,7 @@ import { cn } from '@/lib/cn';
 import { useLanguage } from '@/lib/i18n';
 import { Select } from '@/components/ui/ui';
 import { toWav16k, useAiStatus } from '@/features/calls/VoiceNote';
+import { periodLabel, periodParams, type Preset } from '@/features/dashboard/pulse';
 
 interface Reply { question: string | null; text: string; language: string; audioBase64: string | null }
 
@@ -25,7 +26,8 @@ const audioUrl = (b64: string) => {
  * The BDR's voice assistant: a spoken morning brief built from their own CRM data, and questions by voice or text
  * ("whom should I call first?", "status of Meesho?") answered in the language they speak. It only reads; it never changes data.
  */
-export function VoiceAssistant() {
+export function VoiceAssistant({ mode = 'day', preset = 'month' }: { mode?: 'day' | 'coach'; preset?: Preset }) {
+  const coach = mode === 'coach';
   const ai = useAiStatus();
   const { lang: uiLang } = useLanguage();
   const initial = (() => {
@@ -47,6 +49,7 @@ export function VoiceAssistant() {
   const timer = useRef<number | null>(null);
 
   useEffect(() => { try { localStorage.setItem(KEY, lang); } catch { /* fine */ } }, [lang]);
+  useEffect(() => { if (coach) { player.current?.pause(); setReply(null); } }, [coach, preset]);
   useEffect(() => () => { player.current?.pause(); if (timer.current) clearInterval(timer.current); }, []);
 
   const play = (r: Reply) => {
@@ -67,8 +70,10 @@ export function VoiceAssistant() {
     finally { setBusy(null); }
   };
 
-  const brief = (refresh = false) => run('brief', () => api.get<Reply>('/api/ai/assistant/brief', { lang, refresh: String(refresh) }));
-  const askText = () => { const q = typed.trim(); if (!q) return; setTyped(''); void run('ask', () => api.post<Reply>('/api/ai/assistant/ask', { text: q, lang })); };
+  const brief = (refresh = false) => run('brief', () => coach
+    ? api.get<Reply>('/api/ai/assistant/coach', { lang, refresh: String(refresh), ...periodParams(preset) })
+    : api.get<Reply>('/api/ai/assistant/brief', { lang, refresh: String(refresh) }));
+  const askText = () => { const q = typed.trim(); if (!q) return; setTyped(''); void run('ask', () => api.post<Reply>('/api/ai/assistant/ask', { text: q, lang, mode })); };
 
   const startMic = async () => {
     setError(null);
@@ -85,7 +90,7 @@ export function VoiceAssistant() {
         void run('ask', async () => {
           const fd = new FormData();
           fd.append('audio', await toWav16k(blob), 'question.wav');
-          return api.post<Reply>('/api/ai/assistant/ask', fd, { lang });
+          return api.post<Reply>('/api/ai/assistant/ask', fd, { lang, mode });
         });
       };
       rec.current = r;
@@ -106,8 +111,10 @@ export function VoiceAssistant() {
       <div className="flex flex-wrap items-center gap-3">
         <span className="grid h-10 w-10 place-items-center rounded-2xl bg-brand-forest text-white"><Sparkles className="h-4 w-4" /></span>
         <div className="min-w-0 flex-1">
-          <p className="font-display text-[18px] font-medium tracking-[-0.02em]">Your day, spoken</p>
-          <p className="text-xs text-ink-muted">A short brief from your follow-ups, leads, replies, meetings and target. Ask anything about your work, in your language.</p>
+          <p className="font-display text-[18px] font-medium tracking-[-0.02em]">{coach ? 'Your coach' : 'Your day, spoken'}</p>
+          <p className="text-xs text-ink-muted">{coach
+            ? `A spoken review of ${periodLabel(preset).toLowerCase()}: your L1s against target and pace, how you compare with the team, and what to improve. In your language.`
+            : 'A short brief from your follow-ups, leads, replies, meetings and target. Ask anything about your work, in your language.'}</p>
         </div>
         <Select id="voice-lang" value={lang} onChange={(e) => { setLang(e.target.value); setReply(null); }} className="w-32" aria-label="Assistant language">
           {VOICES.map(([c, n]) => <option key={c} value={c}>{n}</option>)}
@@ -115,7 +122,7 @@ export function VoiceAssistant() {
         <button type="button" onClick={() => (playing ? player.current?.pause() : reply?.audioBase64 && !reply.question ? play(reply) : brief())} disabled={busy !== null}
           className="inline-flex h-10 items-center gap-2 rounded-full bg-brand-forest px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-forest/90 disabled:opacity-60">
           {busy === 'brief' ? <Loader2 className="h-4 w-4 animate-spin" /> : playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-          {busy === 'brief' ? 'Preparing…' : playing ? 'Pause' : 'Play my brief'}
+          {busy === 'brief' ? 'Preparing…' : playing ? 'Pause' : coach ? 'Play my review' : 'Play my brief'}
         </button>
       </div>
 
@@ -129,7 +136,7 @@ export function VoiceAssistant() {
         )}
         <form className="relative min-w-0 flex-1" onSubmit={(e) => { e.preventDefault(); askText(); }}>
           <input id="voice-question" value={typed} onChange={(e) => setTyped(e.target.value)} disabled={recording || busy !== null}
-            placeholder={recording ? `Listening… 0:${String(seconds).padStart(2, '0')} — tap the square when done` : 'Ask: whom should I call first? · status of Meesho? · how far am I from target?'}
+            placeholder={recording ? `Listening… 0:${String(seconds).padStart(2, '0')} — tap the square when done` : coach ? 'Ask: why is my connect rate low? · how many L1s do I need a day? · where am I losing leads?' : 'Ask: whom should I call first? · status of Meesho? · how far am I from target?'}
             className="h-10 w-full rounded-full border border-line bg-canvas/60 pl-4 pr-11 text-[13px] outline-none focus:border-brand-forest/40" />
           <button type="submit" disabled={!typed.trim() || busy !== null} aria-label="Ask"
             className="absolute right-1 top-1 grid h-8 w-8 place-items-center rounded-full text-brand-forest disabled:opacity-30"><Send className="h-4 w-4" /></button>
