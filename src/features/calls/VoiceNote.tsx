@@ -168,7 +168,7 @@ export function VoiceNote({ onResult }: { onResult: (s: CallNoteSuggestion) => v
 }
 
 /** Browser recordings are WebM/Opus or MP4; Sarvam gets 16 kHz mono 16-bit WAV, which every browser can produce. */
-async function toWav16k(blob: Blob): Promise<Blob> {
+export async function toWav16k(blob: Blob): Promise<Blob> {
   const ctx = new AudioContext();
   try {
     const decoded = await ctx.decodeAudioData(await blob.arrayBuffer());

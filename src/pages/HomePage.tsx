@@ -12,6 +12,7 @@ import { stageLabel } from '@/components/ui/status';
 import { C, ChartCard, Donut, EmptyChart, Funnel, GroupedBars, Meter, RadialGauge } from '@/components/charts/kit';
 import { ActivityTrendCard, CommandHero, HeatmapCard, LiveFeedCard, OutcomeMixCard, StageMixCard, delta, periodParams, sum, usePulse, type Preset } from '@/features/dashboard/pulse';
 import { MyScoreboard, Scoreboard } from '@/features/dashboard/Scoreboard';
+import { VoiceAssistant } from '@/features/assistant/VoiceAssistant';
 import { RecordOutcomeModal, type MeetingRef } from '@/features/pipeline/PipelineForms';
 import { AddAccountModal } from '@/features/accounts/AccountForms';
 
@@ -74,6 +75,8 @@ function BdrHome({ preset, setPreset, first }: HomeProps) {
           </div>
         </div>
       </CommandHero>
+
+      <VoiceAssistant />
 
       <MyScoreboard preset={preset} />
 

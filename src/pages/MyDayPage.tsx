@@ -11,6 +11,7 @@ import { Avatar, Button, Empty, Kbd, PageHeader, SkeletonRows } from '@/componen
 import { LogCallModal, type CallTarget } from '@/features/calls/LogCallModal';
 import { SubmitSqlModal } from '@/features/sql/SqlForms';
 import { CallSession } from '@/features/calls/CallSession';
+import { VoiceAssistant } from '@/features/assistant/VoiceAssistant';
 import { useT } from '@/lib/i18n';
 import { WhatsAppButton } from '@/features/calls/WhatsApp';
 
@@ -87,6 +88,8 @@ export default function MyDayPage() {
       <PageHeader title={`${t(greetingKey())}, ${user?.fullName.split(' ')[0]}`} icon={<PhoneCall />} eyebrow={t('myday.eyebrow')}
         subtitle={isLoading ? t('myday.loading') : data.length ? t('myday.summary', { f: counts.OVERDUE + counts.DUE_TODAY, n: counts.UNTOUCHED }) : t('myday.empty')}
       />
+
+      <div className="mb-4"><VoiceAssistant /></div>
 
       {callable.length > 0 && (() => {
         const nx = callable[0];
