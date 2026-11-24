@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { AlertTriangle, Camera, CheckCircle2, Loader2, ScanLine } from 'lucide-react';
+import { AlertTriangle, Camera, CheckCircle2, Loader2, QrCode, ScanLine, Sparkles } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { useCities, usePicklist } from '@/lib/queries';
@@ -12,7 +12,8 @@ import { useAiStatus } from '@/features/calls/VoiceNote';
 
 export interface CardFields { fullName: string | null; designation: string | null; department: string | null; company: string | null;
   emails: string[]; phones: string[]; website: string | null; linkedin: string | null; city: string | null }
-interface ScanResult { card: CardFields; confidence: Record<string, number>;
+interface ScanResult { card: CardFields; confidence: Record<string, number>; source?: Record<string, 'qr' | 'ocr'>; checks?: string[];
+  suggestions?: { company?: { id: string; name: string }; designation?: string };
   matches: { person: { stakeholderId: string; name: string; accountId: string; company: string } | null; company: { id: string; name: string } | null } }
 
 /** Phone photos are large and sometimes not JPEG: redraw to a JPEG of at most 2000px so the upload is quick. */
@@ -163,6 +164,23 @@ export function CardScanModal({ open, onClose }: { open: boolean; onClose: () =>
             )}
             {Object.entries(res.confidence).some(([k, c]) => c < 0.8 && (res.card as unknown as Record<string, unknown>)[k]) &&
               <p className="text-xs text-brand-navy">Highlighted fields were hard to read. Check them against the card.</p>}
+            {(res.suggestions?.company && f.company !== res.suggestions.company.name) && (
+              <p className="flex items-center gap-2 text-[13px]"><Sparkles className="h-3.5 w-3.5 text-brand-forest" />
+                Did you mean <b>{res.suggestions.company.name}</b>, already in the CRM?
+                <button type="button" className="font-semibold text-brand-forest underline" onClick={() => setF({ ...f, company: res.suggestions!.company!.name })}>Use it</button></p>
+            )}
+            {(res.suggestions?.designation && f.designation !== res.suggestions.designation) && (
+              <p className="flex items-center gap-2 text-[13px]"><Sparkles className="h-3.5 w-3.5 text-brand-forest" />
+                Known title: <b>{res.suggestions.designation}</b>
+                <button type="button" className="font-semibold text-brand-forest underline" onClick={() => setF({ ...f, designation: res.suggestions!.designation! })}>Use it</button></p>
+            )}
+            {(res.checks?.length ?? 0) > 0 && (
+              <details className="rounded-xl bg-canvas px-3 py-2 text-xs text-ink-muted">
+                <summary className="cursor-pointer font-semibold text-ink">{Object.values(res.source ?? {}).includes('qr') && <QrCode className="mr-1 inline h-3.5 w-3.5 text-brand-forest" />}
+                  {res.checks!.length} check{res.checks!.length > 1 ? 's' : ''} on what was read</summary>
+                <ul className="mt-1 list-disc space-y-0.5 pl-4">{res.checks!.map((c) => <li key={c}>{c}</li>)}</ul>
+              </details>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <Field label="Full name" required><Input id="card-name" value={f.fullName} onChange={set('fullName')} className={field('fullName', f.fullName)} /></Field>
               <Field label="Designation"><Input id="card-title" value={f.designation} onChange={set('designation')} className={field('designation', f.designation)} /></Field>

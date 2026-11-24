@@ -5,6 +5,7 @@
   "nav./pipeline": "Pipeline",
   "nav./sql": "SQLs",
   "nav./sequences": "Sequences",
+  "nav./event-qr": "Event QR",
   "nav./tasks": "Tasks",
   "nav./reports": "Reports",
   "nav./team": "Team",

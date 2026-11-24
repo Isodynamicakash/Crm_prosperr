@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import type { Role } from '@/lib/types';
@@ -18,6 +18,8 @@ const SequencesPage = lazy(() => import('@/pages/SequencesPage'));
 const ReportsPage = lazy(() => import('@/pages/ReportsPage'));
 const TeamPage = lazy(() => import('@/pages/TeamPage'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
+const EventQrPage = lazy(() => import('@/pages/EventQrPage'));
+const PublicLeadPage = lazy(() => import('@/pages/PublicLeadPage'));
 
 function Guard({ roles, children }: { roles: Role[]; children: JSX.Element }) {
   const { is } = useAuth();
@@ -26,6 +28,12 @@ function Guard({ roles, children }: { roles: Role[]; children: JSX.Element }) {
 
 export default function App() {
   const { user, loading } = useAuth();
+  const { pathname } = useLocation();
+  const spin = <div className="flex h-full items-center justify-center text-ink-muted"><Loader2 className="h-5 w-5 animate-spin" /></div>;
+  // the prospect's form after scanning an event QR: public, same page whether or not someone is signed in on this device
+  if (pathname.startsWith('/q/')) {
+    return <Suspense fallback={spin}><Routes><Route path="/q/:token" element={<PublicLeadPage />} /></Routes></Suspense>;
+  }
   if (loading) {
     return <div className="flex h-full items-center justify-center text-ink-muted"><Loader2 className="h-5 w-5 animate-spin" /></div>;
   }
@@ -55,6 +63,7 @@ export default function App() {
         <Route path="accounts/:id" element={<AccountDetailPage />} />
         <Route path="pipeline" element={<Guard roles={['AE', 'MANAGER', 'ADMIN']}><PipelinePage /></Guard>} />
         <Route path="sql" element={<Guard roles={['BDR', 'MANAGER', 'ADMIN']}><SqlPage /></Guard>} />
+        <Route path="event-qr" element={<Guard roles={['BDR', 'MANAGER', 'ADMIN']}><EventQrPage /></Guard>} />
         <Route path="sequences" element={<Guard roles={['BDR', 'MANAGER', 'ADMIN']}><SequencesPage /></Guard>} />
         <Route path="tasks" element={<TasksPage />} />
         <Route path="reports" element={<Guard roles={['MANAGER', 'ADMIN']}><ReportsPage /></Guard>} />
