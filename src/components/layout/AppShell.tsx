@@ -227,6 +227,7 @@ const iconFor = (n: NotificationRow) => notifIcon[Object.keys(notifIcon).find((k
 
 function Notifications() {
   const t = useT();
+  const isAdmin = useAuth().user?.role === 'ADMIN';
   const [open, setOpen] = useState(false);
   const [onlyUnread, setOnlyUnread] = useState(false);
   const qc = useQueryClient();
@@ -243,6 +244,7 @@ function Notifications() {
     qc.invalidateQueries({ queryKey: ['notifications'] });
     setOpen(false);
     if (n.entityType?.toLowerCase().includes('account') && n.entityId) navigate(`/accounts/${n.entityId}`);
+    else if (!isAdmin && n.entityType?.toLowerCase().includes('sql')) navigate('/sql');
   };
 
   // Live: toast anything new that arrived since the last poll (not on first load).

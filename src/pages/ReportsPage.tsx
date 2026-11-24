@@ -1,19 +1,20 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { BarChart3, Download, Hourglass, Layers, Network, PauseCircle, ShieldCheck, Target, Timer } from 'lucide-react';
+import { BarChart3, Download, Hourglass, Layers, Mail, Network, PauseCircle, ShieldCheck, Target, Timer } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { useAction } from '@/lib/hooks';
 import { useUsers } from '@/lib/queries';
+import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/cn';
 import { fmtDate, fmtDateTime, humanize, inr } from '@/lib/format';
 import type { Achievement } from '@/lib/types';
 import { Button, Card, CardHeader, Empty, EntityTile, Field, Input, PageHeader, SectionHead, Select, SkeletonRows } from '@/components/ui/ui';
 import { ChartCard, Meter, RadialGauge } from '@/components/charts/kit';
-import { AgeingReport, CoverageReport, InactiveReport, L1Report, SqlQualityReport, WorkloadReport } from '@/features/reports/ReportViews';
+import { AgeingReport, CoverageReport, InactiveReport, L1Report, SequenceReport, SqlQualityReport, WorkloadReport } from '@/features/reports/ReportViews';
 
-type ReportKey = 'targets' | 'l1' | 'coverage' | 'inactive' | 'workload' | 'ageing' | 'sql';
+type ReportKey = 'targets' | 'l1' | 'coverage' | 'inactive' | 'workload' | 'ageing' | 'sql' | 'sequences';
 const REPORTS: { key: ReportKey; label: string; hint: string; icon: typeof Target }[] = [
   { key: 'targets', label: 'Targets', hint: 'Set monthly targets and track achievement live.', icon: Target },
   { key: 'l1', label: 'L1 done, not in L2', hint: 'Accounts that had an L1 but haven’t progressed.', icon: Hourglass },
@@ -22,17 +23,20 @@ const REPORTS: { key: ReportKey; label: string; hint: string; icon: typeof Targe
   { key: 'workload', label: 'Workload', hint: 'Open deals and weighted load per AE.', icon: Layers },
   { key: 'ageing', label: 'Ageing', hint: 'How long accounts sit in each stage.', icon: Timer },
   { key: 'sql', label: 'SQL quality', hint: 'Approval and rejection patterns per BDR.', icon: ShieldCheck },
+  { key: 'sequences', label: 'Email sequences', hint: 'Sends, replies and bounces per sequence step.', icon: Mail },
 ];
 
 export default function ReportsPage() {
   const [key, setKey] = useState<ReportKey>('targets');
-  const r = REPORTS.find((x) => x.key === key)!;
+  const isAdmin = useAuth().user?.role === 'ADMIN';
+  const reports = REPORTS.filter((x) => !(isAdmin && x.key === 'sequences'));
+  const r = reports.find((x) => x.key === key) ?? reports[0];
   return (
     <div>
       <PageHeader title="Reports" icon={<BarChart3 />} eyebrow="Analytics" subtitle="Every number links back to the accounts behind it." />
       <div className="grid gap-4 lg:grid-cols-[250px_1fr]">
         <nav className="-mx-3 flex gap-1.5 overflow-x-auto px-3 pb-1 scrollbar-none sm:mx-0 sm:px-0 lg:sticky lg:top-2 lg:block lg:space-y-1 lg:self-start lg:overflow-visible lg:pb-0">
-          {REPORTS.map((x) => (
+          {reports.map((x) => (
             <button key={x.key} onClick={() => setKey(x.key)}
               className={cn('group flex shrink-0 items-center gap-2.5 rounded-2xl border border-line/80 bg-white px-2.5 py-2 text-left transition-all hover:bg-white/80 lg:w-full lg:gap-3 lg:border-transparent lg:bg-transparent lg:px-3 lg:py-2.5', key === x.key && 'border-transparent bg-brand-forest text-white shadow-[0_10px_24px_-12px_rgba(5,63,26,.8)] hover:bg-brand-forest lg:bg-brand-forest lg:hover:bg-brand-forest')}>
               <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-xl', key === x.key ? 'bg-brand-mint text-brand-night' : 'bg-white text-brand-forest ring-1 ring-line')}><x.icon className="h-4 w-4" /></span>
@@ -51,7 +55,7 @@ export default function ReportsPage() {
 
 const ENDPOINT: Record<Exclude<ReportKey, 'targets'>, string> = {
   l1: '/api/reports/l1-not-progressed', coverage: '/api/reports/stakeholder-coverage', inactive: '/api/reports/inactive-reasons',
-  workload: '/api/reports/workload', ageing: '/api/reports/ageing', sql: '/api/reports/sql-quality',
+  workload: '/api/reports/workload', ageing: '/api/reports/ageing', sql: '/api/reports/sql-quality', sequences: '/api/reports/sequence-performance',
 };
 
 function DedicatedView({ k, data }: { k: Exclude<ReportKey, 'targets'>; data: unknown }) {
@@ -64,6 +68,7 @@ function DedicatedView({ k, data }: { k: Exclude<ReportKey, 'targets'>; data: un
     case 'workload': return <WorkloadReport data={obj} />;
     case 'ageing': return <AgeingReport data={obj} />;
     case 'sql': return <SqlQualityReport data={obj} />;
+    case 'sequences': return <SequenceReport rows={rows} />;
   }
 }
 

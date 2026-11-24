@@ -12,10 +12,13 @@ const AccountsPage = lazy(() => import('@/pages/AccountsPage'));
 const AccountDetailPage = lazy(() => import('@/pages/AccountDetailPage'));
 const MeetingsPage = lazy(() => import('@/pages/MeetingsPage'));
 const PipelinePage = lazy(() => import('@/pages/PipelinePage'));
+const SqlPage = lazy(() => import('@/pages/SqlPage'));
 const TasksPage = lazy(() => import('@/pages/TasksPage'));
+const SequencesPage = lazy(() => import('@/pages/SequencesPage'));
 const ReportsPage = lazy(() => import('@/pages/ReportsPage'));
 const TeamPage = lazy(() => import('@/pages/TeamPage'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
+const EventQrPage = lazy(() => import('@/pages/EventQrPage'));
 const LeadsPage = lazy(() => import('@/pages/LeadsPage'));
 const PublicLeadPage = lazy(() => import('@/pages/PublicLeadPage'));
 
@@ -60,7 +63,10 @@ export default function App() {
         <Route path="meetings" element={<Guard roles={['AE']}><MeetingsPage /></Guard>} />
         <Route path="accounts/:id" element={<AccountDetailPage />} />
         <Route path="pipeline" element={<Guard roles={['AE', 'MANAGER', 'ADMIN']}><PipelinePage /></Guard>} />
+        <Route path="sql" element={<Guard roles={['BDR', 'MANAGER']}><SqlPage /></Guard>} />
         <Route path="leads" element={<Guard roles={['BDR', 'MANAGER', 'ADMIN']}><LeadsPage /></Guard>} />
+        <Route path="event-qr" element={<Guard roles={['BDR', 'MANAGER']}><EventQrPage /></Guard>} />
+        <Route path="sequences" element={<Guard roles={['BDR', 'MANAGER']}><SequencesPage /></Guard>} />
         <Route path="tasks" element={<TasksPage />} />
         <Route path="reports" element={<Guard roles={['MANAGER', 'ADMIN']}><ReportsPage /></Guard>} />
         <Route path="team" element={<Guard roles={['MANAGER', 'ADMIN']}><TeamPage /></Guard>} />
