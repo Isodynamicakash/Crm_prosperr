@@ -16,9 +16,10 @@ import { Avatar, Badge, Button, Card, Empty, EntityTile, Input, PageHeader, Segm
 import { STAGES, StageBadge, StageMeter, StatusBadge, TemperatureBadge, stageLabel } from '@/components/ui/status';
 import { Modal } from '@/components/ui/overlay';
 import { AddAccountModal } from '@/features/accounts/AccountForms';
+import { ManagedByStrip, ownerParams, useAccountOwners } from '@/features/accounts/ManagedBy';
 
-interface Filters { q: string; status: string; zone: string; stage: LifecycleStage[]; sizeBucket: string; temperature: string; cityId: string; flagged: boolean; sort: string }
-const DEFAULTS: Filters = { q: '', status: 'ACTIVE', zone: '', stage: [], sizeBucket: '', temperature: '', cityId: '', flagged: false, sort: '' };
+interface Filters { q: string; status: string; zone: string; stage: LifecycleStage[]; sizeBucket: string; temperature: string; cityId: string; flagged: boolean; sort: string; owner: string }
+const DEFAULTS: Filters = { q: '', status: 'ACTIVE', zone: '', stage: [], sizeBucket: '', temperature: '', cityId: '', flagged: false, sort: '', owner: '' };
 const OPEN_ACTIVE_STAGES: LifecycleStage[] = ['PROSPECT', 'SQL', 'L1', 'MULTITHREADING', 'L2', 'L3', 'NEGOTIATION'];
 interface SavedView { id: string; name: string; entity: string; filters: string; shared: boolean }
 
@@ -40,7 +41,17 @@ export default function AccountsPage({ myLeads = false }: { myLeads?: boolean })
   const cities = useCities();
   const q = useDebounced(f.q, 250);
 
-  useEffect(() => { setPage(0); }, [scope, q, f.status, f.zone, f.stage, f.sizeBucket, f.temperature, f.cityId, f.flagged, f.sort]);
+  useEffect(() => { setPage(0); }, [scope, q, f.status, f.zone, f.stage, f.sizeBucket, f.temperature, f.cityId, f.flagged, f.sort, f.owner]);
+
+  // "Managed by": leadership can pick anyone; a BDR can when looking at Everyone. AEs list only their own (backend rule).
+  const canPickOwner = !myLeads && (is('MANAGER', 'ADMIN') || (is('BDR') && scope === 'all'));
+  const ownerFilter = canPickOwner && f.owner ? ownerParams(f.owner) : {};
+  const ownerQueryFilters = useMemo(() => ({
+    status: f.status, stage: f.stage, zone: f.zone || undefined, cityId: f.cityId || undefined,
+    sizeBucket: f.sizeBucket || undefined, temperature: f.temperature || undefined, flagged: f.flagged || undefined,
+  }), [f.status, f.stage, f.zone, f.cityId, f.sizeBucket, f.temperature, f.flagged]);
+  const owners = useAccountOwners(ownerQueryFilters, canPickOwner);
+  const pickedOwner = f.owner ? owners.data?.find((o) => `${o.ownsAs}:${o.userId}` === f.owner) : undefined;
   useEffect(() => {
     const changed = JSON.stringify(f) !== JSON.stringify(DEFAULTS);
     setParams(changed ? { v: JSON.stringify(f) } : {}, { replace: true });
@@ -52,7 +63,8 @@ export default function AccountsPage({ myLeads = false }: { myLeads?: boolean })
     aeId: myLeads && user?.role === 'AE' ? user.id : undefined,
     bdrId: scope === 'mine' && user?.role === 'BDR' ? user.id : undefined,
     workedByMe: scope === 'worked' || undefined,
-  }), [q, f, page, scope, user, myLeads]);
+    ...ownerFilter,
+  }), [q, f, page, scope, user, myLeads, ownerFilter.aeId, ownerFilter.bdrId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['accounts', query], queryFn: () => api.get<Page<AccountRow>>('/api/accounts', query), placeholderData: (p) => p,
@@ -111,6 +123,7 @@ export default function AccountsPage({ myLeads = false }: { myLeads?: boolean })
       )}
 
       <Card>
+        {canPickOwner && <ManagedByStrip owners={owners.data} loading={owners.isLoading} value={f.owner} onChange={(v) => set('owner', v)} />}
         <div className="flex flex-wrap items-center gap-2 border-b border-line/70 p-4">
           <div className="relative w-full sm:w-64">
             <Search className="pointer-events-none absolute left-3.5 top-2.5 h-4 w-4 text-ink-muted" />
@@ -232,7 +245,7 @@ export default function AccountsPage({ myLeads = false }: { myLeads?: boolean })
         )}
         {total > 0 && (
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2.5 text-xs text-ink-muted">
-            <span>{total.toLocaleString('en-IN')} accounts{user?.role === 'BDR' ? ' you can see' : ''}</span>
+            <span>{total.toLocaleString('en-IN')} accounts{user?.role === 'BDR' ? ' you can see' : ''}{canPickOwner && pickedOwner ? ` · managed by ${pickedOwner.name} (${pickedOwner.ownsAs === 'AE' ? 'AE' : 'BDR'})` : ''}</span>
             <div className="flex items-center gap-2">
               <Button size="sm" disabled={page === 0} onClick={() => setPage(page - 1)}>Previous</Button>
               <span>Page {page + 1} of {pages}</span>
