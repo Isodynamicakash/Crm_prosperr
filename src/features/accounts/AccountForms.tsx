@@ -10,6 +10,7 @@ import { Modal } from '@/components/ui/overlay';
 import { Button, Checkbox, Field, Input, Select } from '@/components/ui/ui';
 import { AiAssist } from '@/features/calls/VoiceNote';
 import { StakeholderCsv } from './StakeholderCsv';
+import { CardScanButton } from './CardScan';
 import { useT } from '@/lib/i18n';
 
 interface StakeholderFill { transcript: string; fullName: string | null; designation: string | null; department: Department | null;
@@ -194,6 +195,8 @@ export function AddStakeholderModal({ open, onClose, accountId, stakeholders = [
         <div className="col-span-2">
           <AiAssist<StakeholderFill> endpoint="/api/ai/fill/STAKEHOLDER" onResult={applyAi} title={t('ai.stakeholderTitle')}
             example={t('ai.stakeholderExample')} pastePlaceholder={t('ai.stakeholderPaste')} />
+          <div className="mt-2"><CardScanButton onResult={(c) => applyAi({ transcript: '', fullName: c.fullName, designation: c.designation,
+            department: (c.department as Department | null) ?? null, emails: c.emails, phones: c.phones, linkedinUrl: c.linkedin })} /></div>
           {aiFilled && <p className="mt-1.5 text-xs text-ink-muted">{t('ai.filledCheck')}</p>}
           <StakeholderCsv accountId={accountId} designations={designations.data} onDone={onClose} />
         </div>
