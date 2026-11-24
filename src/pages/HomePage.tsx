@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, ArrowRight, CalendarCheck2, ClipboardCheck, Flag, PhoneCall, Plus, Video } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CalendarCheck2, ClipboardCheck, Flag, PhoneCall, Plus } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/cn';
 import { humanize, inr, relTime } from '@/lib/format';
 import type { Achievement, LifecycleStage, MyDayItem, QueueRow } from '@/lib/types';
-import { Button, Empty } from '@/components/ui/ui';
+import { Empty } from '@/components/ui/ui';
 import { stageLabel } from '@/components/ui/status';
 import { C, ChartCard, Donut, EmptyChart, Funnel, GroupedBars, Meter, RadialGauge } from '@/components/charts/kit';
 import { ActivityTrendCard, CommandHero, HeatmapCard, LiveFeedCard, OutcomeMixCard, StageMixCard, delta, periodParams, sum, usePulse, type Preset } from '@/features/dashboard/pulse';
@@ -127,7 +127,6 @@ function AeHome({ preset, setPreset, first }: HomeProps) {
   const [outcomeFor, setOutcomeFor] = useState<MeetingRef | null>(null);
   const pulse = usePulse(preset);
   const { data: d } = useQuery({ queryKey: ['dashboard', 'ae', preset], queryFn: () => api.get<Record<string, never>>('/api/dashboards/ae', periodParams(preset)), ...LIVE });
-  const overdue = useQuery({ queryKey: ['overdue-outcomes'], queryFn: () => api.get<{ id: string; level: 'L1' | 'L2' | 'L3' | 'OTHER'; scheduledStart: string; accountId: string; accountName: string }[]>('/api/meetings/overdue-outcomes'), ...LIVE });
   const flagged = useQuery({ queryKey: ['to-be-moved'], queryFn: () => api.get<{ id: string; name: string; stage: LifecycleStage; lastActivityAt?: string }[]>('/api/lifecycle/to-be-moved') });
   const s = pulse.data?.series;
   const mrr = ((d?.mrrByTemperature as unknown as { temperature: string; count: number; mrr: number }[] | undefined) ?? []);
@@ -138,19 +137,6 @@ function AeHome({ preset, setPreset, first }: HomeProps) {
 
   return (
     <div className="space-y-4">
-      {(overdue.data?.length ?? 0) > 0 && (
-        <div className="flex flex-col gap-3 rounded-[22px] border border-brand-forest/20 bg-brand-forest-50/70 p-4 md:flex-row md:items-center">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-brand-forest text-white"><Video className="h-5 w-5" /></span>
-          <div className="flex-1"><p className="text-[14px] font-semibold">{overdue.data!.length} meeting{overdue.data!.length > 1 ? 's need' : ' needs'} an outcome</p>
-            <p className="text-[12.5px] text-ink-muted">Stages and tasks update only after you record what happened.</p></div>
-          <div className="flex flex-wrap gap-2">
-            {overdue.data!.slice(0, 3).map((m) => (
-              <Button key={m.id} size="sm" variant="primary" onClick={() => setOutcomeFor({ id: m.id, level: m.level, accountId: m.accountId, accountName: m.accountName })}>{m.level} · {m.accountName}</Button>
-            ))}
-          </div>
-        </div>
-      )}
-
       <CommandHero title={`${greeting()}, ${first}`} subtitle={`Your pipeline pulse · ${today()}`} preset={preset} onPreset={setPreset}
         pulse={s} updatedAt={pulse.dataUpdatedAt} fetching={pulse.isFetching} onRefresh={() => pulse.refetch()}
         kpis={[
