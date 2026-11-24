@@ -146,7 +146,7 @@ export default function AccountDetailPage() {
             </div>
           )}
 
-          {data.opportunity && <OpportunityPanel opportunityId={data.opportunity.id} canEdit={canAeAct} />}
+          {data.opportunity && <OpportunityPanel opportunityId={data.opportunity.id} canEdit={canAeAct} aeName={ae?.name} />}
 
           <Card>
             <CardHeader title={`Stakeholders · ${stakeholders.length}`} subtitle="Grouped by function, most senior first."

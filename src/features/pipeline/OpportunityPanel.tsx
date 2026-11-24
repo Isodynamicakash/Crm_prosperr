@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, Check, Lightbulb, Link2, Trophy, XCircle } from 'lucide-react';
+import { AlertTriangle, Check, Eye, Lightbulb, Link2, Trophy, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { useAction } from '@/lib/hooks';
@@ -27,7 +27,7 @@ interface Opp {
 interface ChecklistRow { id: string; stage: string; code: string; label: string; exitStep: boolean; requiresAttachment: boolean; done: boolean; doneAt?: string; doneBy?: string; note?: string }
 interface OppDetail { opportunity: Opp; stagnationReasonRequired: boolean; checklist: ChecklistRow[]; blockedBy?: string | null; temperatureHistory: { from?: string; to: string; changedAt: string; changedBy: string }[] }
 
-export function OpportunityPanel({ opportunityId, canEdit }: { opportunityId: string; canEdit: boolean }) {
+export function OpportunityPanel({ opportunityId, canEdit, aeName }: { opportunityId: string; canEdit: boolean; aeName?: string }) {
   const { data } = useQuery({ queryKey: ['opportunity', opportunityId], queryFn: () => api.get<OppDetail>(`/api/opportunities/${opportunityId}`) });
   const stagnation = usePicklist('STAGNATION_REASON');
   const [f, setF] = useState<Partial<Opp>>({});
@@ -117,6 +117,13 @@ export function OpportunityPanel({ opportunityId, canEdit }: { opportunityId: st
           </div>
         )} />
       <div className="space-y-4 p-4">
+        {!canEdit && (
+          <p className="flex items-start gap-2.5 rounded-2xl bg-canvas px-4 py-3 text-[12.5px] text-ink-soft">
+            <Eye className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted" />
+            <span><b>View only.</b> After the SQL is approved the deal belongs to {aeName ? <b>{aeName}</b> : 'the AE'} (AE). They tick these steps and record
+              meeting outcomes; you can follow every step here, and the deal still counts on your scoreboard.</span>
+          </p>
+        )}
         {data.blockedBy && <p className="flex items-center gap-2.5 rounded-2xl border border-[#202E64]/25 bg-[#E9EBF3] px-4 py-3 text-[12.5px] text-[#202E64]"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#202E64] text-white"><AlertTriangle className="h-3.5 w-3.5" /></span>{data.blockedBy}</p>}
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Field label="Temperature">
@@ -188,14 +195,14 @@ export function OpportunityPanel({ opportunityId, canEdit }: { opportunityId: st
                         tick.mutate({ item: c, done: true });
                       }
                     }}
-                    className={cn('group flex w-full items-center gap-3 rounded-2xl border px-3.5 py-2.5 text-left transition-all disabled:cursor-default', done ? 'border-brand-mint/30 bg-[#E6F5EA]/60' : 'border-line/70 bg-white hover:border-brand-forest/30')}>
-                    <span className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors', done ? 'border-brand-mint bg-brand-mint text-white' : 'border-line group-hover:border-brand-forest')}>
+                    className={cn('group flex w-full items-center gap-3 rounded-2xl border px-3.5 py-2.5 text-left transition-all disabled:cursor-default', done ? 'border-brand-mint/30 bg-[#E6F5EA]/60' : canEdit ? 'border-line/70 bg-white hover:border-brand-forest/30' : 'border-line/70 bg-white')}>
+                    <span className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors', done ? 'border-brand-mint bg-brand-mint text-white' : canEdit ? 'border-line group-hover:border-brand-forest' : 'border-line')}>
                       {done && <Check className="h-3 w-3" />}
                     </span>
                     <span className={cn('flex-1 text-[13px] font-medium', done && 'text-ink-muted line-through')}>{c.label}</span>
                     {c.exitStep && <span className="rounded-full bg-brand-forest px-2 py-0.5 text-2xs font-semibold text-white">Needed to move on</span>}
                     {c.requiresAttachment && !done && <span title="Needs a file or link"><Link2 className="h-3.5 w-3.5 text-ink-muted" /></span>}
-                    {done && <span className="text-2xs text-ink-muted">{c.doneBy} · {fmtDate(c.doneAt)}</span>}
+                    {done && <span className="text-2xs text-ink-muted" title={c.note}>{c.doneBy ?? 'From the sheets'} · {fmtDate(c.doneAt)}</span>}
                   </button>
                 </li>
                 );
