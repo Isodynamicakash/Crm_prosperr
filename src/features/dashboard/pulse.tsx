@@ -220,7 +220,7 @@ export function LiveFeedCard({ feed, className }: { feed?: Pulse['feed']; classN
 }
 
 /** Fixed periods, a month picker, and "Custom": any from-to date range, applied to every number on the page. */
-function PeriodPicker({ preset, onPreset }: { preset: Preset; onPreset: (p: Preset) => void }) {
+export function PeriodPicker({ preset, onPreset }: { preset: Preset; onPreset: (p: Preset) => void }) {
   const month = wholeMonth(preset);
   const custom = preset.startsWith('custom:') && !month;
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });

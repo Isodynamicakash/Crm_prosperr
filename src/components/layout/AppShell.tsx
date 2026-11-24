@@ -178,7 +178,11 @@ function NavItemLink({ item, collapsed }: { item: ReturnType<typeof navFor>[numb
         isActive && 'bg-brand-mint/[0.14] text-paper ring-1 ring-brand-mint/25 hover:bg-brand-mint/[0.18] [&_svg]:text-brand-mint before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-full before:bg-brand-mint before:shadow-[0_0_10px_rgba(35,178,74,.8)]', collapsed && 'justify-center px-0')}>
       <Icon className="h-4 w-4 shrink-0" />
       {!collapsed && <span className="flex-1">{item.label}</span>}
-      {!collapsed && item.shortcut && <span className="kbd-hint hidden text-2xs text-paper/35 group-hover:inline">G {item.shortcut.toUpperCase()}</span>}
+      {!collapsed && item.shortcut && (
+        <span className="kbd-hint hidden items-center gap-0.5 text-2xs text-paper/45 group-hover:inline-flex" title={`Keyboard shortcut: press G, then ${item.shortcut.toUpperCase()}`}>
+          <kbd className="rounded border border-white/15 px-1 font-sans">G</kbd><span className="px-0.5">then</span><kbd className="rounded border border-white/15 px-1 font-sans">{item.shortcut.toUpperCase()}</kbd>
+        </span>
+      )}
     </NavLink>
   );
 }

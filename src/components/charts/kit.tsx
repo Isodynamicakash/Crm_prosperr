@@ -95,7 +95,7 @@ export function AreaTrend({ data, x, series, height = 260, bars }: {
   return (
     <div style={{ height }}>
       <ResponsiveContainer>
-        <AreaChart data={data} margin={{ top: 6, right: 6, bottom: 0, left: -12 }}>
+        <ComposedChart data={data} margin={{ top: 6, right: 6, bottom: 0, left: -12 }}>
           <defs>
             {series.map((s) => (
               <linearGradient key={s.key} id={`ar${id}${s.key}`} x1="0" x2="0" y1="0" y2="1">
@@ -111,8 +111,8 @@ export function AreaTrend({ data, x, series, height = 260, bars }: {
             <Area key={s.key} type="monotone" dataKey={s.key} name={s.name} stroke={s.color} strokeWidth={2.2} fill={`url(#ar${id}${s.key})`}
               activeDot={{ r: 4.5, strokeWidth: 2, stroke: '#fff' }} animationDuration={1000} />
           ))}
-          {bars?.map((b) => <Line key={b.key} type="monotone" dataKey={b.key} name={b.name} stroke={b.color} strokeWidth={0} dot={{ r: 3, fill: b.color }} />)}
-        </AreaChart>
+          {bars?.map((b) => <Bar key={b.key} dataKey={b.key} name={b.name} fill={b.color} radius={[4, 4, 0, 0]} maxBarSize={18} />)}
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );
