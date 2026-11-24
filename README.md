@@ -1,5 +1,5 @@
 # Prosperr Sales CRM - Frontend
-
+t
 React, TypeScript, Vite, Tailwind CSS, TanStack Query, React Router and a Vite PWA service worker.
 
 ## 1. Business perspective

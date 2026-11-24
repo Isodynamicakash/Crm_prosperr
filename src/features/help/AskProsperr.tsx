@@ -1,7 +1,8 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowUp, Loader2, MessageCircleQuestion, RotateCcw, X } from 'lucide-react';
+import { ArrowUp, RotateCcw, X } from 'lucide-react';
+import { Sprout } from './Sprout';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 
@@ -88,18 +89,18 @@ export function AskProsperr() {
     <>
       {!open && (
         <button type="button" onClick={() => setOpen(true)} aria-label="Ask Prosperr"
-          className="fixed bottom-24 right-4 z-40 inline-flex h-12 items-center gap-2 rounded-full bg-brand-forest pl-3.5 pr-4 text-[13px] font-semibold text-white shadow-[0_12px_30px_-10px_rgba(5,63,26,.8)] transition-transform hover:-translate-y-0.5 lg:bottom-6 lg:right-6">
-          <MessageCircleQuestion className="h-5 w-5" />Ask Prosperr
+          className="group fixed bottom-24 right-4 z-40 inline-flex h-14 items-center gap-2 rounded-full border border-brand-forest/15 bg-white pl-1.5 pr-4 text-[13px] font-semibold text-brand-forest shadow-[0_14px_34px_-12px_rgba(5,63,26,.55)] transition-transform hover:-translate-y-0.5 lg:bottom-6 lg:right-6">
+          <Sprout size={46} className="-mt-2 transition-transform group-hover:rotate-[-6deg]" />Ask Prosperr
         </button>
       )}
       {open && (
         <section role="dialog" aria-label="Ask Prosperr"
           className="fixed inset-x-2 bottom-2 top-16 z-[70] flex flex-col overflow-hidden rounded-[22px] border border-line bg-white shadow-[0_30px_80px_-20px_rgba(0,0,0,.45)] sm:inset-x-auto sm:bottom-6 sm:right-6 sm:top-auto sm:h-[600px] sm:max-h-[calc(100vh-6rem)] sm:w-[400px]">
           <header className="flex items-center gap-3 bg-brand-forest px-4 py-3 text-white">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/15"><MessageCircleQuestion className="h-5 w-5" /></span>
+            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-white/95"><Sprout size={38} thinking={busy} /></span>
             <div className="min-w-0 flex-1">
               <p className="text-[15px] font-semibold leading-tight">Ask Prosperr</p>
-              <p className="text-[11.5px] text-white/70">How the CRM works · any language</p>
+              <p className="text-[11.5px] text-white/70">{busy ? 'Thinking…' : 'Your CRM buddy · ask in any language'}</p>
             </div>
             {msgs.length > 0 && <button type="button" onClick={() => setMsgs([])} title="New chat" aria-label="New chat" className="grid h-8 w-8 place-items-center rounded-full hover:bg-white/15"><RotateCcw className="h-4 w-4" /></button>}
             <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="grid h-8 w-8 place-items-center rounded-full hover:bg-white/15"><X className="h-4 w-4" /></button>
@@ -108,7 +109,8 @@ export function AskProsperr() {
           <div className="flex-1 space-y-3 overflow-y-auto bg-canvas/50 px-3 py-3 text-[13.5px] leading-relaxed">
             {msgs.length === 0 && (
               <div className="space-y-3">
-                <p className="rounded-2xl bg-white px-3.5 py-3 shadow-sm">Hi! Ask me anything about using the CRM: where to find something, what a rule means, or how to do a task. I answer from the BDR guide and can't see or change your data.</p>
+                <div className="flex flex-col items-center pt-2"><Sprout size={72} /><p className="mt-1 font-display text-[17px] font-medium">Hi, I'm Sprout</p></div>
+                <p className="rounded-2xl bg-white px-3.5 py-3 shadow-sm">Ask me anything about using the CRM: where to find something, what a rule means, or how to do a task. I answer from the BDR guide and can't see or change your data.</p>
                 <div className="flex flex-wrap gap-1.5">
                   {info.data.suggestions.map((s) => (
                     <button key={s} type="button" onClick={() => void send(s)} className="rounded-full border border-brand-forest/20 bg-white px-3 py-1.5 text-left text-[12.5px] text-brand-forest hover:bg-brand-forest-50">{s}</button>
@@ -119,7 +121,9 @@ export function AskProsperr() {
             {msgs.map((m, i) => m.role === 'user' ? (
               <div key={i} className="flex justify-end"><p className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-brand-forest px-3.5 py-2 text-white">{m.text}</p></div>
             ) : (
-              <div key={i} className={cn('max-w-[92%] rounded-2xl rounded-bl-md bg-white px-3.5 py-2 shadow-sm', m.error && 'text-brand-navy')}>
+              <div key={i} className="flex items-end gap-1.5">
+              <Sprout size={26} className="mb-0.5" />
+              <div className={cn('max-w-[86%] rounded-2xl rounded-bl-md bg-white px-3.5 py-2 shadow-sm', m.error && 'text-brand-navy')}>
                 <Rich text={m.text} onNavigate={() => { if (window.innerWidth < 640) setOpen(false); }} />
                 {!!m.sources?.length && (
                   <div className="mt-2 flex flex-wrap gap-1 border-t border-line/70 pt-2">
@@ -130,8 +134,14 @@ export function AskProsperr() {
                   </div>
                 )}
               </div>
+              </div>
             ))}
-            {busy && <div className="inline-flex items-center gap-2 rounded-2xl bg-white px-3.5 py-2 text-ink-muted shadow-sm"><Loader2 className="h-4 w-4 animate-spin" />Thinking…</div>}
+            {busy && (
+              <div className="flex items-end gap-1.5"><Sprout size={26} thinking className="mb-0.5" />
+                <div className="inline-flex items-center gap-1 rounded-2xl rounded-bl-md bg-white px-3.5 py-3 shadow-sm">
+                  {[0, 1, 2].map((d) => <span key={d} className="h-1.5 w-1.5 animate-bounce rounded-full bg-brand-forest/60" style={{ animationDelay: `${d * 0.15}s` }} />)}
+                </div></div>
+            )}
             <div ref={end} />
           </div>
 

@@ -88,3 +88,12 @@
 .cmd-group [cmdk-group-heading] { color: rgba(239,239,239,.38); }
 .cmd-group .kbd, [cmdk-root] .kbd { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.12); color: rgba(239,239,239,.6); box-shadow: none; }
 .on-dark [data-badge="neutral"] { background: rgba(255,255,255,.1); color: rgba(239,239,239,.8); }
+
+/* Ask Prosperr mascot: blink, sway, bob while thinking. Off for people who prefer less motion. */
+@keyframes sprout-blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
+@keyframes sprout-sway { 0%, 100% { transform: rotate(-6deg); } 50% { transform: rotate(7deg); } }
+@keyframes sprout-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+.sprout .sprout-eyes { animation: sprout-blink 4.5s infinite; }
+.sprout .sprout-stem { animation: sprout-sway 3.2s ease-in-out infinite; }
+.sprout-thinking { animation: sprout-bob .9s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .sprout .sprout-eyes, .sprout .sprout-stem, .sprout-thinking { animation: none; } }
