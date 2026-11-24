@@ -1,5 +1,5 @@
 import { WhatsAppButton } from '@/features/calls/WhatsApp';
-import { SequenceButton, SequenceModal } from '@/features/outreach/Sequence';
+import { SequenceModal } from '@/features/outreach/Sequence';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -296,7 +296,6 @@ function StakeholderRow({ s, onCall, highlight, accountId }: { s: StakeholderVie
         )}
         {phone && !s.doNotContact && !s.masked && <WhatsAppButton phone={phone.e164} name={s.firstName} onOpened={onCall} compact />}
         {!s.doNotContact && !s.masked && <Button size="sm" variant="subtle" icon={<PhoneCall className="h-3.5 w-3.5" />} onClick={onCall}>Log</Button>}
-        {!s.doNotContact && !s.masked && <SequenceButton stakeholderId={s.id} accountId={accountId} hasEmail={s.emails.some((e) => e.valid !== false)} />}
         {!s.masked && (
           <div className="relative">
             <Button size="icon" variant="ghost" onClick={() => setMenu((m) => !m)}><MoreHorizontal className="h-4 w-4" /></Button>
