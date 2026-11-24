@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import QRCode from 'qrcode';
-import { Copy, Download, Maximize2, Plus, QrCode, Users } from 'lucide-react';
+import { Copy, Download, FileImage, Maximize2, Plus, QrCode, Users, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -77,6 +77,7 @@ function NewQrModal({ open, onClose }: { open: boolean; onClose: () => void }) {
 
 function QrCard({ qr, showOwner }: { qr: Qr; showOwner: boolean }) {
   const img = useQrImage(qr.token, 360);
+  const ownerFirst = qr.ownerName.split(/\s+/)[0];
   const [big, setBig] = useState(false);
   const [open, setOpen] = useState(false);
   const patch = useAction((b: { active?: boolean; sendWelcome?: boolean }) => api.patch(`/api/lead-qr/${qr.id}`, b), { invalidate: [['lead-qr']] });
@@ -85,10 +86,10 @@ function QrCard({ qr, showOwner }: { qr: Qr; showOwner: boolean }) {
   return (
     <Card className="p-4">
       <div className="flex flex-wrap gap-4">
-        <button type="button" onClick={() => setBig(true)} className="shrink-0 rounded-xl border border-line bg-white p-2" title="Show full screen" disabled={!qr.active}>
-          {img ? <img src={img} alt={`QR for ${qr.eventName}`} className={qr.active ? 'h-32 w-32' : 'h-32 w-32 opacity-25'} /> : <div className="h-32 w-32" />}
+        <button type="button" onClick={() => setBig(true)} className="mx-auto shrink-0 self-start rounded-xl border border-line bg-white p-2 sm:mx-0" title="Show full screen" disabled={!qr.active}>
+          {img ? <img src={img} alt={`QR for ${qr.eventName}`} className={qr.active ? 'h-44 w-44 sm:h-32 sm:w-32' : 'h-44 w-44 opacity-25 sm:h-32 sm:w-32'} /> : <div className="h-44 w-44 sm:h-32 sm:w-32" />}
         </button>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-[220px] flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-[15px] font-semibold">{qr.eventName}</h3>
             {!qr.active && <Badge>Switched off</Badge>}
@@ -97,7 +98,8 @@ function QrCard({ qr, showOwner }: { qr: Qr; showOwner: boolean }) {
           <p className="mt-2 text-[13px]"><b className="tabular-nums">{qr.captured}</b> leads · {qr.created} new · {qr.existing} already in CRM{qr.review ? <> · <b className="text-brand-navy">{qr.review} to check</b></> : null}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <Button size="sm" icon={<Maximize2 className="h-3.5 w-3.5" />} disabled={!qr.active} onClick={() => setBig(true)}>Show full screen</Button>
-            {img && <a href={img} download={file}><Button size="sm" icon={<Download className="h-3.5 w-3.5" />}>Download</Button></a>}
+            <Button size="sm" icon={<FileImage className="h-3.5 w-3.5" />} onClick={() => void poster(qr, ownerFirst).catch(() => toast.error('Could not make the poster'))}>Poster to print</Button>
+            {img && <a href={img} download={file}><Button size="sm" variant="ghost" icon={<Download className="h-3.5 w-3.5" />}>QR only</Button></a>}
             <Button size="sm" variant="ghost" icon={<Copy className="h-3.5 w-3.5" />} onClick={copy}>Copy link</Button>
             <Button size="sm" variant="ghost" icon={<Users className="h-3.5 w-3.5" />} onClick={() => setOpen(!open)}>{open ? 'Hide leads' : 'See leads'}</Button>
           </div>
@@ -108,16 +110,73 @@ function QrCard({ qr, showOwner }: { qr: Qr; showOwner: boolean }) {
         </div>
       </div>
       {open && <Captures qrId={qr.id} />}
-      <Modal open={big} onClose={() => setBig(false)} width="max-w-md" title={qr.eventName} subtitle="Scan with your phone camera to share your details with Prosperr">
-        <BigQr token={qr.token} />
-      </Modal>
+      {big && <BoothScreen qr={qr} rep={ownerFirst} onClose={() => setBig(false)} />}
     </Card>
   );
 }
 
-function BigQr({ token }: { token: string }) {
-  const img = useQrImage(token, 720);
-  return img ? <img src={img} alt="QR code" className="mx-auto w-full max-w-sm" /> : null;
+/**
+ * The booth view: the whole screen becomes the QR with the event and the rep's name, the screen stays awake, and new
+ * leads pop up as they arrive, so the BDR can hold up the phone or leave a tablet on the table.
+ */
+function BoothScreen({ qr, rep, onClose }: { qr: Qr; rep: string; onClose: () => void }) {
+  const img = useQrImage(qr.token, 900);
+  const live = useQuery({ queryKey: ['lead-qr'], queryFn: () => api.get<Qr[]>('/api/lead-qr'), refetchInterval: 10_000 });
+  const count = live.data?.find((x) => x.id === qr.id)?.captured ?? qr.captured;
+  const [start] = useState(count);
+  useEffect(() => {
+    let lock: { release: () => Promise<void> } | null = null;
+    const nav = navigator as Navigator & { wakeLock?: { request: (t: 'screen') => Promise<{ release: () => Promise<void> }> } };
+    nav.wakeLock?.request('screen').then((l) => { lock = l; }).catch(() => { /* not supported: the screen may dim */ });
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', esc);
+    document.documentElement.requestFullscreen?.().catch(() => { /* fine: the overlay already covers the page */ });
+    return () => {
+      void lock?.release().catch(() => {});
+      window.removeEventListener('keydown', esc);
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+    };
+  }, [onClose]);
+  return (
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-5 overflow-auto bg-white px-6 py-8 text-center">
+      <button type="button" onClick={onClose} aria-label="Close" className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full border border-line text-ink-muted hover:bg-canvas"><X className="h-5 w-5" /></button>
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-forest">{qr.eventName}</p>
+      <h2 className="font-display text-[26px] font-medium leading-tight sm:text-[34px]">Scan to share your details<br className="hidden sm:block" /> with {rep} from Prosperr</h2>
+      {img && <img src={img} alt="QR code" className="w-[min(78vw,62vh)] max-w-[520px]" />}
+      <p className="max-w-md text-[14px] text-ink-muted">Open your phone camera and point it at the code. Takes 20 seconds: name, company, work email.</p>
+      <p className="text-[13px] font-semibold text-brand-forest">{count - start > 0 ? `${count - start} new lead${count - start === 1 ? '' : 's'} while this screen was open` : 'Waiting for the first scan…'}</p>
+    </div>
+  );
+}
+
+/** A printable A5 poster: event, call to action, the QR and the rep's name, as a PNG. */
+async function poster(qr: Qr, rep: string) {
+  const W = 1240, H = 1748;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#053F1A'; g.fillRect(0, 0, W, 300);
+  g.fillStyle = '#FFFFFF'; g.font = '700 64px Helvetica, Arial, sans-serif'; g.textAlign = 'center';
+  g.fillText('PROSPERR.IO', W / 2, 150);
+  g.font = '400 34px Helvetica, Arial, sans-serif'; g.fillStyle = '#CDEBD5';
+  g.fillText(qr.eventName.toUpperCase(), W / 2, 225);
+  g.fillStyle = '#0D0D0D'; g.font = '600 62px Helvetica, Arial, sans-serif';
+  g.fillText('Raise your team’s in-hand salary', W / 2, 430);
+  g.fillText('at no extra payroll cost', W / 2, 510);
+  g.font = '400 36px Helvetica, Arial, sans-serif'; g.fillStyle = '#56705F';
+  g.fillText(`Scan to share your details with ${rep}`, W / 2, 590);
+  const url = await QRCode.toDataURL(link(qr.token), { width: 820, margin: 1, errorCorrectionLevel: 'M', color: { dark: '#0B3D2C', light: '#FFFFFF' } });
+  const im = new Image();
+  await new Promise<void>((res, rej) => { im.onload = () => res(); im.onerror = () => rej(new Error('qr')); im.src = url; });
+  g.drawImage(im, (W - 820) / 2, 660, 820, 820);
+  g.font = '400 32px Helvetica, Arial, sans-serif'; g.fillStyle = '#56705F';
+  g.fillText('Open your phone camera and point it at the code', W / 2, 1560);
+  g.fillStyle = '#23B24A'; g.fillRect(0, H - 40, W, 40);
+  const a = document.createElement('a');
+  a.href = c.toDataURL('image/png');
+  a.download = `prosperr-poster-${qr.eventName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.png`;
+  a.click();
 }
 
 const OUTCOME: Record<Capture['outcome'], { label: string; tone: 'success' | 'info' | 'warning' }> = {

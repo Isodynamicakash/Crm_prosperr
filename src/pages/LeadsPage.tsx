@@ -25,6 +25,7 @@ interface Leads {
       l1Booked?: number; l1Done?: number; l2Done?: number; l3Done?: number; l1BookedTarget?: number | null; l1DoneTarget?: number | null; l3DoneTarget?: number | null };
     trend: { start: string; calls: number; connects: number; l1Booked: number; l1Done: number }[];
     outcomes: { outcome: string; count: number; connect: boolean }[];
+    undatedCalls: number;
   };
 }
 interface LeadRow { id: string; name: string; designation?: string; level?: number; department?: string; status: EngagementStatus; callAttempts: number;
@@ -262,7 +263,7 @@ function PeriodSection({ p, label }: { p: Leads['period']; label: string }) {
           )}
         </ChartCard>
       </div>
-      {k.newContacts > 0 && <p className="text-xs text-ink-muted">{k.newContacts} contact{k.newContacts === 1 ? '' : 's'} added to the CRM in this period (the one-time load from the team's sheets counts as added on 23 Nov 2026).</p>}
+      {p.undatedCalls > 0 && <p className="text-xs text-ink-muted">Not counted in any period: {p.undatedCalls} call{p.undatedCalls === 1 ? '' : 's'} from the team's sheets that had no date. They are still on each contact's timeline.</p>}
     </div>
   );
 }
