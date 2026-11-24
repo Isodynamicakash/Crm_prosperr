@@ -243,7 +243,6 @@ function Notifications() {
     qc.invalidateQueries({ queryKey: ['notifications'] });
     setOpen(false);
     if (n.entityType?.toLowerCase().includes('account') && n.entityId) navigate(`/accounts/${n.entityId}`);
-    else if (n.entityType?.toLowerCase().includes('sql')) navigate('/sql');
   };
 
   // Live: toast anything new that arrived since the last poll (not on first load).

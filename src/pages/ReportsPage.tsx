@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { BarChart3, Download, Hourglass, Layers, Mail, Network, PauseCircle, ShieldCheck, Target, Timer } from 'lucide-react';
+import { BarChart3, Download, Hourglass, Layers, Network, PauseCircle, ShieldCheck, Target, Timer } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { useAction } from '@/lib/hooks';
@@ -11,9 +11,9 @@ import { fmtDate, fmtDateTime, humanize, inr } from '@/lib/format';
 import type { Achievement } from '@/lib/types';
 import { Button, Card, CardHeader, Empty, EntityTile, Field, Input, PageHeader, SectionHead, Select, SkeletonRows } from '@/components/ui/ui';
 import { ChartCard, Meter, RadialGauge } from '@/components/charts/kit';
-import { AgeingReport, CoverageReport, InactiveReport, L1Report, SequenceReport, SqlQualityReport, WorkloadReport } from '@/features/reports/ReportViews';
+import { AgeingReport, CoverageReport, InactiveReport, L1Report, SqlQualityReport, WorkloadReport } from '@/features/reports/ReportViews';
 
-type ReportKey = 'targets' | 'l1' | 'coverage' | 'inactive' | 'workload' | 'ageing' | 'sql' | 'sequences';
+type ReportKey = 'targets' | 'l1' | 'coverage' | 'inactive' | 'workload' | 'ageing' | 'sql';
 const REPORTS: { key: ReportKey; label: string; hint: string; icon: typeof Target }[] = [
   { key: 'targets', label: 'Targets', hint: 'Set monthly targets and track achievement live.', icon: Target },
   { key: 'l1', label: 'L1 done, not in L2', hint: 'Accounts that had an L1 but haven’t progressed.', icon: Hourglass },
@@ -22,7 +22,6 @@ const REPORTS: { key: ReportKey; label: string; hint: string; icon: typeof Targe
   { key: 'workload', label: 'Workload', hint: 'Open deals and weighted load per AE.', icon: Layers },
   { key: 'ageing', label: 'Ageing', hint: 'How long accounts sit in each stage.', icon: Timer },
   { key: 'sql', label: 'SQL quality', hint: 'Approval and rejection patterns per BDR.', icon: ShieldCheck },
-  { key: 'sequences', label: 'Email sequences', hint: 'Sends, replies and bounces per sequence step.', icon: Mail },
 ];
 
 export default function ReportsPage() {
@@ -52,7 +51,7 @@ export default function ReportsPage() {
 
 const ENDPOINT: Record<Exclude<ReportKey, 'targets'>, string> = {
   l1: '/api/reports/l1-not-progressed', coverage: '/api/reports/stakeholder-coverage', inactive: '/api/reports/inactive-reasons',
-  workload: '/api/reports/workload', ageing: '/api/reports/ageing', sql: '/api/reports/sql-quality', sequences: '/api/reports/sequence-performance',
+  workload: '/api/reports/workload', ageing: '/api/reports/ageing', sql: '/api/reports/sql-quality',
 };
 
 function DedicatedView({ k, data }: { k: Exclude<ReportKey, 'targets'>; data: unknown }) {
@@ -65,7 +64,6 @@ function DedicatedView({ k, data }: { k: Exclude<ReportKey, 'targets'>; data: un
     case 'workload': return <WorkloadReport data={obj} />;
     case 'ageing': return <AgeingReport data={obj} />;
     case 'sql': return <SqlQualityReport data={obj} />;
-    case 'sequences': return <SequenceReport rows={rows} />;
   }
 }
 

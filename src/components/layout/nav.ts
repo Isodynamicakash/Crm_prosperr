@@ -1,4 +1,4 @@
-import { BarChart3, Building2, CalendarCheck2, CalendarClock, CheckSquare, ClipboardCheck, Home, KanbanSquare, QrCode, Send, Target, Settings, UserCheck, Users, type LucideIcon } from 'lucide-react';
+import { BarChart3, Building2, CalendarCheck2, CalendarClock, CheckSquare, Home, KanbanSquare, Target, Settings, UserCheck, Users, type LucideIcon } from 'lucide-react';
 import type { Role } from '@/lib/types';
 
 export interface NavItem { to: string; label: string; icon: LucideIcon; roles: Role[]; group: 'main' | 'workspace'; shortcut?: string }
@@ -13,9 +13,6 @@ export const NAV: NavItem[] = [
   { to: '/my-leads', label: 'My Leads', icon: UserCheck, roles: ['AE'], group: 'main', shortcut: 'l' },
   { to: '/meetings', label: 'Meetings', icon: CalendarClock, roles: ['AE'], group: 'main', shortcut: 'm' },
   { to: '/pipeline', label: 'Pipeline', icon: KanbanSquare, roles: ['AE', 'MANAGER', 'ADMIN'], group: 'main', shortcut: 'p' },
-  { to: '/sql', label: 'SQLs', icon: ClipboardCheck, roles: ['BDR', 'MANAGER', 'ADMIN'], group: 'main', shortcut: 's' },
-  { to: '/sequences', label: 'Sequences', icon: Send, roles: ['BDR', 'MANAGER', 'ADMIN'], group: 'main', shortcut: 'e' },
-  { to: '/event-qr', label: 'Event QR', icon: QrCode, roles: ['BDR', 'MANAGER', 'ADMIN'], group: 'main', shortcut: 'q' },
   { to: '/tasks', label: 'Tasks', icon: CheckSquare, roles: ['BDR', 'AE', 'MANAGER', 'ADMIN'], group: 'main', shortcut: 't' },
   { to: '/reports', label: 'Reports', icon: BarChart3, roles: ['MANAGER', 'ADMIN'], group: 'workspace', shortcut: 'r' },
   { to: '/team', label: 'Team', icon: Users, roles: ['MANAGER', 'ADMIN'], group: 'workspace' },

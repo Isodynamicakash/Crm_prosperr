@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, ArrowRight, CalendarCheck2, ClipboardCheck, Flag, PhoneCall, Plus } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CalendarCheck2, Flag, PhoneCall, Plus } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/cn';
@@ -61,7 +61,7 @@ function BdrHome({ preset, setPreset, first }: HomeProps) {
         kpis={[
           { label: 'Calls', value: calls, spark: 'calls', delta: delta(s, 'calls'), to: '/my-day' },
           { label: 'Connect rate', value: `${connectRate}%`, spark: 'connects', delta: delta(s, 'connects'), hint: `${d?.connects ?? 0} conversations` },
-          { label: 'SQLs submitted', value: d?.sqlsSubmitted ?? '—', spark: 'sqls', delta: delta(s, 'sqls'), hint: d ? `${d.sqlsApproved} approved` : undefined, to: '/sql' },
+          { label: 'SQLs submitted', value: d?.sqlsSubmitted ?? '—', spark: 'sqls', delta: delta(s, 'sqls'), hint: d ? `${d.sqlsApproved} approved` : undefined },
           { label: 'L1 booked', value: d?.l1Booked ?? '—', spark: 'meetingsBooked', delta: delta(s, 'meetingsBooked'), hint: d ? `${d.l1Done} done · ${d.noShows} no-show` : undefined },
         ]}>
         <div className="mt-4 flex flex-col gap-3 rounded-[20px] border border-white/[0.08] bg-white/[0.04] p-4 backdrop-blur md:flex-row md:items-center">
@@ -205,7 +205,6 @@ interface Leadership {
 const AE_STAGES: LifecycleStage[] = ['SQL', 'L1', 'L2', 'L3', 'NEGOTIATION', 'WON'];
 
 function LeaderHome({ preset, setPreset, first }: HomeProps) {
-  const navigate = useNavigate();
   const pulse = usePulse(preset);
   const { data: d } = useQuery({ queryKey: ['dashboard', 'lead', preset], queryFn: () => api.get<Leadership>('/api/dashboards/leadership', periodParams(preset)), ...LIVE });
   const queue = useQuery({ queryKey: ['queue'], queryFn: () => api.get<QueueRow[]>('/api/assignment/queue'), ...LIVE });
@@ -233,16 +232,9 @@ function LeaderHome({ preset, setPreset, first }: HomeProps) {
         kpis={[
           { label: 'Pipeline MRR', value: d ? inr(d.pipelineMrr) : '—', hint: `${active} active · ${inactive} inactive`, to: '/pipeline' },
           { label: 'Team calls', value: sum(s, 'calls'), spark: 'calls', delta: delta(s, 'calls'), hint: `${sum(s, 'connects')} connects` },
-          { label: 'SQLs', value: sum(s, 'sqls'), spark: 'sqls', delta: delta(s, 'sqls'), hint: `${toReview} to review · ${toAssign} to assign`, to: '/sql' },
+          { label: 'SQLs', value: sum(s, 'sqls'), spark: 'sqls', delta: delta(s, 'sqls'), hint: `${toReview} to review · ${toAssign} to assign` },
           { label: 'Won', value: sum(s, 'wins'), spark: 'wins', delta: delta(s, 'wins'), hint: stuck ? `${stuck} stuck past threshold` : 'Nothing stuck' },
         ]}>
-        {(toReview + toAssign) > 0 && (
-          <button onClick={() => navigate('/sql')} className="mt-4 flex w-full items-center gap-3 rounded-[20px] border border-brand-mint/25 bg-brand-mint/10 p-4 text-left transition-colors hover:bg-brand-mint/15">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-mint text-brand-night"><ClipboardCheck className="h-4 w-4" /></span>
-            <span className="flex-1 text-[13.5px]"><b>{toReview} SQL{toReview === 1 ? '' : 's'} to review</b>{toAssign > 0 && <> and <b>{toAssign} waiting for an AE</b></>}</span>
-            <span className="flex items-center gap-1 text-xs font-semibold text-brand-mint">Open queue<ArrowRight className="h-3.5 w-3.5" /></span>
-          </button>
-        )}
       </CommandHero>
 
       <Scoreboard preset={preset} />
@@ -324,4 +316,3 @@ function TargetsCard({ targets }: { targets?: Achievement[] }) {
 function Mini({ label, value, warn }: { label: string; value: React.ReactNode; warn?: boolean }) {
   return <div><p className={cn('font-display text-[20px] font-medium tabular-nums', warn && 'text-[#202E64]')}>{value}</p><p className="text-[11px] text-ink-muted">{label}</p></div>;
 }
-

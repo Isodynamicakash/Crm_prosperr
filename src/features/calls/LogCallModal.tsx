@@ -178,7 +178,6 @@ export function LogCallModal({ open, onClose, target, onLogged, saveAndNext }: {
                 {plan.maxAttemptsReached && <li className="text-warning">Attempt {plan.attemptsAfter}: marked unresponsive. Try another stakeholder at this company.</li>}
                 {plan.markPhoneInvalid && <li>This number is marked invalid; the stakeholder stays open.</li>}
                 {plan.setIcpFitNo && <li>Account is marked as not an ICP fit.</li>}
-                {plan.offerSequence && <li>You can start an email sequence after saving.</li>}
                 {plan.openL1Booking && <li className="font-medium text-success">Next: submit the SQL and book the L1 meeting.</li>}
               </ul>
             )}

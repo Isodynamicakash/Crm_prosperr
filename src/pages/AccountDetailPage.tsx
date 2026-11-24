@@ -1,5 +1,4 @@
 import { WhatsAppButton } from '@/features/calls/WhatsApp';
-import { SequenceButton, SequenceModal } from '@/features/outreach/Sequence';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -42,7 +41,6 @@ export default function AccountDetailPage() {
   const industries = usePicklist('INDUSTRY');
   const [dialog, setDialog] = useState<Dialog>(null);
   const [call, setCall] = useState<CallTarget | null>(null);
-  const [seqFor, setSeqFor] = useState<string | null>(null);
   const [outcomeFor, setOutcomeFor] = useState<MeetingRef | null>(null);
   const [rescheduleFor, setRescheduleFor] = useState<(MeetingRef & { scheduledStart?: string; meetingLink?: string }) | null>(null);
   const highlight = params.get('stakeholder');
@@ -234,8 +232,7 @@ export default function AccountDetailPage() {
       </div>
 
       <LogCallModal open={!!call} target={call} onClose={() => setCall(null)}
-        onLogged={(r) => { if (r.openL1Booking && !inPipeline) setDialog('sql'); else if (role === 'BDR' && r.offerSequence && call) setSeqFor(call.stakeholderId); }} />
-      {role === 'BDR' && seqFor && <SequenceModal open onClose={() => setSeqFor(null)} stakeholderId={seqFor} accountId={a.id} />}
+        onLogged={(r) => { if (r.openL1Booking && !inPipeline) setDialog('sql'); }} />
       <AddStakeholderModal open={dialog === 'stakeholder'} onClose={() => setDialog(null)} accountId={a.id} stakeholders={stakeholders} />
       <SubmitSqlModal open={dialog === 'sql'} onClose={() => setDialog(null)} accountId={a.id} accountName={a.name} stakeholders={stakeholders} account={a} />
       <EditAccountModal open={dialog === 'edit'} onClose={() => setDialog(null)} account={a} />
@@ -262,7 +259,6 @@ function OwnerRow({ label, name }: { label: string; name?: string }) {
 }
 
 function StakeholderRow({ s, onCall, highlight, accountId }: { s: StakeholderView; onCall: () => void; highlight: boolean; accountId: string }) {
-  const { user } = useAuth();
   const [menu, setMenu] = useState(false);
   const [dnc, setDnc] = useState(false);
   const [edit, setEdit] = useState(false);
@@ -297,7 +293,6 @@ function StakeholderRow({ s, onCall, highlight, accountId }: { s: StakeholderVie
         )}
         {phone && !s.doNotContact && !s.masked && <WhatsAppButton phone={phone.e164} name={s.firstName} onOpened={onCall} compact />}
         {!s.doNotContact && !s.masked && <Button size="sm" variant="subtle" icon={<PhoneCall className="h-3.5 w-3.5" />} onClick={onCall}>Log</Button>}
-        {user?.role !== 'AE' && !s.doNotContact && !s.masked && <SequenceButton stakeholderId={s.id} accountId={accountId} hasEmail={s.emails.some((e) => e.valid !== false)} />}
         {!s.masked && (
           <div className="relative">
             <Button size="icon" variant="ghost" onClick={() => setMenu((m) => !m)}><MoreHorizontal className="h-4 w-4" /></Button>
