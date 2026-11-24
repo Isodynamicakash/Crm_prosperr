@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { ArrowLeft, CheckCircle2, Download, FileSpreadsheet, Sparkles, Upload } from 'lucide-react';
 import { api } from '@/lib/api';
+import { downloadCsv, LEADS_SAMPLE } from '@/lib/csv';
 import { cn } from '@/lib/cn';
 import { useAuth } from '@/lib/auth';
 import { useUsers } from '@/lib/queries';
@@ -141,10 +142,18 @@ export function ImportWizard({ open, onClose }: { open: boolean; onClose: () => 
             <span className="text-xs text-ink-muted">.xlsx or .csv · up to 5,000 rows per file · every sheet in the workbook can be picked next</span>
           </button>
           <input ref={fileRef} type="file" accept=".xlsx,.csv" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) inspect(f); e.target.value = ''; }} />
+          {source === 'FILE' && (
+            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line px-3 py-2.5 text-[12.5px]">
+              <span className="min-w-0 flex-1"><b>Not sure about the columns?</b> Download the sample, paste your leads under its headings, delete the two example rows, and upload it.
+                <span className="block text-ink-muted">Required: Company and a name (Name, or First name + Last name). Everything else is optional. Other headings like "Mobile", "Job title" or "Organisation" are matched too.</span></span>
+              <Button size="sm" icon={<Download className="h-3.5 w-3.5" />} onClick={() => downloadCsv('prosperr-leads-sample.csv', LEADS_SAMPLE)}>Download sample CSV</Button>
+            </div>
+          )}
           <div className="rounded-xl bg-canvas/70 p-3 text-[12.5px] text-ink-soft">
             {source === 'APOLLO'
               ? <>In Apollo: select people → <b>Export</b> → CSV. Columns like First Name, Title, Company, Email, Mobile Phone and Person Linkedin Url are matched for you, and the lead source is set to Apollo.</>
-              : <>Any sheet works as long as each row is one person with their company. One row per person; the CRM groups people into companies and skips anyone already in the CRM.</>}
+              : <>Any sheet works as long as each row is one person with their company. One row per person; the CRM groups people into companies and skips anyone already in the CRM.
+                Small differences are fine: Bangalore or Gurgaon, "Fintech" or "Information Technology", "Human Resources", "1.2k" or "501-1,000" employees are all understood.</>}
           </div>
         </div>
       )}

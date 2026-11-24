@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { FileSpreadsheet, Loader2, X } from 'lucide-react';
+import { Download, FileSpreadsheet, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+import { downloadCsv, PEOPLE_SAMPLE } from '@/lib/csv';
 import { useT } from '@/lib/i18n';
 import { closestDesignation } from './AccountForms';
 
@@ -106,10 +107,16 @@ export function StakeholderCsv({ accountId, designations, onDone }: {
       <input ref={input} type="file" accept=".csv,text/csv" className="hidden"
         onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void load(f); }} />
       {!data ? (
-        <button type="button" onClick={() => input.current?.click()}
-          className="flex items-center gap-1.5 text-xs font-semibold text-brand-forest hover:underline">
-          <FileSpreadsheet className="h-3.5 w-3.5" />{t('csv.addMany')}
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button type="button" onClick={() => input.current?.click()}
+            className="flex items-center gap-1.5 text-xs font-semibold text-brand-forest hover:underline">
+            <FileSpreadsheet className="h-3.5 w-3.5" />{t('csv.addMany')}
+          </button>
+          <button type="button" onClick={() => downloadCsv('prosperr-people-sample.csv', PEOPLE_SAMPLE)}
+            className="flex items-center gap-1.5 text-xs text-ink-muted hover:text-brand-forest hover:underline" title="Columns: Name, Designation, Email, Phone, LinkedIn">
+            <Download className="h-3.5 w-3.5" />Sample CSV
+          </button>
+        </div>
       ) : (
         <div className="rounded-2xl border border-brand-forest/20 bg-white p-3">
           <div className="flex items-center gap-2">
