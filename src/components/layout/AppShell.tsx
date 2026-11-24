@@ -12,6 +12,7 @@ import { humanize, relTime } from '@/lib/format';
 import type { NotificationRow } from '@/lib/types';
 import { Avatar } from '@/components/ui/ui';
 import { CommandMenu } from './CommandMenu';
+import { AskProsperr } from '@/features/help/AskProsperr';
 import { navFor } from './nav';
 import { LANGUAGES, useLanguage, useT, type LangCode } from '@/lib/i18n';
 import { GoogleConnect } from '@/features/integrations/Google';
@@ -133,6 +134,7 @@ export function AppShell() {
         <TopBar onSearch={() => setCmdOpen(true)} onMenu={() => setDrawer(true)} />
         <main className="app-main min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-canvas scrollbar-thin">
           <div key={location.pathname} className="mx-auto max-w-[1360px] animate-[page-in_.35s_cubic-bezier(.16,1,.3,1)] px-3 pb-28 pt-4 sm:px-6 sm:py-6 lg:pb-6"><Outlet /></div>
+          {user?.role === 'BDR' && <AskProsperr />}
         </main>
       </div>
 
