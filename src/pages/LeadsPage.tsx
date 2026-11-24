@@ -128,6 +128,8 @@ export default function LeadsPage() {
             </ChartCard>
           </div>
 
+          <BreakdownCard bdrId={bdrId} leader={leader} />
+
           <ChartCard title="Needs your attention" subtitle="Your quiet companies that matter most: high intent first, then best ICP fit"
             action={<Link to="/accounts" className="flex items-center gap-1 text-xs font-semibold text-brand-forest hover:underline">All my accounts<ArrowRight className="h-3 w-3" /></Link>}>
             {d.attention.length === 0 ? <Empty icon={<AlertTriangle className="h-5 w-5" />} title="Nothing has gone quiet" body="Every company you work had a touch in the last 30 days." /> : (
@@ -153,6 +155,69 @@ export default function LeadsPage() {
 const inText = (label: string) => (/^(this|last|\d|quarter)/i.test(label) ? label.toLowerCase() : label);
 /** Undated rows from the sheets were given 1 Jan 2026: say so instead of showing a made-up date. */
 const touch = (iso?: string) => (!iso ? 'Never' : iso.startsWith('2026-01-01') ? 'No date in sheet' : relTime(iso));
+
+interface Breakdown { label: string; total: number; prospect: number; sql: number; l1: number; later: number; won: number; lost: number; reachedSql: number; reachedL1: number }
+const DIMS = [['industry', 'Industry'], ['city', 'City'], ['size', 'Company size'], ['source', 'Lead source']] as const;
+const STAGE_SERIES = [
+  { key: 'prospect', name: 'Prospect', color: '#CBD5E1' }, { key: 'sql', name: 'SQL', color: C.sage }, { key: 'l1', name: 'L1 done', color: C.mint },
+  { key: 'later', name: 'L2 – Negotiation', color: C.forest2 }, { key: 'won', name: 'Won', color: C.forest }, { key: 'lost', name: 'Lost', color: C.navy },
+];
+
+/** Which kind of company turns into meetings: companies per industry (or city, size, source), split by how far they got. */
+function BreakdownCard({ bdrId, leader }: { bdrId?: string; leader: boolean }) {
+  const [by, setBy] = useState<(typeof DIMS)[number][0]>('industry');
+  const [scope, setScope] = useState<'mine' | 'team'>('mine');
+  const [order, setOrder] = useState<'size' | 'conversion'>('size');
+  const q = useQuery({ queryKey: ['leads-breakdown', bdrId ?? 'me', by, scope], placeholderData: (prev) => prev,
+    queryFn: () => api.get<Breakdown[]>('/api/dashboards/bdr/leads/breakdown', { by, scope, ...(bdrId && scope === 'mine' ? { bdrId } : {}) }) });
+  const rows = (q.data ?? []).map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, k === 'label' ? v : Number(v)]))) as unknown as Breakdown[];
+  const fair = rows.filter((r) => r.total >= 10 && r.label !== 'Not set' && !r.label.startsWith('Licences not set'));
+  const best = [...fair].sort((a, b) => b.reachedSql - a.reachedSql)[0];
+  const worst = [...fair].sort((a, b) => a.reachedSql - b.reachedSql)[0];
+  const shown = (order === 'size' ? rows : [...rows].filter((r) => r.total >= 10).sort((a, b) => b.reachedSql - a.reachedSql)).slice(0, 10);
+  const dimName = DIMS.find(([k]) => k === by)![1].toLowerCase();
+  return (
+    <ChartCard title="What kind of company converts" subtitle={`Companies by ${dimName}, split by how far they got${scope === 'team' ? ' · whole team' : leader ? " · this BDR's companies" : ' · your companies'}`}
+      action={<div className="flex flex-wrap gap-2">
+        <Select id="breakdown-by" value={by} onChange={(e) => setBy(e.target.value as typeof by)} className="w-40" aria-label="Group by">
+          {DIMS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select>
+        <Select id="breakdown-scope" value={scope} onChange={(e) => setScope(e.target.value as 'mine' | 'team')} className="w-36" aria-label="Whose companies">
+          <option value="mine">{leader ? 'This BDR' : 'Mine'}</option><option value="team">Whole team</option></Select>
+        <Select id="breakdown-order" value={order} onChange={(e) => setOrder(e.target.value as 'size' | 'conversion')} className="w-44" aria-label="Order">
+          <option value="size">Most companies</option><option value="conversion">Best conversion (10+)</option></Select>
+      </div>}>
+      {q.isLoading ? <SkeletonRows rows={4} /> : !rows.length ? <EmptyChart>No companies yet.</EmptyChart> : (
+        <>
+          {best && worst && best.reachedSql - worst.reachedSql >= 5 && (
+            <p className="mb-3 rounded-xl bg-brand-forest-50/70 px-3 py-2 text-[13px]">
+              <b>{best.label}</b> converts best: {best.reachedSql}% reached SQL ({best.total - best.prospect} of {best.total}).
+              {' '}<b>{worst.label}</b> converts least: {worst.reachedSql}% ({worst.total - worst.prospect} of {worst.total}).
+              <span className="text-ink-muted"> Groups with 10+ companies.</span>
+            </p>
+          )}
+          {by === 'size' && <p className="mb-3 text-xs text-ink-muted">In the team's sheets, licence counts were mostly filled in only once a company reached SQL, so size groups look like 100%. New companies get a size as soon as licences are entered.</p>}
+          <div className="mb-2 flex flex-wrap gap-3 text-[11px] text-ink-muted">{STAGE_SERIES.map((x) => (
+            <span key={x.key} className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: x.color }} />{x.name}</span>))}</div>
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
+            <GroupedBars horizontal stacked data={shown as unknown as Record<string, number | string>[]} x="label" series={STAGE_SERIES} height={Math.max(220, shown.length * 34)} />
+            <table className="self-start text-[12.5px]">
+              <thead className="text-[11px] uppercase tracking-wide text-ink-muted"><tr><th className="pb-1.5 text-left font-semibold">{DIMS.find(([k]) => k === by)![1]}</th>
+                <th className="pb-1.5 text-right font-semibold">Cos.</th><th className="pb-1.5 text-right font-semibold" title="Reached SQL or beyond">SQL+</th>
+                <th className="pb-1.5 text-right font-semibold" title="Had the L1 meeting or beyond">L1+</th></tr></thead>
+              <tbody>{shown.map((r) => (
+                <tr key={r.label} className="border-t border-line/60">
+                  <td className="max-w-[120px] truncate py-1.5 pr-2" title={r.label}>{r.label}</td>
+                  <td className="py-1.5 text-right tabular-nums">{r.total}</td>
+                  <td className="py-1.5 text-right font-semibold tabular-nums text-brand-forest">{r.reachedSql}%</td>
+                  <td className="py-1.5 text-right tabular-nums">{r.reachedL1}%</td>
+                </tr>))}</tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </ChartCard>
+  );
+}
 
 const BUCKET_LABEL = { day: 'day by day', week: 'week by week', month: 'month by month' } as const;
 const tick = (iso: string, b: 'day' | 'week' | 'month') => new Date(`${iso}T00:00:00`).toLocaleDateString('en-IN', b === 'month' ? { month: 'short', year: '2-digit' } : { day: 'numeric', month: 'short' });
