@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowRight, CalendarClock, CheckCircle2, Info, PhoneCall } from 'lucide-react';
+import { ArrowRight, CalendarClock, CheckCircle2, Clock, Info, PhoneCall, PhoneOff, ThumbsUp } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAction } from '@/lib/hooks';
 import { usePicklist } from '@/lib/queries';
@@ -20,6 +20,11 @@ const GROUPS: { title: string; codes: string[] }[] = [
   { title: 'call.groupNotFit', codes: ['NOT_INTERESTED', 'ALREADY_USING', 'NOT_POSSIBLE', 'WRONG_ICP', 'NOT_ASSOCIATED', 'WRONG_NUMBER'] },
 ];
 const NEEDS_DATE = new Set(['CALL_LATER', 'CALL_AFTER_MONTH']);
+const NO_ANSWER = new Set(GROUPS[0].codes);
+
+/** The simple flow: Not connected → reminder task · Connected → Postponed (call-back task) or Interested (book L1, then SQL). */
+type Path = '' | 'NOT_CONNECTED' | 'POSTPONED' | 'INTERESTED' | 'OTHER';
+const pathFor = (c: string): Path => (!c ? '' : NO_ANSWER.has(c) ? 'NOT_CONNECTED' : c === 'L1_BOOKED' ? 'INTERESTED' : NEEDS_DATE.has(c) ? 'POSTPONED' : 'OTHER');
 const NEEDS_REASON = new Set(['NOT_INTERESTED', 'ALREADY_USING']);
 const NEEDS_REFERRAL = new Set(['REFERRED', 'NOT_RIGHT_STAKEHOLDER']);
 
@@ -39,9 +44,12 @@ export function LogCallModal({ open, onClose, target, onLogged, saveAndNext }: {
   const [taskDue, setTaskDue] = useState('');
   const [ref, setRef] = useState({ fullName: '', designation: '', email: '', phone: '' });
   const [aiFilled, setAiFilled] = useState(false);
+  const [connected, setConnected] = useState<boolean | null>(null);
+  const [path, setPath] = useState<Path>('');
 
   useEffect(() => {
     if (!open) return;
+    setConnected(null); setPath('');
     setCode(''); setRemark(''); setFollowUpDate(''); setReason(''); setTaskDue(''); setAiFilled(false);
     setRef({ fullName: '', designation: '', email: '', phone: '' });
     setPhoneId(target?.phones?.find((p) => p.primary && p.valid)?.id ?? target?.phones?.find((p) => p.valid)?.id ?? '');
@@ -51,11 +59,18 @@ export function LogCallModal({ open, onClose, target, onLogged, saveAndNext }: {
 
   // AI only pre-fills; every field stays editable and nothing is saved until the BDR presses Save.
   function applySuggestion(s: CallNoteSuggestion) {
-    if (s.outcomeCode && labels[s.outcomeCode]) setCode(s.outcomeCode);
+    if (s.outcomeCode && labels[s.outcomeCode]) { choose(s.outcomeCode); setConnected(!NO_ANSWER.has(s.outcomeCode)); }
     if (s.remark) setRemark(s.remark);
     if (s.followUpDate) setFollowUpDate(s.followUpDate);
     if (s.reason) setReason(s.reason);
     setAiFilled(true);
+  }
+
+  // Picking a path picks the outcome code the backend rules already understand.
+  function choose(c: string, p: Path = pathFor(c)) { setCode(c); setPath(p); setTaskDue(''); setFollowUpDate((d) => (NEEDS_DATE.has(c) ? d : '')); }
+  function pickConnected(v: boolean) {
+    setConnected(v);
+    if (v) { setCode(''); setPath(''); } else choose('DID_NOT_PICK', 'NOT_CONNECTED');
   }
 
   // Preview shows exactly what the rule table will do before the BDR saves (M2-3: plan editable before save).
@@ -84,7 +99,8 @@ export function LogCallModal({ open, onClose, target, onLogged, saveAndNext }: {
     onSuccess: ({ r, next }) => { onLogged?.(r, next); if (!next) onClose(); },
   });
 
-  const missing = !code ? t('call.pickOutcome')
+  const missing = connected === null ? 'Connected or not connected?'
+    : !code ? t('call.pickOutcome')
     : NEEDS_DATE.has(code) && !followUpDate ? t('call.pickDate')
     : NEEDS_REASON.has(code) && !reason.trim() ? t('call.addReason')
     : NEEDS_REFERRAL.has(code) && !ref.fullName.trim() ? t('call.addReferral')
@@ -100,7 +116,7 @@ export function LogCallModal({ open, onClose, target, onLogged, saveAndNext }: {
         {missing && <span className="mr-auto text-xs text-ink-muted">{missing}</span>}
         <Button onClick={onClose}>{t('common.cancel')}</Button>
         {saveAndNext && <Button disabled={!!missing} loading={log.isPending && log.variables === true} onClick={() => log.mutate(true)}>{t('common.saveNext')} <ArrowRight className="h-3.5 w-3.5" /></Button>}
-        <Button variant="primary" disabled={!!missing} loading={log.isPending && log.variables === false} onClick={() => log.mutate(false)}>{t('common.save')}</Button>
+        <Button variant="primary" disabled={!!missing} loading={log.isPending && log.variables === false} onClick={() => log.mutate(false)}>{path === 'INTERESTED' ? 'Save & book L1' : t('common.save')}</Button>
       </>}>
       <div className="space-y-5">
         <VoiceNote onResult={applySuggestion} />
@@ -113,26 +129,62 @@ export function LogCallModal({ open, onClose, target, onLogged, saveAndNext }: {
           </Field>
         )}
 
-        <div className="space-y-3">
-          {GROUPS.map((g) => (
-            <div key={g.title}>
-              <p className="mb-1.5 text-2xs font-semibold uppercase tracking-wider text-ink-muted/80">{t(g.title)}</p>
-              <div className="flex flex-wrap gap-1.5">
-                {g.codes.filter((c) => labels[c]).map((c) => (
-                  <button key={c} onClick={() => setCode(c)}
-                    className={cn('rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-all',
-                      code === c ? 'border-brand-forest bg-brand-forest text-white shadow-[0_6px_14px_-8px_rgba(5,63,26,.9)]' : 'border-line bg-white text-ink-soft hover:border-brand-forest/40 hover:text-ink',
-                      c === 'L1_BOOKED' && code !== c && 'border-brand-mint/50 bg-[#E6F5EA] text-[#1A7F36]')}>
-                    {t(`outcome.${c}`, undefined, labels[c])}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
+        <div>
+          <p className="mb-1.5 text-2xs font-semibold uppercase tracking-wider text-ink-muted/80">How did the call go?</p>
+          <div className="grid grid-cols-2 gap-2">
+            <BigChoice active={connected === true} onClick={() => pickConnected(true)} icon={<PhoneCall className="h-4 w-4" />} title="Connected" sub="You spoke to them" />
+            <BigChoice active={connected === false} onClick={() => pickConnected(false)} icon={<PhoneOff className="h-4 w-4" />} title="Not connected" sub="No answer, switched off, busy" />
+          </div>
         </div>
 
+        {connected === true && (
+          <div>
+            <p className="mb-1.5 text-2xs font-semibold uppercase tracking-wider text-ink-muted/80">What did they say?</p>
+            <div className="grid grid-cols-2 gap-2">
+              <BigChoice active={path === 'INTERESTED'} onClick={() => choose('L1_BOOKED', 'INTERESTED')} icon={<ThumbsUp className="h-4 w-4" />} title="Interested" sub="Book the L1 meeting, then fill the SQL" />
+              <BigChoice active={path === 'POSTPONED'} onClick={() => choose('CALL_LATER', 'POSTPONED')} icon={<Clock className="h-4 w-4" />} title="Postponed" sub="Asked to be called later" />
+            </div>
+            <button type="button" onClick={() => { setCode(''); setPath(path === 'OTHER' ? '' : 'OTHER'); }} className="mt-2 text-xs font-semibold text-brand-forest hover:underline">
+              {path === 'OTHER' ? 'Hide other outcomes' : 'Something else? (not interested, referred, wrong person…)'}
+            </button>
+          </div>
+        )}
+
+        {connected === true && path === 'OTHER' && (
+          <div className="space-y-3 rounded-2xl border border-line bg-canvas/50 p-3">
+            <div className="space-y-3">
+              {GROUPS.slice(1).map((g) => (
+                <div key={g.title}>
+                  <p className="mb-1.5 text-2xs font-semibold uppercase tracking-wider text-ink-muted/80">{t(g.title)}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {g.codes.filter((c) => labels[c] && c !== 'L1_BOOKED' && c !== 'CALL_LATER').map((c) => (
+                      <button key={c} onClick={() => choose(c, 'OTHER')}
+                        className={cn('rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-all',
+                          code === c ? 'border-brand-forest bg-brand-forest text-white shadow-[0_6px_14px_-8px_rgba(5,63,26,.9)]' : 'border-line bg-white text-ink-soft hover:border-brand-forest/40 hover:text-ink',
+                          c === 'L1_BOOKED' && code !== c && 'border-brand-mint/50 bg-[#E6F5EA] text-[#1A7F36]')}>
+                        {t(`outcome.${c}`, undefined, labels[c])}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {path === 'NOT_CONNECTED' && (
+          <Field label="Remind me to call again on" hint="Added to your Tasks">
+            <div className="flex flex-wrap items-center gap-2">
+              <Input type="date" value={taskDue || plan?.taskDue || ''} min={addDaysISO(0)} onChange={(e) => setTaskDue(e.target.value)} className="w-44" />
+              {[0, 1, 2, 7].map((d) => (
+                <Button key={d} size="sm" variant="ghost" onClick={() => setTaskDue(addDaysISO(d))}>{d === 0 ? 'Later today' : d === 1 ? t('common.tomorrow') : t('common.days', { n: d })}</Button>
+              ))}
+            </div>
+          </Field>
+        )}
+
         {NEEDS_DATE.has(code) && (
-          <Field label={t('call.callBackOn')} required>
+          <Field label={path === 'POSTPONED' ? 'When should you call back?' : t('call.callBackOn')} required hint={path === 'POSTPONED' ? 'Added to your Tasks' : undefined}>
             <div className="flex items-center gap-2">
               <Input type="date" value={followUpDate} min={addDaysISO(0)} onChange={(e) => setFollowUpDate(e.target.value)} className="w-44" />
               {[1, 3, 7, 30].map((d) => (
@@ -171,19 +223,30 @@ export function LogCallModal({ open, onClose, target, onLogged, saveAndNext }: {
                   <li className="flex flex-wrap items-center gap-2">
                     <CalendarClock className="h-3.5 w-3.5 text-accent" />
                     {humanize(plan.taskType)} task on <b className="font-medium text-ink">{fmtDate(taskDue || plan.taskDue)}</b>
-                    <Input type="date" className="h-7 w-40" value={taskDue || plan.taskDue || ''} onChange={(e) => setTaskDue(e.target.value)} title="Change the date" />
+                    {path !== 'NOT_CONNECTED' && <Input type="date" className="h-7 w-40" value={taskDue || plan.taskDue || ''} onChange={(e) => setTaskDue(e.target.value)} title="Change the date" />}
                   </li>
                 )}
                 {plan.revisitOn && <li className="flex items-center gap-2"><CalendarClock className="h-3.5 w-3.5 text-ink-muted" />Revisit on {fmtDate(plan.revisitOn)}</li>}
                 {plan.maxAttemptsReached && <li className="text-warning">Attempt {plan.attemptsAfter}: marked unresponsive. Try another stakeholder at this company.</li>}
                 {plan.markPhoneInvalid && <li>This number is marked invalid; the stakeholder stays open.</li>}
                 {plan.setIcpFitNo && <li>Account is marked as not an ICP fit.</li>}
-                {plan.openL1Booking && <li className="font-medium text-success">Next: submit the SQL and book the L1 meeting.</li>}
+                {plan.openL1Booking && <li className="font-medium text-success">Next: book the L1 meeting, then fill in the SQL.</li>}
               </ul>
             )}
           </div>
         )}
       </div>
     </Modal>
+  );
+}
+
+function BigChoice({ active, onClick, icon, title, sub }: { active: boolean; onClick: () => void; icon: React.ReactNode; title: string; sub: string }) {
+  return (
+    <button type="button" onClick={onClick}
+      className={cn('flex items-start gap-3 rounded-2xl border p-3.5 text-left transition-all',
+        active ? 'border-brand-forest bg-brand-forest text-white shadow-[0_10px_24px_-14px_rgba(5,63,26,.9)]' : 'border-line bg-white hover:border-brand-forest/40')}>
+      <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-xl', active ? 'bg-brand-mint text-brand-night' : 'bg-brand-forest-50 text-brand-forest')}>{icon}</span>
+      <span><span className="block text-[14px] font-semibold">{title}</span><span className={cn('block text-xs', active ? 'text-white/70' : 'text-ink-muted')}>{sub}</span></span>
+    </button>
   );
 }

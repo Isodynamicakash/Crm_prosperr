@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { CheckCircle2, CircleAlert, CircleDashed, Sparkles, XCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, CircleAlert, CircleDashed, Sparkles, XCircle } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAction, useDebounced } from '@/lib/hooks';
 import { usePicklist } from '@/lib/queries';
@@ -46,6 +46,7 @@ export function SubmitSqlModal({ open, onClose, accountId, accountName, stakehol
   const t = useT();
   const { user } = useAuth();
   const [aiFilled, setAiFilled] = useState(false);
+  const [step, setStep] = useState<'l1' | 'sql'>('l1');   // book the L1 first, then the SQL details; both are submitted together
   const budget = usePicklist('BANT_BUDGET');
   const authority = usePicklist('BANT_AUTHORITY');
   const need = usePicklist('BANT_NEED');
@@ -62,6 +63,7 @@ export function SubmitSqlModal({ open, onClose, accountId, accountName, stakehol
     const best = [...stakeholders].sort((a, b) => a.priorityRank - b.priorityRank).find((s) => s.engagement === 'MEETING_SCHEDULED' || s.engagement === 'CONNECTED');
     setF({ ...init, qualifyingStakeholderId: best?.id ?? '', attendees: best ? [best.id] : [] });
     setAiFilled(false);
+    setStep('l1');
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // AI returns option codes; map them to this server's picklist ids. Only empty fields are filled.
@@ -117,14 +119,43 @@ export function SubmitSqlModal({ open, onClose, accountId, accountName, stakehol
   const named = (s: StakeholderView) => `${s.firstName} ${s.lastName ?? ''} · ${s.designation ?? '—'}${s.level ? ` (L${s.level})` : ''}`;
 
   return (
-    <Modal open={open} onClose={onClose} width="max-w-4xl" title={t('sql.title', { name: accountName })} subtitle={t('sql.subtitle')}
-      footer={<>
+    <Modal open={open} onClose={onClose} width={step === 'l1' ? 'max-w-2xl' : 'max-w-4xl'} title={step === 'l1' ? `Book L1 meeting · ${accountName}` : t('sql.title', { name: accountName })}
+      subtitle={step === 'l1' ? 'Step 1 of 2 · when, how long, and who attends' : `Step 2 of 2 · ${t('sql.subtitle')}`}
+      footer={step === 'l1' ? <>
+        <span className="mr-auto text-xs text-ink-muted">{!f.start ? 'Step 1 of 2 · pick the L1 date and time' : isPastLocal(f.start) ? 'That time is in the past' : 'Step 1 of 2 · next, the SQL details'}</span>
+        <Button onClick={onClose}>{t('common.cancel')}</Button>
+        <Button variant="primary" disabled={!f.start || isPastLocal(f.start)} onClick={() => setStep('sql')}>Next: SQL details <ArrowRight className="h-3.5 w-3.5" /></Button>
+      </> : <>
         {c && !c.canSubmit && <span className="mr-auto flex items-center gap-2 text-xs text-ink-muted">{c.missingFields.length ? t('sql.missing', { f: c.missingFields.map(fieldLabel).join(', ') }) : t('sql.icpFail')}
           {account && c.missingFields.some((k) => ACCOUNT_FIELDS.has(k)) && <button type="button" onClick={() => setFixing(true)} className="font-semibold text-brand-forest hover:underline">Fill in now</button>}</span>}
-        <Button onClick={onClose}>{t('common.cancel')}</Button>
+        <Button onClick={() => setStep('l1')}><ArrowLeft className="h-3.5 w-3.5" /> Back to L1</Button>
         <Button variant="primary" disabled={!c?.canSubmit || isPastLocal(f.start)} loading={submit.isPending} onClick={() => submit.mutate(undefined)}>{t('sql.submit')}</Button>
       </>}>
       {account && <EditAccountModal open={fixing} onClose={() => setFixing(false)} account={account} focus={c?.missingFields} />}
+      {step === 'l1' ? (
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-brand-forest/15 bg-brand-forest-50/70 px-4 py-3 text-[13px] text-brand-forest">Book the L1 meeting first. It's confirmed together with the SQL in the next step.</div>
+          <section>
+            <p className="mb-2 text-[13px] font-semibold">L1 meeting</p>
+            <div className="grid grid-cols-3 gap-3">
+              <Field label="Date & time (IST)" required className="col-span-2" error={isPastLocal(f.start) ? 'This time is in the past. Pick a future date and time.' : undefined}><Input type="datetime-local" min={nowLocalInput()} value={f.start} onChange={set('start')} /></Field>
+              {f.start && <div className="col-span-2"><BusyStrip local={f.start} durationMin={Number(f.durationMin)} userIds={[user?.id]} /></div>}
+              <Field label="Duration">
+                <Select value={f.durationMin} onChange={set('durationMin')}>{[30, 45, 60].map((m) => <option key={m} value={m}>{m} min</option>)}</Select>
+              </Field>
+              <Field label="Meeting link" className="col-span-3"><Input value={f.meetingLink} onChange={set('meetingLink')} placeholder="https://meet.google.com/…" /></Field>
+            </div>
+            <p className="mb-1.5 mt-3 text-xs font-medium text-ink-soft">Attendees</p>
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+              {stakeholders.map((s) => (
+                <Checkbox key={s.id} checked={f.attendees.includes(s.id)} label={`${s.firstName} ${s.lastName ?? ''}`}
+                  onChange={(v) => setF({ ...f, attendees: v ? [...f.attendees, s.id] : f.attendees.filter((x) => x !== s.id) })} />
+              ))}
+            </div>
+            <div className="mt-2"><Checkbox checked={f.alsoCompletesL2} onChange={(v) => setF({ ...f, alsoCompletesL2: v })} label="This meeting also covers L2" /></div>
+          </section>
+        </div>
+      ) : (
       <div className="grid gap-6 md:grid-cols-[1fr_260px]">
         <div className="space-y-5">
           <div>
@@ -187,25 +218,6 @@ export function SubmitSqlModal({ open, onClose, accountId, accountName, stakehol
             </section>
           )}
 
-          <section>
-            <p className="mb-2 text-[13px] font-semibold">L1 meeting</p>
-            <div className="grid grid-cols-3 gap-3">
-              <Field label="Date & time (IST)" required className="col-span-2" error={isPastLocal(f.start) ? 'This time is in the past. Pick a future date and time.' : undefined}><Input type="datetime-local" min={nowLocalInput()} value={f.start} onChange={set('start')} /></Field>
-              {f.start && <div className="col-span-2"><BusyStrip local={f.start} durationMin={Number(f.durationMin)} userIds={[user?.id]} /></div>}
-              <Field label="Duration">
-                <Select value={f.durationMin} onChange={set('durationMin')}>{[30, 45, 60].map((m) => <option key={m} value={m}>{m} min</option>)}</Select>
-              </Field>
-              <Field label="Meeting link" className="col-span-3"><Input value={f.meetingLink} onChange={set('meetingLink')} placeholder="https://meet.google.com/…" /></Field>
-            </div>
-            <p className="mb-1.5 mt-3 text-xs font-medium text-ink-soft">Attendees</p>
-            <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-              {stakeholders.map((s) => (
-                <Checkbox key={s.id} checked={f.attendees.includes(s.id)} label={`${s.firstName} ${s.lastName ?? ''}`}
-                  onChange={(v) => setF({ ...f, attendees: v ? [...f.attendees, s.id] : f.attendees.filter((x) => x !== s.id) })} />
-              ))}
-            </div>
-            <div className="mt-2"><Checkbox checked={f.alsoCompletesL2} onChange={(v) => setF({ ...f, alsoCompletesL2: v })} label="This meeting also covers L2" /></div>
-          </section>
         </div>
 
         <aside className="h-fit rounded-xl border border-line bg-canvas/60 p-3.5 md:sticky md:top-0">
@@ -231,6 +243,7 @@ export function SubmitSqlModal({ open, onClose, accountId, accountName, stakehol
           )}
         </aside>
       </div>
+      )}
     </Modal>
   );
 }
