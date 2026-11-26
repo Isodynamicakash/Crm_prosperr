@@ -118,8 +118,7 @@ export function SubmitSqlModal({ open, onClose, accountId, accountName, stakehol
   const c = check.data;
   const [fixing, setFixing] = useState(false);
   const needsIntent = !override && c?.criteria.some((x) => x.code === 'LOCATION' && x.status !== 'PASS');
-  const MIN_WHY = 10;
-  const overrideOk = override && f.intentReason.trim().length >= MIN_WHY;
+  const overrideOk = override && f.intentReason.trim().length > 0;
   const canGo = (!!c?.canSubmit || overrideOk) && !isPastLocal(f.start);
   const needsSmall = c?.criteria.some((x) => x.code === 'LICENSES' && x.status !== 'PASS');
   const named = (s: StakeholderView) => `${s.firstName} ${s.lastName ?? ''} · ${s.designation ?? '—'}${s.level ? ` (L${s.level})` : ''}`;
@@ -132,7 +131,7 @@ export function SubmitSqlModal({ open, onClose, accountId, accountName, stakehol
         <Button onClick={onClose}>{t('common.cancel')}</Button>
         <Button variant="primary" disabled={!f.start || isPastLocal(f.start)} onClick={() => setStep('sql')}>Next: SQL details <ArrowRight className="h-3.5 w-3.5" /></Button>
       </> : <>
-        {override && <span className="mr-auto text-xs text-ink-muted">{overrideOk ? 'Submitting on high intent. Your reason goes with the SQL.' : `Write why it's high intent (at least ${MIN_WHY} characters)`}</span>}
+        {override && <span className="mr-auto text-xs text-ink-muted">{overrideOk ? 'Submitting on high intent. Your reason goes with the SQL.' : 'Write why it\'s high intent'}</span>}
         {!override && c && !c.canSubmit && <span className="mr-auto flex items-center gap-2 text-xs text-ink-muted">{c.missingFields.length ? t('sql.missing', { f: c.missingFields.map(fieldLabel).join(', ') }) : t('sql.icpFail')}
           {account && c.missingFields.some((k) => ACCOUNT_FIELDS.has(k)) && <button type="button" onClick={() => setFixing(true)} className="font-semibold text-brand-forest hover:underline">Fill in now</button>}</span>}
         <Button onClick={() => setStep('l1')}><ArrowLeft className="h-3.5 w-3.5" /> Back to L1</Button>
