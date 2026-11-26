@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, ArrowRight, ChevronLeft, ChevronRight, Search, Target } from 'lucide-react';
+import { AlertTriangle, ArrowRight, ChevronLeft, ChevronRight, PieChart, Search, Target } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useUsers } from '@/lib/queries';
@@ -37,8 +37,8 @@ const SIZE: Record<string, string> = { SMALL: 'Small', MEDIUM: 'Medium', LARGE: 
 const TIER: Record<string, string> = { 'Other cities': 'Other' };
 const FN: Record<string, string> = { HR: 'HR', FINANCE: 'Finance', PAYROLL: 'Payroll', OTHER: 'Other' };
 
-/** One BDR's own book: where every lead stands, where they came from, the last 12 weeks, and what needs attention. */
-export default function LeadsPage() {
+/** Shared by My leads and Analytics: whose book (leaders pick a BDR), the period, and the dashboard data. */
+function useLeads() {
   const { user } = useAuth();
   const leader = user?.role === 'MANAGER' || user?.role === 'ADMIN';
   const users = useUsers(leader);
@@ -50,6 +50,60 @@ export default function LeadsPage() {
     queryFn: () => api.get<Leads>('/api/dashboards/bdr/leads', { ...(bdrId ? { bdrId } : {}), ...periodParams(preset) }) });
   const d = q.data;
 
+  return { leader, bdrs, bdrId, setPicked, preset, setPreset, q, d };
+}
+
+function Pickers({ leader, bdrs, bdrId, setPicked, preset, setPreset }: Pick<ReturnType<typeof useLeads>, 'leader' | 'bdrs' | 'bdrId' | 'setPicked' | 'preset' | 'setPreset'>) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {leader && (
+        <Select id="leads-bdr" value={bdrId ?? ''} onChange={(e) => setPicked(e.target.value)} className="w-48" aria-label="BDR">
+          {bdrs.map((b) => <option key={b.id} value={b.id}>{b.fullName}</option>)}
+        </Select>
+      )}
+      <PeriodPicker preset={preset} onPreset={setPreset} />
+    </div>
+  );
+}
+
+/** One BDR's own book: what needs attention, and every lead with where it stands. Charts live on the Analytics page. */
+export default function LeadsPage() {
+  const L = useLeads();
+  const { leader, bdrId, preset, q, d } = L;
+  return (
+    <div className="space-y-4">
+      <PageHeader title={leader && d ? `${d.name}'s leads` : 'My leads'} icon={<Target />} eyebrow={leader ? 'One BDR at a time' : 'Your book'}
+        subtitle={leader ? "Only this BDR's own companies and contacts: what needs attention and where each lead stands."
+          : 'Only your own companies and contacts: what needs you next and where each lead stands.'}
+        actions={<Pickers {...L} />} />
+
+      {q.isLoading || !d ? <SkeletonRows rows={8} /> : (
+        <>
+          <ChartCard title="Needs your attention" subtitle="Your quiet companies that matter most: high intent first, then best ICP fit"
+            action={<Link to="/accounts" className="flex items-center gap-1 text-xs font-semibold text-brand-forest hover:underline">All my accounts<ArrowRight className="h-3 w-3" /></Link>}>
+            {d.attention.length === 0 ? <Empty icon={<AlertTriangle className="h-5 w-5" />} title="Nothing has gone quiet" body="Every company you work had a touch in the last 30 days." /> : (
+              <ul className="divide-y divide-line/70">
+                {d.attention.map((a) => (
+                  <li key={a.id}><Link to={`/accounts/${a.id}`} className="flex flex-wrap items-center gap-3 py-2.5 hover:text-brand-forest">
+                    <span className="min-w-0 flex-1"><b className="text-[14px] font-semibold">{a.name}</b>
+                      <span className="block text-xs text-ink-muted">{[a.reason, a.city, `${a.contacts} contact${a.contacts === 1 ? '' : 's'}`].filter(Boolean).join(' · ')}</span></span>
+                    <span className="text-xs text-ink-muted">last touch: {touch(a.lastTouch)}</span>
+                  </Link></li>
+                ))}
+              </ul>
+            )}
+          </ChartCard>
+          <LeadTable bdrId={bdrId} preset={preset} />
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Analytics for one BDR's book: the period, where leads stand, where they came from, and what converts. */
+export function LeadsAnalyticsPage() {
+  const L = useLeads();
+  const { leader, bdrId, preset, q, d } = L;
   const funnel = d ? (() => {
     const f = d.contactFunnel;
     const all = f.reduce((a, r) => a + Number(r.count), 0);
@@ -68,17 +122,10 @@ export default function LeadsPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title={leader && d ? `${d.name}'s leads` : 'My leads'} icon={<Target />} eyebrow={leader ? 'One BDR at a time' : 'Your book'}
-        subtitle={leader ? "Only this BDR's own companies and contacts: what they did in the period, where each lead stands, and what needs attention."
-          : 'Only your own companies and contacts: what you did in the period, where each lead stands, and what needs you next.'}
-        actions={<div className="flex flex-wrap items-center gap-2">
-          {leader && (
-            <Select id="leads-bdr" value={bdrId ?? ''} onChange={(e) => setPicked(e.target.value)} className="w-48" aria-label="BDR">
-              {bdrs.map((b) => <option key={b.id} value={b.id}>{b.fullName}</option>)}
-            </Select>
-          )}
-          <PeriodPicker preset={preset} onPreset={setPreset} />
-        </div>}
+      <PageHeader title={leader && d ? `${d.name}'s analytics` : 'Analytics'} icon={<PieChart />} eyebrow={leader ? 'One BDR at a time' : 'Your book'}
+        subtitle={leader ? "This BDR's activity in the period, where their leads stand, and what kind of company converts."
+          : 'What you did in the period, where your leads stand, and what kind of company converts.'}
+        actions={<Pickers {...L} />}
         stats={d ? [
           { label: 'Companies', value: d.totals.accounts, hint: `${d.totals.prospecting} prospecting · ${d.totals.inPipeline} in pipeline` },
           { label: 'Contacts', value: d.totals.contacts, hint: `${d.totals.neverCalled} never called` },
@@ -131,21 +178,6 @@ export default function LeadsPage() {
 
           <BreakdownCard bdrId={bdrId} leader={leader} />
 
-          <ChartCard title="Needs your attention" subtitle="Your quiet companies that matter most: high intent first, then best ICP fit"
-            action={<Link to="/accounts" className="flex items-center gap-1 text-xs font-semibold text-brand-forest hover:underline">All my accounts<ArrowRight className="h-3 w-3" /></Link>}>
-            {d.attention.length === 0 ? <Empty icon={<AlertTriangle className="h-5 w-5" />} title="Nothing has gone quiet" body="Every company you work had a touch in the last 30 days." /> : (
-              <ul className="divide-y divide-line/70">
-                {d.attention.map((a) => (
-                  <li key={a.id}><Link to={`/accounts/${a.id}`} className="flex flex-wrap items-center gap-3 py-2.5 hover:text-brand-forest">
-                    <span className="min-w-0 flex-1"><b className="text-[14px] font-semibold">{a.name}</b>
-                      <span className="block text-xs text-ink-muted">{[a.reason, a.city, `${a.contacts} contact${a.contacts === 1 ? '' : 's'}`].filter(Boolean).join(' · ')}</span></span>
-                    <span className="text-xs text-ink-muted">last touch: {touch(a.lastTouch)}</span>
-                  </Link></li>
-                ))}
-              </ul>
-            )}
-          </ChartCard>
-          <LeadTable bdrId={bdrId} preset={preset} />
         </>
       )}
     </div>

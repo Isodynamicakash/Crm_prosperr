@@ -18,8 +18,8 @@ const SequencesPage = lazy(() => import('@/pages/SequencesPage'));
 const ReportsPage = lazy(() => import('@/pages/ReportsPage'));
 const TeamPage = lazy(() => import('@/pages/TeamPage'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
-const EventQrPage = lazy(() => import('@/pages/EventQrPage'));
 const LeadsPage = lazy(() => import('@/pages/LeadsPage'));
+const AnalyticsPage = lazy(() => import('@/pages/AnalyticsPage'));
 const PublicLeadPage = lazy(() => import('@/pages/PublicLeadPage'));
 
 function Guard({ roles, children }: { roles: Role[]; children: JSX.Element }) {
@@ -65,8 +65,8 @@ export default function App() {
         <Route path="pipeline" element={<Guard roles={['AE', 'MANAGER', 'ADMIN']}><PipelinePage /></Guard>} />
         <Route path="sql" element={<Guard roles={['BDR', 'MANAGER']}><SqlPage /></Guard>} />
         <Route path="leads" element={<Guard roles={['BDR', 'MANAGER', 'ADMIN']}><LeadsPage /></Guard>} />
-        <Route path="event-qr" element={<Guard roles={['BDR', 'MANAGER']}><EventQrPage /></Guard>} />
-        <Route path="sequences" element={<Guard roles={['BDR', 'MANAGER']}><SequencesPage /></Guard>} />
+        <Route path="analytics" element={<Guard roles={['BDR', 'MANAGER', 'ADMIN']}><AnalyticsPage /></Guard>} />
+        <Route path="sequences" element={<Guard roles={['AE', 'MANAGER']}><SequencesPage /></Guard>} />
         <Route path="tasks" element={<TasksPage />} />
         <Route path="reports" element={<Guard roles={['MANAGER', 'ADMIN']}><ReportsPage /></Guard>} />
         <Route path="team" element={<Guard roles={['MANAGER', 'ADMIN']}><TeamPage /></Guard>} />

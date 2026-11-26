@@ -37,7 +37,7 @@ export default function SequencesPage() {
   return (
     <div>
       <PageHeader title="Email sequences" icon={<Send />} eyebrow="Outreach"
-        subtitle={user?.role === 'BDR' ? 'Three emails from your own Gmail, then a reminder to call. Start one from any contact on an account.' : 'Sequences across the team.'}
+        subtitle={user?.role === 'MANAGER' ? 'Sequences across the team.' : 'Three emails from your own Gmail, then a reminder to call. Start one from any contact on an account.'}
         stats={[
           { label: 'Running', value: <AnimatedNumber value={counts.live} />, hint: 'Sending on schedule' },
           { label: 'Replied', value: <AnimatedNumber value={counts.replied} />, hint: `${replyRate}% reply rate` },

@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowDownUp, Bookmark, Building2, Download, Flag, Plus, ScanLine, Search, Upload, UserCheck, X } from 'lucide-react';
+import { ArrowDownUp, Bookmark, Building2, Download, Flag, Plus, Search, Upload, UserCheck, X } from 'lucide-react';
 import { ImportWizard } from '@/features/accounts/ImportWizard';
-import { CardScanModal } from '@/features/accounts/CardScan';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -35,7 +34,6 @@ export default function AccountsPage({ myLeads = false }: { myLeads?: boolean })
   // BDRs see every pipeline account (read-only) plus their own prospects; "Mine" narrows to accounts they work
   const [scope, setScope] = useState<'mine' | 'worked' | 'all'>(user?.role === 'BDR' ? 'mine' : 'all');
   const [importing, setImporting] = useState(false);
-  const [scanning, setScanning] = useState(false);
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
   const cities = useCities();
@@ -105,7 +103,6 @@ export default function AccountsPage({ myLeads = false }: { myLeads?: boolean })
         subtitle={myLeads ? 'Only accounts assigned to you as the Account Executive.' : is('BDR') ? (scope === 'mine' ? 'Accounts you own: your prospects and the deals you sourced.' : scope === 'worked' ? 'Every company you have already called, emailed or noted, newest first.' : 'Your prospects plus every account in the team pipeline (view only).') : is('AE') ? 'Every visible account across the team pipeline.' : 'Every account across the team.'}
         actions={<>
           <Button icon={<Download className="h-3.5 w-3.5" />} onClick={() => api.download('/api/accounts', { ...query, format: 'csv', page: undefined, size: undefined }, 'accounts.csv').catch((e) => toast.error(e.message))}>Export</Button>
-          {(is('BDR') || is('MANAGER', 'ADMIN')) && <Button icon={<ScanLine className="h-3.5 w-3.5" />} onClick={() => setScanning(true)}>Scan card</Button>}
           {(is('BDR') || is('MANAGER', 'ADMIN')) && <Button icon={<Upload className="h-3.5 w-3.5" />} onClick={() => setImporting(true)}>Import</Button>}
           {(is('BDR') || is('MANAGER', 'ADMIN')) && <Button variant="primary" icon={<Plus className="h-3.5 w-3.5" />} onClick={() => setAdding(true)}>New account</Button>}
         </>} />
@@ -257,7 +254,6 @@ export default function AccountsPage({ myLeads = false }: { myLeads?: boolean })
 
       <AddAccountModal open={adding} onClose={() => setAdding(false)} />
       <ImportWizard open={importing} onClose={() => setImporting(false)} />
-      <CardScanModal open={scanning} onClose={() => setScanning(false)} />
       <SaveViewModal open={saving} onClose={() => setSaving(false)} filters={f} canShare={is('MANAGER', 'ADMIN')} />
     </div>
   );

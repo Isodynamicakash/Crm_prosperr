@@ -1,0 +1,1 @@
+export { LeadsAnalyticsPage as default } from './LeadsPage';

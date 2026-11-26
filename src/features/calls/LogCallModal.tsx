@@ -11,7 +11,6 @@ import { Modal } from '@/components/ui/overlay';
 import { Badge, Button, Field, Input, Select, Textarea } from '@/components/ui/ui';
 import { VoiceNote, type CallNoteSuggestion } from './VoiceNote';
 import { useT } from '@/lib/i18n';
-import { useAuth } from '@/lib/auth';
 
 /** Outcomes grouped the way a BDR thinks about a call, so the right one is one click away. */
 const GROUPS: { title: string; codes: string[] }[] = [
@@ -31,7 +30,6 @@ export function LogCallModal({ open, onClose, target, onLogged, saveAndNext }: {
   onLogged?: (r: LogCallResult, next: boolean) => void; saveAndNext?: boolean;
 }) {
   const t = useT();
-  const isAdmin = useAuth().user?.role === 'ADMIN';
   const outcomes = usePicklist('CALL_OUTCOME');
   const [code, setCode] = useState('');
   const [remark, setRemark] = useState('');
@@ -180,7 +178,6 @@ export function LogCallModal({ open, onClose, target, onLogged, saveAndNext }: {
                 {plan.maxAttemptsReached && <li className="text-warning">Attempt {plan.attemptsAfter}: marked unresponsive. Try another stakeholder at this company.</li>}
                 {plan.markPhoneInvalid && <li>This number is marked invalid; the stakeholder stays open.</li>}
                 {plan.setIcpFitNo && <li>Account is marked as not an ICP fit.</li>}
-                {plan.offerSequence && !isAdmin && <li>You can start an email sequence after saving.</li>}
                 {plan.openL1Booking && <li className="font-medium text-success">Next: submit the SQL and book the L1 meeting.</li>}
               </ul>
             )}
