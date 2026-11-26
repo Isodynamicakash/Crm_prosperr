@@ -46,7 +46,8 @@ export function SubmitSqlModal({ open, onClose, accountId, accountName, stakehol
   const t = useT();
   const { user } = useAuth();
   const [aiFilled, setAiFilled] = useState(false);
-  const [step, setStep] = useState<'l1' | 'sql'>('l1');   // book the L1 first, then the SQL details; both are submitted together
+  const [step, setStep] = useState<'l1' | 'sql'>('l1');
+  const [override, setOverride] = useState(false);   // BDR passes the SQL on high intent when the checklist isn't green   // book the L1 first, then the SQL details; both are submitted together
   const budget = usePicklist('BANT_BUDGET');
   const authority = usePicklist('BANT_AUTHORITY');
   const need = usePicklist('BANT_NEED');
@@ -64,6 +65,7 @@ export function SubmitSqlModal({ open, onClose, accountId, accountName, stakehol
     setF({ ...init, qualifyingStakeholderId: best?.id ?? '', attendees: best ? [best.id] : [] });
     setAiFilled(false);
     setStep('l1');
+    setOverride(false);
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // AI returns option codes; map them to this server's picklist ids. Only empty fields are filled.
@@ -92,9 +94,10 @@ export function SubmitSqlModal({ open, onClose, accountId, accountName, stakehol
       smallExceptionReason: f.smallExceptionReason || null,
       intentRating: f.intentRating || null,
       intentReason: f.intentReason || null,
+      highIntentOverride: override,
       l1: start ? { scheduledStart: start, scheduledEnd: end, meetingLink: f.meetingLink || null, attendeeStakeholderIds: f.attendees, alsoCompletesL2: f.alsoCompletesL2 } : null,
     };
-  }, [f]);
+  }, [f, override]);
 
   const debounced = useDebounced(body, 400);
   const check = useQuery({
@@ -114,7 +117,10 @@ export function SubmitSqlModal({ open, onClose, accountId, accountName, stakehol
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
   const c = check.data;
   const [fixing, setFixing] = useState(false);
-  const needsIntent = c?.criteria.some((x) => x.code === 'LOCATION' && x.status !== 'PASS');
+  const needsIntent = !override && c?.criteria.some((x) => x.code === 'LOCATION' && x.status !== 'PASS');
+  const MIN_WHY = 10;
+  const overrideOk = override && f.intentReason.trim().length >= MIN_WHY;
+  const canGo = (!!c?.canSubmit || overrideOk) && !isPastLocal(f.start);
   const needsSmall = c?.criteria.some((x) => x.code === 'LICENSES' && x.status !== 'PASS');
   const named = (s: StakeholderView) => `${s.firstName} ${s.lastName ?? ''} · ${s.designation ?? '—'}${s.level ? ` (L${s.level})` : ''}`;
 
@@ -126,10 +132,11 @@ export function SubmitSqlModal({ open, onClose, accountId, accountName, stakehol
         <Button onClick={onClose}>{t('common.cancel')}</Button>
         <Button variant="primary" disabled={!f.start || isPastLocal(f.start)} onClick={() => setStep('sql')}>Next: SQL details <ArrowRight className="h-3.5 w-3.5" /></Button>
       </> : <>
-        {c && !c.canSubmit && <span className="mr-auto flex items-center gap-2 text-xs text-ink-muted">{c.missingFields.length ? t('sql.missing', { f: c.missingFields.map(fieldLabel).join(', ') }) : t('sql.icpFail')}
+        {override && <span className="mr-auto text-xs text-ink-muted">{overrideOk ? 'Submitting on high intent. Your reason goes with the SQL.' : `Write why it's high intent (at least ${MIN_WHY} characters)`}</span>}
+        {!override && c && !c.canSubmit && <span className="mr-auto flex items-center gap-2 text-xs text-ink-muted">{c.missingFields.length ? t('sql.missing', { f: c.missingFields.map(fieldLabel).join(', ') }) : t('sql.icpFail')}
           {account && c.missingFields.some((k) => ACCOUNT_FIELDS.has(k)) && <button type="button" onClick={() => setFixing(true)} className="font-semibold text-brand-forest hover:underline">Fill in now</button>}</span>}
         <Button onClick={() => setStep('l1')}><ArrowLeft className="h-3.5 w-3.5" /> Back to L1</Button>
-        <Button variant="primary" disabled={!c?.canSubmit || isPastLocal(f.start)} loading={submit.isPending} onClick={() => submit.mutate(undefined)}>{t('sql.submit')}</Button>
+        <Button variant="primary" disabled={!canGo} loading={submit.isPending} onClick={() => submit.mutate(undefined)}>{t('sql.submit')}</Button>
       </>}>
       {account && <EditAccountModal open={fixing} onClose={() => setFixing(false)} account={account} focus={c?.missingFields} />}
       {step === 'l1' ? (
@@ -200,6 +207,19 @@ export function SubmitSqlModal({ open, onClose, accountId, accountName, stakehol
             </div>
           </section>
 
+          {c && (!c.canSubmit || override) && (
+            <section className={cn('rounded-2xl border p-4', override ? 'border-brand-forest/30 bg-brand-forest-50/70' : 'border-line bg-canvas/50')}>
+              <Checkbox checked={override} label="High intent: submit this SQL anyway"
+                onChange={(v) => { setOverride(v); setF((cur) => ({ ...cur, intentRating: v ? 'HIGH' : '' })); }} />
+              <p className="mt-1 text-xs text-ink-muted">The checklist isn't fully green. If the prospect is clearly keen, you can still pass it, with a reason.</p>
+              {override && (
+                <Field label="Why is this high intent?" required className="mt-3" hint="e.g. CFO asked for pricing today, payroll vendor contract ends next month">
+                  <Textarea rows={3} autoFocus value={f.intentReason} onChange={set('intentReason')} placeholder="What did they say or do that shows real intent?" />
+                </Field>
+              )}
+            </section>
+          )}
+
           {(needsIntent || needsSmall) && (
             <section className="grid grid-cols-2 gap-3 rounded-2xl border border-[#202E64]/25 bg-[#E9EBF3] p-4">
               {needsIntent && <>
@@ -238,7 +258,7 @@ export function SubmitSqlModal({ open, onClose, accountId, accountName, stakehol
           {c && (
             <div className={cn('mt-4 rounded-lg px-2.5 py-2 text-xs font-medium',
               c.canSubmit ? (c.needsApproval ? 'bg-warning-soft text-[#202E64]' : 'bg-success-soft text-success') : 'bg-black/[0.04] text-ink-muted')}>
-              {c.canSubmit ? (c.needsApproval ? 'Ready — goes to your manager for approval' : 'Ready to submit') : <span className="flex items-center gap-1.5"><CircleDashed className="h-3.5 w-3.5" />Not ready yet</span>}
+              {c.canSubmit ? (c.needsApproval ? 'Ready — goes to your manager for approval' : 'Ready to submit') : overrideOk ? 'Passing on high intent' : <span className="flex items-center gap-1.5"><CircleDashed className="h-3.5 w-3.5" />Not ready yet</span>}
             </div>
           )}
         </aside>
