@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, ArrowRight, ChevronLeft, ChevronRight, PieChart, Search, Target } from 'lucide-react';
+import { ChevronLeft, ChevronRight, PieChart, Search, Target } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useUsers } from '@/lib/queries';
@@ -73,26 +73,12 @@ export default function LeadsPage() {
   return (
     <div className="space-y-4">
       <PageHeader title={leader && d ? `${d.name}'s leads` : 'My leads'} icon={<Target />} eyebrow={leader ? 'One BDR at a time' : 'Your book'}
-        subtitle={leader ? "Only this BDR's own companies and contacts: what needs attention and where each lead stands."
-          : 'Only your own companies and contacts: what needs you next and where each lead stands.'}
+        subtitle={leader ? "Only this BDR's own companies and contacts, and where each lead stands."
+          : 'Only your own companies and contacts, and where each lead stands.'}
         actions={<Pickers {...L} />} />
 
       {q.isLoading || !d ? <SkeletonRows rows={8} /> : (
         <>
-          <ChartCard title="Needs your attention" subtitle="Your quiet companies that matter most: high intent first, then best ICP fit"
-            action={<Link to="/accounts" className="flex items-center gap-1 text-xs font-semibold text-brand-forest hover:underline">All my accounts<ArrowRight className="h-3 w-3" /></Link>}>
-            {d.attention.length === 0 ? <Empty icon={<AlertTriangle className="h-5 w-5" />} title="Nothing has gone quiet" body="Every company you work had a touch in the last 30 days." /> : (
-              <ul className="divide-y divide-line/70">
-                {d.attention.map((a) => (
-                  <li key={a.id}><Link to={`/accounts/${a.id}`} className="flex flex-wrap items-center gap-3 py-2.5 hover:text-brand-forest">
-                    <span className="min-w-0 flex-1"><b className="text-[14px] font-semibold">{a.name}</b>
-                      <span className="block text-xs text-ink-muted">{[a.reason, a.city, `${a.contacts} contact${a.contacts === 1 ? '' : 's'}`].filter(Boolean).join(' · ')}</span></span>
-                    <span className="text-xs text-ink-muted">last touch: {touch(a.lastTouch)}</span>
-                  </Link></li>
-                ))}
-              </ul>
-            )}
-          </ChartCard>
           <LeadTable bdrId={bdrId} preset={preset} />
         </>
       )}
@@ -312,6 +298,7 @@ function LeadTable({ bdrId, preset }: { bdrId?: string; preset: Preset }) {
   const [sort, setSort] = useState('recent');
   const [touched, setTouched] = useState(false);
   const [page, setPage] = useState(0);
+  const navigate = useNavigate();
   useEffect(() => { const t = setTimeout(() => setTerm(search), 300); return () => clearTimeout(t); }, [search]);
   useEffect(() => { setPage(0); }, [term, status, level, sort, touched, bdrId, preset]);
   const q = useQuery({ queryKey: ['my-leads-list', bdrId ?? 'me', term, status, level, sort, touched, touched ? preset : '', page], placeholderData: (prev) => prev,
@@ -338,10 +325,10 @@ function LeadTable({ bdrId, preset }: { bdrId?: string; preset: Preset }) {
               <th className="py-2 pr-3 font-semibold">Person</th><th className="py-2 pr-3 font-semibold">Company</th><th className="py-2 pr-3 font-semibold">Status</th>
               <th className="py-2 pr-3 font-semibold">Last touch</th><th className="py-2 font-semibold">Next follow-up</th></tr></thead>
             <tbody>{q.data.items.map((r) => (
-              <tr key={r.id} className="border-b border-line/60 hover:bg-canvas/60">
-                <td className="py-2 pr-3"><Link to={`/accounts/${r.accountId}?stakeholder=${r.id}`} className="font-semibold hover:text-brand-forest">{r.name}</Link>
+              <tr key={r.id} onClick={() => navigate(`/accounts/${r.accountId}?stakeholder=${r.id}`)} className="cursor-pointer border-b border-line/60 hover:bg-canvas/60">
+                <td className="py-2 pr-3"><span className="font-semibold">{r.name}</span>
                   <span className="block text-xs text-ink-muted">{[r.designation, r.level ? `L${r.level}` : null, r.department && FN[r.department]].filter(Boolean).join(' · ')}</span></td>
-                <td className="py-2 pr-3"><Link to={`/accounts/${r.accountId}`} className="hover:text-brand-forest">{r.company}</Link>
+                <td className="py-2 pr-3"><span>{r.company}</span>
                   <span className="block text-xs text-ink-muted">{[stageLabel[r.stage], r.city].filter(Boolean).join(' · ')}</span></td>
                 <td className="py-2 pr-3"><EngagementBadge status={r.status} />{r.doNotContact && <span className="ml-1 text-xs text-ink-muted">· do not contact</span>}</td>
                 <td className="py-2 pr-3 text-ink-muted">{touch(r.lastTouch)}</td>
