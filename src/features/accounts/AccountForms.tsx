@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { AlertTriangle, Plus, X } from 'lucide-react';
 import { api } from '@/lib/api';
+import { cn } from '@/lib/cn';
 import { useAction } from '@/lib/hooks';
 import { useCities, usePicklist } from '@/lib/queries';
 import type { AccountView, Department, StakeholderView } from '@/lib/types';
@@ -273,22 +274,29 @@ export function EditStakeholderModal({ open, onClose, accountId, stakeholder }: 
     primarySpoc: stakeholder.primarySpoc, decisionMaker: stakeholder.decisionMaker,
   });
   const [f, setF] = useState(init);
-  useEffect(() => { if (open) setF(init()); }, [open, stakeholder.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [newEmail, setNewEmail] = useState('');
+  const [emailPrimary, setEmailPrimary] = useState(false);
+  useEffect(() => { if (open) { setF(init()); setNewEmail(''); setEmailPrimary(!stakeholder.emails.length); } }, [open, stakeholder.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const emailOk = !newEmail.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail.trim());
 
   const norm = (t: string) => t.trim().replace(/\s+/g, ' ').toLowerCase();
   const match = designations.data?.find((d) => norm(d.designation) === norm(f.designation));
   const titleChanged = norm(f.designation) !== norm(stakeholder.designation ?? '');
 
-  const save = useAction(() => api.patch<StakeholderView>(`/api/stakeholders/${stakeholder.id}`, {
-    firstName: f.firstName.trim(), lastName: f.lastName.trim(),
-    designation: titleChanged ? f.designation.trim() : null,
-    department: f.department || null, linkedinUrl: f.linkedinUrl.trim() || null,
-    primarySpoc: f.primarySpoc, decisionMaker: f.decisionMaker,
-  }), { success: 'Stakeholder updated', invalidate: [['account', accountId], ['stakeholders', accountId], ['my-day']], onSuccess: onClose });
+  const save = useAction(async () => {
+    const out = await api.patch<StakeholderView>(`/api/stakeholders/${stakeholder.id}`, {
+      firstName: f.firstName.trim(), lastName: f.lastName.trim(),
+      designation: titleChanged ? f.designation.trim() : null,
+      department: f.department || null, linkedinUrl: f.linkedinUrl.trim() || null,
+      primarySpoc: f.primarySpoc, decisionMaker: f.decisionMaker,
+    });
+    if (newEmail.trim()) return api.post<StakeholderView>(`/api/stakeholders/${stakeholder.id}/emails`, { email: newEmail.trim(), primary: emailPrimary });
+    return out;
+  }, { success: 'Stakeholder updated', invalidate: [['account', accountId], ['stakeholders', accountId], ['my-day']], onSuccess: onClose });
 
   return (
     <Modal open={open} onClose={onClose} title={`Edit ${stakeholder.firstName}`} subtitle="Pick a title from the list so level and department fill in."
-      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" disabled={!f.firstName.trim()} loading={save.isPending} onClick={() => save.mutate(undefined)}>Save</Button></>}>
+      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" disabled={!f.firstName.trim() || !emailOk} loading={save.isPending} onClick={() => save.mutate(undefined)}>Save</Button></>}>
       <div className="grid grid-cols-2 gap-3">
         <Field label="First name" required><Input autoFocus value={f.firstName} onChange={(e) => setF({ ...f, firstName: e.target.value })} /></Field>
         <Field label="Last name"><Input value={f.lastName} onChange={(e) => setF({ ...f, lastName: e.target.value })} /></Field>
@@ -308,6 +316,22 @@ export function EditStakeholderModal({ open, onClose, accountId, stakeholder }: 
           </Select>
         </Field>
         <Field label="LinkedIn"><Input value={f.linkedinUrl} onChange={(e) => setF({ ...f, linkedinUrl: e.target.value })} placeholder="linkedin.com/in/…" /></Field>
+        <Field label={stakeholder.emails.length ? 'Add another email' : 'Email'} className="col-span-2"
+          hint={!emailOk ? "That doesn't look like an email address" : stakeholder.emails.length ? undefined : 'Optional'}>
+          {stakeholder.emails.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {stakeholder.emails.map((em) => (
+                <span key={em.id} className={cn('inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs', em.valid ? 'border-line bg-canvas text-ink-soft' : 'border-line bg-canvas text-ink-muted line-through')}>
+                  {em.email}{em.primary && <span className="font-semibold text-brand-forest">· primary</span>}
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="flex flex-wrap items-center gap-3">
+            <Input type="email" className="min-w-[220px] flex-1" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="name@company.com" />
+            {newEmail.trim() && <Checkbox checked={emailPrimary} onChange={setEmailPrimary} label="Primary email" />}
+          </div>
+        </Field>
         <div className="col-span-2 flex gap-5 pt-1">
           <Checkbox checked={f.primarySpoc} onChange={(v) => setF({ ...f, primarySpoc: v })} label="Primary SPOC" />
           <Checkbox checked={f.decisionMaker} onChange={(v) => setF({ ...f, decisionMaker: v })} label="Decision maker" />
