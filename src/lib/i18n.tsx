@@ -23,11 +23,10 @@ type Dict = Record<string, string>;
 const KEY = 'prosperr.lang';
 const loaders = import.meta.glob<{ default: Dict }>('../i18n/*.json');
 
+/** The language picker was removed: the app is English only. Clear any earlier pick so nobody is stuck in another language. */
 function saved(): LangCode {
-  try {
-    const v = localStorage.getItem(KEY);
-    return (LANGUAGES.some((l) => l.code === v) ? v : 'en') as LangCode;
-  } catch { return 'en'; }
+  try { localStorage.removeItem(KEY); } catch { /* private mode */ }
+  return 'en';
 }
 
 interface Ctx { lang: LangCode; setLang: (l: LangCode) => void; dict: Dict }

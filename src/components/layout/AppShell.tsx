@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, Building2, CalendarClock, CheckSquare, ChevronsLeft, ChevronsRight, ClipboardCheck, Languages, LogOut, Menu, Search, UserPlus, X } from 'lucide-react';
+import { Bell, Building2, CalendarClock, CheckSquare, ChevronsLeft, ChevronsRight, ClipboardCheck, LogOut, Menu, Search, UserPlus, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { LogoMark } from '@/components/brand/Logo';
@@ -13,7 +13,7 @@ import type { NotificationRow } from '@/lib/types';
 import { Avatar } from '@/components/ui/ui';
 import { CommandMenu } from './CommandMenu';
 import { navFor } from './nav';
-import { LANGUAGES, useLanguage, useT, type LangCode } from '@/lib/i18n';
+import { useT } from '@/lib/i18n';
 import { GoogleConnect } from '@/features/integrations/Google';
 
 const COLLAPSE_KEY = 'prosperr.sidebar';
@@ -91,7 +91,6 @@ export function AppShell() {
 
       <div className="border-t border-white/10 p-3 pb-[max(.75rem,env(safe-area-inset-bottom))]">
         {!c && <GoogleConnect />}
-        {!c && <LanguagePicker />}
         <div className={cn('flex items-center gap-2.5 rounded-2xl bg-white/[0.04] p-2', c && 'flex-col bg-transparent p-0')}>
           <Avatar name={user?.fullName} size="md" />
           {!c && (
@@ -149,22 +148,6 @@ export function AppShell() {
       </nav>
       <CommandMenu open={cmdOpen} onClose={() => setCmdOpen(false)} />
     </div>
-  );
-}
-
-/** Changes the language of menus and the main working screens; everything else falls back to English. */
-function LanguagePicker() {
-  const { lang, setLang } = useLanguage();
-  const t = useT();
-  return (
-    <label className="mb-2 flex h-9 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-2.5 text-[12px] text-paper/70 focus-within:border-brand-mint/40">
-      <Languages className="h-3.5 w-3.5 shrink-0 text-brand-mint" />
-      <span className="sr-only">{t('nav.language')}</span>
-      <select value={lang} onChange={(e) => setLang(e.target.value as LangCode)} aria-label={t('nav.language')}
-        className="min-w-0 flex-1 cursor-pointer appearance-none bg-transparent font-medium text-paper outline-none [&>option]:bg-[#141614]">
-        {LANGUAGES.map((l) => <option key={l.code} value={l.code}>{l.native}{l.code !== 'en' ? ` · ${l.name}` : ''}</option>)}
-      </select>
-    </label>
   );
 }
 
