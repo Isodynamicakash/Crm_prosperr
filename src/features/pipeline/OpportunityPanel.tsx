@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, ArrowRight, Check, ExternalLink, Eye, FolderOpen, Lightbulb, Plus, Trophy, XCircle } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Check, CheckCheck, ChevronDown, ExternalLink, Eye, FolderOpen, Lightbulb, Plus, Trophy, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { useAction } from '@/lib/hooks';
@@ -33,6 +33,7 @@ export function OpportunityPanel({ opportunityId, canEdit, aeName }: { opportuni
   const [f, setF] = useState<Partial<Opp>>({});
   const [move, setMove] = useState<LifecycleStage | null>(null);
   const [checklistOverrides, setChecklistOverrides] = useState<Record<string, boolean>>({});
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const o = data?.opportunity;
   // Live sync refreshes this card; keep the user's unsaved edits instead of resetting them to the server copy.
   // If someone else changed the deal meanwhile, the version check on save catches it.
@@ -75,6 +76,12 @@ export function OpportunityPanel({ opportunityId, canEdit, aeName }: { opportuni
     }
   }, { invalidate: [['opportunity', opportunityId], ['account']] });
 
+  // Tick every open item in one stage, one request per item (the API ticks one at a time).
+  const tickAll = useAction(async (items: ChecklistRow[]) => {
+    setChecklistOverrides((cur) => ({ ...cur, ...Object.fromEntries(items.map((i) => [i.id, true])) }));
+    for (const i of items) await api.put(`/api/opportunities/${opportunityId}/checklist/${i.id}`, { done: true, note: null, attachmentId: null });
+  }, { success: 'All ticked', invalidate: [['opportunity', opportunityId], ['account']] });
+
   useEffect(() => {
     if (!data) return;
     setChecklistOverrides((cur) => {
@@ -97,16 +104,18 @@ export function OpportunityPanel({ opportunityId, canEdit, aeName }: { opportuni
   const effectiveDone = (item: ChecklistRow) => checklistOverrides[item.id] ?? item.done;
   const guide = NEXT_STEP[o.stage];
   const moves = MANUAL_MOVES[o.stage] ?? [];
+  const topMoves = moves.filter((m) => m !== 'L2' && m !== 'L3');   // L2 / L3 moves sit on their checklist groups
+  const isOpen = (st: string) => openGroups[st] ?? st === (CHECKLIST_FOR[o.stage] ?? 'L1');
 
   return (
     <Card>
       <CardHeader title="Opportunity" subtitle={`In ${stageLabel[o.stage]} for ${relTime(o.stageEnteredAt).replace(' ago', '')}`}
-        action={canEdit && moves.length > 0 && (
+        action={canEdit && topMoves.length > 0 && (
           <div className="flex gap-1.5">
-            {moves.map((m) => (
+            {topMoves.map((m) => (
               <Button key={m} size="sm" variant={m === 'WON' ? 'primary' : m === 'LOST' ? 'ghost' : 'secondary'} onClick={() => setMove(m)}
                 icon={m === 'WON' ? <Trophy className="h-3.5 w-3.5" /> : m === 'LOST' ? <XCircle className="h-3.5 w-3.5" /> : undefined}>
-                {m === 'LOST' ? 'Mark lost' : m === 'L2' || m === 'L3' ? <>Move to {m} <ArrowRight className="h-3.5 w-3.5" /></> : stageLabel[m]}
+                {m === 'LOST' ? 'Mark lost' : stageLabel[m]}
               </Button>
             ))}
           </div>
@@ -168,15 +177,28 @@ export function OpportunityPanel({ opportunityId, canEdit, aeName }: { opportuni
                 <div className="mt-1.5 flex items-center gap-2"><div className="h-1.5 w-40 overflow-hidden rounded-full bg-black/[0.06]"><div className="h-full rounded-full bg-gradient-to-r from-brand-forest to-brand-mint transition-[width] duration-700" style={{ width: `${data.checklist.length ? (100 * data.checklist.filter((c) => effectiveDone(c)).length) / data.checklist.length : 0}%` }} /></div>
                   <span className="text-[11px] text-ink-muted">{data.checklist.filter((c) => effectiveDone(c)).length} of {data.checklist.length} done</span></div>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {checklistStages.map((st) => {
                   const items = data.checklist.filter((c) => c.stage === st);
+                  const left = items.filter((c) => !effectiveDone(c));
+                  const open = isOpen(st);
+                  const moveTo = (st === 'L2' || st === 'L3') && moves.includes(st as LifecycleStage) ? (st as LifecycleStage) : null;
                   return (
-                    <div key={st}>
-                      <p className="mb-1.5 flex items-center gap-2 text-2xs font-semibold uppercase tracking-wider text-brand-forest/80">
-                        {st}<span className="font-normal normal-case tracking-normal text-ink-muted">{items.filter((c) => effectiveDone(c)).length}/{items.length}</span>
-                      </p>
-                      <ul className="space-y-1.5">
+                    <div key={st} className="rounded-2xl border border-line/70 bg-white">
+                      <div className="flex flex-wrap items-center gap-2 px-3 py-2">
+                        <button onClick={() => setOpenGroups((g) => ({ ...g, [st]: !open }))} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+                          <ChevronDown className={cn('h-4 w-4 shrink-0 text-ink-muted transition-transform', !open && '-rotate-90')} />
+                          <span className="text-[13px] font-semibold">{st}</span>
+                          <span className={cn('rounded-full px-2 py-0.5 text-2xs font-semibold tabular-nums', left.length ? 'bg-canvas text-ink-soft' : 'bg-[#E6F5EA] text-[#1A7F36]')}>{items.length - left.length}/{items.length}</span>
+                        </button>
+                        {canEdit && left.length > 0 && (
+                          <Button size="sm" variant="ghost" icon={<CheckCheck className="h-3.5 w-3.5" />} loading={tickAll.isPending && tickAll.variables?.[0]?.stage === st} onClick={() => tickAll.mutate(left)}>Tick all</Button>
+                        )}
+                        {canEdit && moveTo && (
+                          <Button size="sm" variant="primary" onClick={() => setMove(moveTo)}>Move to {moveTo} <ArrowRight className="h-3.5 w-3.5" /></Button>
+                        )}
+                      </div>
+                      {open && <ul className="space-y-1.5 px-2 pb-2">
                         {items.map((c) => {
                           const done = effectiveDone(c);
                           return (
@@ -193,7 +215,7 @@ export function OpportunityPanel({ opportunityId, canEdit, aeName }: { opportuni
                             </li>
                           );
                         })}
-                      </ul>
+                      </ul>}
                     </div>
                   );
                 })}
@@ -212,11 +234,12 @@ export function OpportunityPanel({ opportunityId, canEdit, aeName }: { opportuni
 }
 
 const JOURNEY: LifecycleStage[] = ['SQL', 'L1', 'L2', 'L3', 'NEGOTIATION', 'WON'];
+const CHECKLIST_FOR: Partial<Record<LifecycleStage, string>> = { SQL: 'L1', L1: 'L1', MULTITHREADING: 'L1', L2: 'L2', L3: 'L3', NEGOTIATION: 'L3' };
 const NEXT_STEP: Partial<Record<LifecycleStage, string>> = {
   SQL: 'Hold the L1 meeting, then click Record outcome on it and choose a "Done" option. The deal moves to L1 done on its own.',
-  L1: 'Move to L2 or L3 at the top of this card whenever you are ready, or record an L2/L3 meeting as Done. The checklist is optional.',
-  MULTITHREADING: 'Get the missing functions engaged, then move to L2 or L3 at the top of this card. The checklist is optional.',
-  L2: 'Move to L3 at the top of this card when ready, or record the L3 meeting as Done. The checklist is optional.',
+  L1: 'Use Move to L2 or Move to L3 on the checklist below whenever you are ready, or record an L2/L3 meeting as Done. The checklist is optional.',
+  MULTITHREADING: 'Get the missing functions engaged, then use Move to L2 or Move to L3 on the checklist below. The checklist is optional.',
+  L2: 'Use Move to L3 on the checklist below when ready, or record the L3 meeting as Done. The checklist is optional.',
   L3: 'Finish the L3 list, then use Negotiation or Won at the top of this card.',
   NEGOTIATION: 'Close it: mark Won or Lost at the top of this card.',
   WON: 'Hand over: move to Implementation when onboarding starts.',
@@ -277,9 +300,15 @@ function DriveLinks({ accountId, opportunityId, canEdit }: { accountId: string; 
     externalUrl: url.trim(), mimeType: null, sizeBytes: null,
   }), { success: 'Link added', invalidate: [['attachments', accountId]], onSuccess: () => { setUrl(''); setName(''); } });
   const links = list.data ?? [];
+  const [open, setOpen] = useState(true);
   return (
     <aside className="h-fit rounded-2xl border border-line/80 bg-canvas/50 p-3.5">
-      <p className="flex items-center gap-1.5 text-[13px] font-semibold"><FolderOpen className="h-4 w-4 text-brand-forest" />Drive links</p>
+      <button onClick={() => setOpen(!open)} className="flex w-full items-center gap-1.5 text-left text-[13px] font-semibold">
+        <FolderOpen className="h-4 w-4 text-brand-forest" />Drive links
+        <span className="rounded-full bg-white px-2 py-0.5 text-2xs font-semibold text-ink-soft">{links.length}</span>
+        <ChevronDown className={cn('ml-auto h-4 w-4 text-ink-muted transition-transform', !open && '-rotate-90')} />
+      </button>
+      {open && <>
       <p className="mt-0.5 text-[11.5px] text-ink-muted">Optional. Proposals, decks, documents shared with the client.</p>
       <ul className="mt-2.5 space-y-1.5">
         {links.length === 0 && <li className="text-xs text-ink-muted">No links yet.</li>}
@@ -306,6 +335,7 @@ function DriveLinks({ accountId, opportunityId, canEdit }: { accountId: string; 
           </Button>
         </div>
       )}
+      </>}
     </aside>
   );
 }
