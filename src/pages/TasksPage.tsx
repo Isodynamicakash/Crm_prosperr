@@ -151,15 +151,13 @@ export default function TasksPage() {
 /** Completion ring, type mix and a 7-day load strip, all from the task lists already loaded. */
 function TaskInsights({ rows, done, overdue, today }: { rows: TaskRow[]; done: number; overdue: number; today: number }) {
   const total = rows.length + done;
-  const types = Object.entries(rows.reduce<Record<string, number>>((m, t) => ({ ...m, [t.type]: (m[t.type] ?? 0) + 1 }), {})).sort((a, b) => b[1] - a[1]);
-  const max = Math.max(1, ...types.map(([, v]) => v));
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = addDaysISO(i);
     return { d, n: rows.filter((t) => new Date(t.dueAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) === d).length };
   });
   const dmax = Math.max(1, ...days.map((x) => x.n));
   return (
-    <div className="mb-5 grid gap-3 md:grid-cols-3">
+    <div className="mb-5 grid gap-3 md:grid-cols-2">
       <div className="relative flex items-center gap-4 overflow-hidden rounded-[22px] bg-[#141614] p-4 text-paper">
         <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-brand-mint/20 blur-2xl" />
         <RadialGauge size={92} value={total ? (100 * done) / total : 0} label="" />
@@ -167,21 +165,6 @@ function TaskInsights({ rows, done, overdue, today }: { rows: TaskRow[]; done: n
           <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-brand-mint">Completion</p>
           <p className="mt-1 font-display text-[26px] font-medium leading-none tabular-nums">{done}<span className="text-paper/40"> / {total}</span></p>
           <p className="mt-1.5 text-[12px] text-paper/60">{overdue ? `${overdue} overdue · ${today} today` : today ? `${today} left for today` : 'Nothing urgent'}</p>
-        </div>
-      </div>
-      <div className="rounded-[22px] border border-line/80 bg-white p-4">
-        <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-brand-forest/70">Open by type</p>
-        <div className="mt-3 space-y-2">
-          {types.slice(0, 4).map(([k, v]) => {
-            const I = typeIcon[k] ?? ListTodo;
-            return (
-              <div key={k} className="flex items-center gap-2.5 text-[12px]">
-                <I className="h-3.5 w-3.5 shrink-0 text-brand-forest" /><span className="w-24 shrink-0 truncate font-medium">{humanize(k)}</span>
-                <span className="h-2 flex-1 overflow-hidden rounded-full bg-brand-forest-50"><span className="block h-full rounded-full bg-gradient-to-r from-brand-forest to-brand-mint transition-[width] duration-700" style={{ width: `${(100 * v) / max}%` }} /></span>
-                <span className="w-5 text-right font-semibold tabular-nums">{v}</span>
-              </div>
-            );
-          })}
         </div>
       </div>
       <div className="rounded-[22px] border border-line/80 bg-white p-4">

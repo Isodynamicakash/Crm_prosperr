@@ -9,7 +9,6 @@ import { cn } from '@/lib/cn';
 import type { LogCallResult, OutcomePlan, PhoneView } from '@/lib/types';
 import { Modal } from '@/components/ui/overlay';
 import { Badge, Button, Field, Input, Select, Textarea } from '@/components/ui/ui';
-import { VoiceNote, type CallNoteSuggestion } from './VoiceNote';
 import { useT } from '@/lib/i18n';
 
 /** Outcomes grouped the way a BDR thinks about a call, so the right one is one click away. */
@@ -43,28 +42,18 @@ export function LogCallModal({ open, onClose, target, onLogged, saveAndNext }: {
   const [phoneId, setPhoneId] = useState('');
   const [taskDue, setTaskDue] = useState('');
   const [ref, setRef] = useState({ fullName: '', designation: '', email: '', phone: '' });
-  const [aiFilled, setAiFilled] = useState(false);
   const [connected, setConnected] = useState<boolean | null>(null);
   const [path, setPath] = useState<Path>('');
 
   useEffect(() => {
     if (!open) return;
     setConnected(null); setPath('');
-    setCode(''); setRemark(''); setFollowUpDate(''); setReason(''); setTaskDue(''); setAiFilled(false);
+    setCode(''); setRemark(''); setFollowUpDate(''); setReason(''); setTaskDue('');
     setRef({ fullName: '', designation: '', email: '', phone: '' });
     setPhoneId(target?.phones?.find((p) => p.primary && p.valid)?.id ?? target?.phones?.find((p) => p.valid)?.id ?? '');
   }, [open, target]);
 
   const labels = useMemo(() => Object.fromEntries((outcomes.data ?? []).map((o) => [o.code, o.label])), [outcomes.data]);
-
-  // AI only pre-fills; every field stays editable and nothing is saved until the BDR presses Save.
-  function applySuggestion(s: CallNoteSuggestion) {
-    if (s.outcomeCode && labels[s.outcomeCode]) { choose(s.outcomeCode); setConnected(!NO_ANSWER.has(s.outcomeCode)); }
-    if (s.remark) setRemark(s.remark);
-    if (s.followUpDate) setFollowUpDate(s.followUpDate);
-    if (s.reason) setReason(s.reason);
-    setAiFilled(true);
-  }
 
   // Picking a path picks the outcome code the backend rules already understand.
   function choose(c: string, p: Path = pathFor(c)) { setCode(c); setPath(p); setTaskDue(''); setFollowUpDate((d) => (NEEDS_DATE.has(c) ? d : '')); }
@@ -119,8 +108,6 @@ export function LogCallModal({ open, onClose, target, onLogged, saveAndNext }: {
         <Button variant="primary" disabled={!!missing} loading={log.isPending && log.variables === false} onClick={() => log.mutate(false)}>{path === 'INTERESTED' ? 'Save & book L1' : t('common.save')}</Button>
       </>}>
       <div className="space-y-5">
-        <VoiceNote onResult={applySuggestion} />
-        {aiFilled && <p className="-mt-3 text-xs text-ink-muted">{t('ai.filledCheck')}</p>}
         {target?.phones && target.phones.length > 1 && (
           <Field label={t('call.numberDialled')}>
             <Select value={phoneId} onChange={(e) => setPhoneId(e.target.value)}>
