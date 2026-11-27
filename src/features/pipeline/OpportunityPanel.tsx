@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, Check, Eye, Lightbulb, Link2, Trophy, XCircle } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Check, ExternalLink, Eye, FolderOpen, Lightbulb, Plus, Trophy, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { useAction } from '@/lib/hooks';
@@ -10,12 +10,12 @@ import { celebrate } from '@/lib/celebrate';
 import { fmtDate, relTime } from '@/lib/format';
 import type { LifecycleStage, Temperature } from '@/lib/types';
 import { Modal } from '@/components/ui/overlay';
-import { Button, Card, CardHeader, Field, Input, Segmented, Select, Textarea } from '@/components/ui/ui';
+import { Button, Card, CardHeader, Field, Input, Select, Textarea } from '@/components/ui/ui';
 import { stageLabel } from '@/components/ui/status';
 
-/** Manual moves the backend allows; every other stage change happens when a meeting outcome is recorded. */
+/** Manual moves the backend allows. Completing an L2/L3 meeting also moves the deal on its own; checklist ticks never block a move. */
 export const MANUAL_MOVES: Partial<Record<LifecycleStage, LifecycleStage[]>> = {
-  SQL: ['LOST'], L1: ['MULTITHREADING', 'LOST'], MULTITHREADING: ['LOST'], L2: ['LOST'],
+  SQL: ['LOST'], L1: ['L2', 'L3', 'MULTITHREADING', 'LOST'], MULTITHREADING: ['L2', 'L3', 'LOST'], L2: ['L3', 'LOST'],
   L3: ['NEGOTIATION', 'WON', 'LOST'], NEGOTIATION: ['WON', 'LOST'], WON: ['IMPLEMENTATION'],
 };
 
@@ -32,8 +32,6 @@ export function OpportunityPanel({ opportunityId, canEdit, aeName }: { opportuni
   const stagnation = usePicklist('STAGNATION_REASON');
   const [f, setF] = useState<Partial<Opp>>({});
   const [move, setMove] = useState<LifecycleStage | null>(null);
-  const [attachFor, setAttachFor] = useState<ChecklistRow | null>(null);
-  const [tab, setTab] = useState<string | null>(null);
   const [checklistOverrides, setChecklistOverrides] = useState<Record<string, boolean>>({});
   const o = data?.opportunity;
   // Live sync refreshes this card; keep the user's unsaved edits instead of resetting them to the server copy.
@@ -96,9 +94,6 @@ export function OpportunityPanel({ opportunityId, canEdit, aeName }: { opportuni
   if (!data || !o) return <Card className="p-4 text-xs text-ink-muted">Loading opportunity…</Card>;
   const dirty = JSON.stringify(pick(f)) !== JSON.stringify(pick(o));
   const checklistStages = Array.from(new Set(data.checklist.map((c) => c.stage)));
-  const defaultTab = CHECKLIST_FOR[o.stage] ?? checklistStages[0];
-  const activeTab = tab && checklistStages.includes(tab) ? tab : defaultTab;
-  const stageItems = data.checklist.filter((c) => c.stage === activeTab);
   const effectiveDone = (item: ChecklistRow) => checklistOverrides[item.id] ?? item.done;
   const guide = NEXT_STEP[o.stage];
   const moves = MANUAL_MOVES[o.stage] ?? [];
@@ -111,7 +106,7 @@ export function OpportunityPanel({ opportunityId, canEdit, aeName }: { opportuni
             {moves.map((m) => (
               <Button key={m} size="sm" variant={m === 'WON' ? 'primary' : m === 'LOST' ? 'ghost' : 'secondary'} onClick={() => setMove(m)}
                 icon={m === 'WON' ? <Trophy className="h-3.5 w-3.5" /> : m === 'LOST' ? <XCircle className="h-3.5 w-3.5" /> : undefined}>
-                {m === 'LOST' ? 'Mark lost' : stageLabel[m]}
+                {m === 'LOST' ? 'Mark lost' : m === 'L2' || m === 'L3' ? <>Move to {m} <ArrowRight className="h-3.5 w-3.5" /></> : stageLabel[m]}
               </Button>
             ))}
           </div>
@@ -164,76 +159,64 @@ export function OpportunityPanel({ opportunityId, canEdit, aeName }: { opportuni
           </p>
         )}
 
-        {checklistStages.length > 0 && (
-          <div>
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <p className="font-display text-[15px] font-medium">Stage requirements</p>
-                <div className="mt-1.5 flex items-center gap-2"><div className="h-1.5 w-40 overflow-hidden rounded-full bg-black/[0.06]"><div className="h-full rounded-full bg-gradient-to-r from-brand-forest to-brand-mint transition-[width] duration-700" style={{ width: `${stageItems.length ? (100 * stageItems.filter((c) => effectiveDone(c)).length) / stageItems.length : 0}%` }} /></div>
-                  <span className="text-[11px] text-ink-muted">{stageItems.filter((c) => effectiveDone(c)).length} of {stageItems.length} done</span></div>
+        <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
+          {checklistStages.length > 0 ? (
+            <div>
+              <div className="mb-2">
+                <p className="font-display text-[15px] font-medium">Checklist</p>
+                <p className="text-[11.5px] text-ink-muted">Tick what's done. Nothing here is required to move to L2 or L3.</p>
+                <div className="mt-1.5 flex items-center gap-2"><div className="h-1.5 w-40 overflow-hidden rounded-full bg-black/[0.06]"><div className="h-full rounded-full bg-gradient-to-r from-brand-forest to-brand-mint transition-[width] duration-700" style={{ width: `${data.checklist.length ? (100 * data.checklist.filter((c) => effectiveDone(c)).length) / data.checklist.length : 0}%` }} /></div>
+                  <span className="text-[11px] text-ink-muted">{data.checklist.filter((c) => effectiveDone(c)).length} of {data.checklist.length} done</span></div>
               </div>
-              <Segmented value={activeTab} onChange={setTab}
-                options={checklistStages.map((st) => {
+              <div className="space-y-3">
+                {checklistStages.map((st) => {
                   const items = data.checklist.filter((c) => c.stage === st);
-                    return { value: st, label: `${st} · ${items.filter((c) => effectiveDone(c)).length}/${items.length}` };
-                })} />
+                  return (
+                    <div key={st}>
+                      <p className="mb-1.5 flex items-center gap-2 text-2xs font-semibold uppercase tracking-wider text-brand-forest/80">
+                        {st}<span className="font-normal normal-case tracking-normal text-ink-muted">{items.filter((c) => effectiveDone(c)).length}/{items.length}</span>
+                      </p>
+                      <ul className="space-y-1.5">
+                        {items.map((c) => {
+                          const done = effectiveDone(c);
+                          return (
+                            <li key={c.id}>
+                              <button disabled={!canEdit}
+                                onClick={() => { setChecklistOverrides((cur) => ({ ...cur, [c.id]: !done })); tick.mutate({ item: c, done: !done }); }}
+                                className={cn('group flex w-full items-center gap-3 rounded-2xl border px-3.5 py-2.5 text-left transition-all disabled:cursor-default', done ? 'border-brand-mint/30 bg-[#E6F5EA]/60' : canEdit ? 'border-line/70 bg-white hover:border-brand-forest/30' : 'border-line/70 bg-white')}>
+                                <span className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors', done ? 'border-brand-mint bg-brand-mint text-white' : canEdit ? 'border-line group-hover:border-brand-forest' : 'border-line')}>
+                                  {done && <Check className="h-3 w-3" />}
+                                </span>
+                                <span className={cn('flex-1 text-[13px] font-medium', done && 'text-ink-muted line-through')}>{c.label}</span>
+                                {done && <span className="text-2xs text-ink-muted" title={c.note}>{c.doneBy ?? 'From the sheets'} · {fmtDate(c.doneAt)}</span>}
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <ul className="space-y-1.5">
-              {stageItems.map((c) => {
-                const done = effectiveDone(c);
-                return (
-                <li key={c.id}>
-                  <button disabled={!canEdit}
-                    onClick={() => {
-                      if (done) {
-                        setChecklistOverrides((cur) => ({ ...cur, [c.id]: false }));
-                        tick.mutate({ item: c, done: false });
-                      } else if (c.requiresAttachment) {
-                        setAttachFor(c);
-                      } else {
-                        setChecklistOverrides((cur) => ({ ...cur, [c.id]: true }));
-                        tick.mutate({ item: c, done: true });
-                      }
-                    }}
-                    className={cn('group flex w-full items-center gap-3 rounded-2xl border px-3.5 py-2.5 text-left transition-all disabled:cursor-default', done ? 'border-brand-mint/30 bg-[#E6F5EA]/60' : canEdit ? 'border-line/70 bg-white hover:border-brand-forest/30' : 'border-line/70 bg-white')}>
-                    <span className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors', done ? 'border-brand-mint bg-brand-mint text-white' : canEdit ? 'border-line group-hover:border-brand-forest' : 'border-line')}>
-                      {done && <Check className="h-3 w-3" />}
-                    </span>
-                    <span className={cn('flex-1 text-[13px] font-medium', done && 'text-ink-muted line-through')}>{c.label}</span>
-                    {c.exitStep && <span className="rounded-full bg-brand-forest px-2 py-0.5 text-2xs font-semibold text-white">Needed to move on</span>}
-                    {c.requiresAttachment && !done && <span title="Needs a file or link"><Link2 className="h-3.5 w-3.5 text-ink-muted" /></span>}
-                    {done && <span className="text-2xs text-ink-muted" title={c.note}>{c.doneBy ?? 'From the sheets'} · {fmtDate(c.doneAt)}</span>}
-                  </button>
-                </li>
-                );
-              })}
-            </ul>
-          </div>
-        )}
+          ) : <div />}
+          <DriveLinks accountId={o.accountId} opportunityId={opportunityId} canEdit={canEdit} />
+        </div>
         {data.temperatureHistory.length > 0 && (
           <p className="text-2xs text-ink-muted">Temperature: {data.temperatureHistory.slice(0, 3).map((t) => `${t.to.toLowerCase()} (${fmtDate(t.changedAt)})`).join(' ← ')}</p>
         )}
       </div>
       <StageMoveModal open={!!move} target={move} onClose={() => setMove(null)} opportunityId={opportunityId} />
-      <AttachModal item={attachFor} onClose={() => setAttachFor(null)} accountId={o.accountId} opportunityId={opportunityId}
-        onAttached={(attachmentId) => {
-          if (attachFor) {
-            setChecklistOverrides((cur) => ({ ...cur, [attachFor.id]: true }));
-            tick.mutate({ item: attachFor, done: true, attachmentId });
-          }
-          setAttachFor(null);
-        }} />
     </Card>
   );
 }
 
 const JOURNEY: LifecycleStage[] = ['SQL', 'L1', 'L2', 'L3', 'NEGOTIATION', 'WON'];
-const CHECKLIST_FOR: Partial<Record<LifecycleStage, string>> = { SQL: 'L1', L1: 'L1', MULTITHREADING: 'L1', L2: 'L2', L3: 'L3', NEGOTIATION: 'L3' };
 const NEXT_STEP: Partial<Record<LifecycleStage, string>> = {
   SQL: 'Hold the L1 meeting, then click Record outcome on it and choose a "Done" option. The deal moves to L1 done on its own.',
-  L1: 'Work through the L1 list and tick "All documents shared" (attach the link). Book the L2 meeting; when it is recorded as Done, the deal moves to L2. Use Multithreading if you need more stakeholders first.',
-  MULTITHREADING: 'Get the missing functions engaged, tick "All documents shared", then book L2. Recording L2 as Done moves the deal to L2.',
-  L2: 'Tick "Commercials sent" (attach the proposal), book L3, and record it as Done to move to L3.',
+  L1: 'Move to L2 or L3 at the top of this card whenever you are ready, or record an L2/L3 meeting as Done. The checklist is optional.',
+  MULTITHREADING: 'Get the missing functions engaged, then move to L2 or L3 at the top of this card. The checklist is optional.',
+  L2: 'Move to L3 at the top of this card when ready, or record the L3 meeting as Done. The checklist is optional.',
   L3: 'Finish the L3 list, then use Negotiation or Won at the top of this card.',
   NEGOTIATION: 'Close it: mark Won or Lost at the top of this card.',
   WON: 'Hand over: move to Implementation when onboarding starts.',
@@ -284,23 +267,45 @@ export function StageMoveModal({ open, target, onClose, opportunityId }: { open:
   );
 }
 
-function AttachModal({ item, onClose, accountId, opportunityId, onAttached }: {
-  item: ChecklistRow | null; onClose: () => void; accountId: string; opportunityId: string; onAttached: (id: string) => void;
-}) {
+/** Drive / document links for the deal, kept beside the checklist. Optional: nothing needs a link to move on. */
+function DriveLinks({ accountId, opportunityId, canEdit }: { accountId: string; opportunityId: string; canEdit: boolean }) {
+  const list = useQuery({ queryKey: ['attachments', accountId], queryFn: () => api.get<{ id: string; kind: string; fileName?: string; externalUrl?: string; storagePath?: string; uploadedAt?: string }[]>(`/api/accounts/${accountId}/attachments`) });
   const [url, setUrl] = useState('');
   const [name, setName] = useState('');
-  useEffect(() => { setUrl(''); setName(''); }, [item]);
-  const save = useAction(() => api.post<{ id: string }>(`/api/accounts/${accountId}/attachments`, {
-    opportunityId, meetingId: null, kind: item?.stage === 'L2' ? 'COMMERCIAL' : 'DOCUMENTS_SHARED',
-    fileName: name || url, storagePath: null, externalUrl: url, mimeType: null, sizeBytes: null,
-  }), { onSuccess: (r) => onAttached(r.id) });
+  const add = useAction(() => api.post<{ id: string }>(`/api/accounts/${accountId}/attachments`, {
+    opportunityId, meetingId: null, kind: 'DOCUMENTS_SHARED', fileName: name.trim() || url.trim(), storagePath: null,
+    externalUrl: url.trim(), mimeType: null, sizeBytes: null,
+  }), { success: 'Link added', invalidate: [['attachments', accountId]], onSuccess: () => { setUrl(''); setName(''); } });
+  const links = list.data ?? [];
   return (
-    <Modal open={!!item} onClose={onClose} title={item?.label ?? ''} subtitle="Attach the document link to complete this step." width="max-w-md"
-      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" disabled={!url.trim()} loading={save.isPending} onClick={() => { if (!/^https?:\/\//.test(url)) { toast.error('Paste a full link starting with https://'); return; } save.mutate(undefined); }}>Attach &amp; complete</Button></>}>
-      <div className="space-y-3">
-        <Field label="Link" required hint="Google Drive, Docs or any shareable URL"><Input autoFocus value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" /></Field>
-        <Field label="Name"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Proposal v2.pdf" /></Field>
-      </div>
-    </Modal>
+    <aside className="h-fit rounded-2xl border border-line/80 bg-canvas/50 p-3.5">
+      <p className="flex items-center gap-1.5 text-[13px] font-semibold"><FolderOpen className="h-4 w-4 text-brand-forest" />Drive links</p>
+      <p className="mt-0.5 text-[11.5px] text-ink-muted">Optional. Proposals, decks, documents shared with the client.</p>
+      <ul className="mt-2.5 space-y-1.5">
+        {links.length === 0 && <li className="text-xs text-ink-muted">No links yet.</li>}
+        {links.map((l) => (
+          <li key={l.id}>
+            {l.externalUrl ? (
+              <a href={l.externalUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-xl border border-line/70 bg-white px-2.5 py-2 text-xs hover:border-brand-forest/30">
+                <ExternalLink className="h-3.5 w-3.5 shrink-0 text-brand-forest" /><span className="min-w-0 flex-1 truncate font-medium">{l.fileName || l.externalUrl}</span>
+                {l.uploadedAt && <span className="shrink-0 text-2xs text-ink-muted">{fmtDate(l.uploadedAt)}</span>}
+              </a>
+            ) : (
+              <span className="flex items-center gap-2 rounded-xl border border-line/70 bg-white px-2.5 py-2 text-xs"><span className="min-w-0 flex-1 truncate font-medium">{l.fileName}</span></span>
+            )}
+          </li>
+        ))}
+      </ul>
+      {canEdit && (
+        <div className="mt-3 space-y-1.5">
+          <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://drive.google.com/…" />
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name (optional)" />
+          <Button size="sm" className="w-full" icon={<Plus className="h-3.5 w-3.5" />} disabled={!url.trim()} loading={add.isPending}
+            onClick={() => { if (!/^https?:\/\//.test(url.trim())) { toast.error('Paste a full link starting with https://'); return; } add.mutate(undefined); }}>
+            Add link
+          </Button>
+        </div>
+      )}
+    </aside>
   );
 }
