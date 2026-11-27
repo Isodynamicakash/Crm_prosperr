@@ -273,6 +273,7 @@ interface SqlDetail {
   intentRating?: string; intentReason?: string; smallException: boolean; smallExceptionReason?: string; connectionType?: string;
   qualifyingStakeholder?: string; qualifyingLevel?: number; referredBy?: string; rejectionReason?: string; rejectionNote?: string;
   criteria: { code: string; passed: boolean | null; detail?: string }[];
+  highIntentOverride?: boolean;
 }
 
 /** Manager review: approve or reject with a reason, then hand to an AE. */
@@ -308,7 +309,8 @@ export function ValidateSqlModal({ open, onClose, submissionId, onApproved }: {
         </Button></>}>
       {!d ? <p className="text-xs text-ink-muted">Loading…</p> : (
         <div className="space-y-5">
-          <div className="flex items-center gap-2"><SqlBadge status={d.status as never} />{d.smallException && <Badge tone="warning">Small-account exception</Badge>}</div>
+          <div className="flex items-center gap-2"><SqlBadge status={d.status as never} />{d.smallException && <Badge tone="warning">Small-account exception</Badge>}{d.highIntentOverride && <Badge tone="accent">Passed on high intent</Badge>}</div>
+          {d.highIntentOverride && <p className="rounded-xl border border-brand-forest/15 bg-brand-forest-50/70 px-3 py-2 text-[13px] text-brand-forest">The BDR passed this SQL on high intent although some ICP checks failed. Why: <b>{d.intentReason || '—'}</b></p>}
           <dl className="grid grid-cols-3 gap-x-4 gap-y-3 text-[13px]">
             {[['Stakeholder', `${d.qualifyingStakeholder ?? '—'}${d.qualifyingLevel ? ` (L${d.qualifyingLevel})` : ''}`],
               ['Referred by', d.referredBy ?? '—'], ['Connection', humanize(d.connectionType)],
