@@ -61,7 +61,7 @@ function BdrHome({ preset, setPreset, first }: HomeProps) {
           { label: 'Calls', value: calls, spark: 'calls', delta: delta(s, 'calls'), to: '/my-day' },
           { label: 'Connect rate', value: `${connectRate}%`, spark: 'connects', delta: delta(s, 'connects'), hint: `${d?.connects ?? 0} conversations` },
           { label: 'SQLs submitted', value: d?.sqlsSubmitted ?? '—', spark: 'sqls', delta: delta(s, 'sqls'), hint: d ? `${d.sqlsApproved} approved` : undefined, to: '/sql' },
-          { label: 'L1 booked', value: d?.l1Booked ?? '—', spark: 'meetingsBooked', delta: delta(s, 'meetingsBooked'), hint: d ? `${d.l1Done} done · ${d.noShows} no-show` : undefined },
+          { label: 'L1 booked', value: d?.l1Booked ?? '—', spark: 'meetingsBooked', delta: delta(s, 'meetingsBooked'), hint: d ? `${d.noShows} no-show` : undefined },
         ]}>
         <div className="mt-4 flex flex-col gap-3 rounded-[20px] border border-white/[0.08] bg-white/[0.04] p-4 backdrop-blur md:flex-row md:items-center">
           <div className="flex-1">
@@ -85,9 +85,8 @@ function BdrHome({ preset, setPreset, first }: HomeProps) {
 
       <div className="grid gap-4 xl:grid-cols-3">
         <ChartCard title="Conversion" subtitle="How your work turns into meetings">
-          <div className="grid grid-cols-2 gap-2 pt-2">
+          <div className="flex justify-center pt-2">
             <RadialGauge value={approval} label="SQL approval" sub={`${d?.sqlsApproved ?? 0} of ${d?.sqlsSubmitted ?? 0}`} size={118} />
-            <RadialGauge value={d?.sqlToL1DonePct ?? 0} label="SQL → L1 done" sub={`${d?.l1Done ?? 0} meetings held`} size={118} color={C.forest} />
           </div>
           <div className="mt-4 grid grid-cols-2 gap-2 border-t border-line pt-3 text-center">
             <Mini label="Small-account share" value={`${d?.smallAccountShare ?? 0}%`} warn={(d?.smallAccountShare ?? 0) > 20} />

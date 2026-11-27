@@ -155,6 +155,8 @@ function ReportTable({ title, rows }: { title?: string; rows: Record<string, unk
 }
 
 const METRICS = ['L1_BOOKED', 'L1_DONE', 'L2_DONE', 'L3_DONE', 'WON', 'MRR', 'SQL_APPROVED'];
+/** BDRs are measured only on calls and L1 meetings booked. */
+const BDR_METRICS = ['CALLS', 'L1_BOOKED'];
 
 function Targets() {
   const users = useUsers();
@@ -162,6 +164,8 @@ function Targets() {
   const [userId, setUserId] = useState('');
   const [metric, setMetric] = useState('L1_BOOKED');
   const [value, setValue] = useState('');
+  const isBdr = people.find((p) => p.id === userId)?.role === 'BDR';
+  const metrics = isBdr ? BDR_METRICS : METRICS;
   const monthStart = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }).slice(0, 8) + '01';
   const ach = useQuery({ queryKey: ['achievement', userId], queryFn: () => api.get<Achievement[]>('/api/targets/achievement', { userId: userId || undefined, period: 'MONTH' }) });
   const save = useAction(() => api.put('/api/targets', { userId, periodType: 'MONTH', periodDate: monthStart, metric, value: Number(value) }), {
@@ -172,10 +176,10 @@ function Targets() {
       <Card className="p-4">
         <p className="mb-3 flex items-center gap-2 font-display text-[16px] font-medium tracking-[-0.02em]"><span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-forest text-white"><Target className="h-3.5 w-3.5" /></span>Set a target for this month</p>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-[1fr_1fr_140px_auto]">
-          <Field label="Person"><Select value={userId} onChange={(e) => setUserId(e.target.value)}><option value="">Select…</option>{people.map((u) => <option key={u.id} value={u.id}>{u.fullName} · {u.role}</option>)}</Select></Field>
-          <Field label="Metric"><Select value={metric} onChange={(e) => setMetric(e.target.value)}>{METRICS.map((m) => <option key={m} value={m}>{humanize(m)}</option>)}</Select></Field>
+          <Field label="Person"><Select value={userId} onChange={(e) => { setUserId(e.target.value); setMetric('L1_BOOKED'); }}><option value="">Select…</option>{people.map((u) => <option key={u.id} value={u.id}>{u.fullName} · {u.role}</option>)}</Select></Field>
+          <Field label="Metric"><Select value={metric} onChange={(e) => setMetric(e.target.value)}>{metrics.map((m) => <option key={m} value={m}>{humanize(m)}</option>)}</Select></Field>
           <Field label={metric === 'MRR' ? 'Target (₹)' : 'Target'}><Input type="number" min={0} value={value} onChange={(e) => setValue(e.target.value)} /></Field>
-          <div className="flex items-end"><Button variant="primary" disabled={!userId || !value} loading={save.isPending} onClick={() => save.mutate(undefined)}>Save</Button></div>
+          <div className="flex items-end"><Button variant="primary" disabled={!userId || !value || !metrics.includes(metric)} loading={save.isPending} onClick={() => save.mutate(undefined)}>Save</Button></div>
         </div>
       </Card>
       {!!ach.data?.length && (

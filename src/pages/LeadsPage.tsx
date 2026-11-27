@@ -22,7 +22,7 @@ interface Leads {
   period: {
     from: string; to: string; bucket: 'day' | 'week' | 'month';
     kpis: { newContacts: number; calls: number; connects: number; companiesTouched: number; emailsSent: number; sqlsSubmitted: number; sqlsApproved: number;
-      l1Booked?: number; l1Done?: number; l2Done?: number; l3Done?: number; l1BookedTarget?: number | null; l1DoneTarget?: number | null; l3DoneTarget?: number | null };
+      l1Booked?: number; l1Done?: number; l2Done?: number; l3Done?: number; callsTarget?: number | null; l1BookedTarget?: number | null; l1DoneTarget?: number | null; l3DoneTarget?: number | null };
     trend: { start: string; calls: number; connects: number; l1Booked: number; l1Done: number }[];
     outcomes: { outcome: string; count: number; connect: boolean }[];
     undatedCalls: number;
@@ -274,18 +274,17 @@ function PeriodSection({ p, label }: { p: Leads['period']; label: string }) {
   return (
     <div className="space-y-4">
       <h2 className="font-display text-[17px] font-medium">What you did · {label} <span className="text-[13px] text-ink-muted">· {fmtDate(p.from)} – {fmtDate(p.to)}</span></h2>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+        <Tile label="Calls" value={k.calls} target={k.callsTarget} hint={rate == null ? 'none logged' : `${k.connects} conversations · ${rate}% connect`} />
         <Tile label="L1 booked" value={k.l1Booked ?? 0} target={k.l1BookedTarget} hint={k.l1BookedTarget ? 'against target' : 'no target set'} />
-        <Tile label="L1 done" value={k.l1Done ?? 0} target={k.l1DoneTarget} hint={`${k.l2Done ?? 0} L2 · ${k.l3Done ?? 0} L3 done`} />
-        <Tile label="Calls" value={k.calls} hint={rate == null ? 'none logged' : `${k.connects} conversations · ${rate}% connect`} />
         <Tile label="SQLs submitted" value={k.sqlsSubmitted} hint={`${k.sqlsApproved} approved · ${k.companiesTouched} companies touched`} />
       </div>
       <div className="grid gap-4 xl:grid-cols-3">
-        <ChartCard className="xl:col-span-2" title="Activity over the period" subtitle={`Calls, conversations and L1 meetings, ${BUCKET_LABEL[p.bucket]}`}>
-          {p.trend.every((t) => !t.calls && !t.l1Booked && !t.l1Done) ? <EmptyChart>Nothing logged in this period.</EmptyChart> : (
+        <ChartCard className="xl:col-span-2" title="Activity over the period" subtitle={`Calls, conversations and L1 meetings booked, ${BUCKET_LABEL[p.bucket]}`}>
+          {p.trend.every((t) => !t.calls && !t.l1Booked) ? <EmptyChart>Nothing logged in this period.</EmptyChart> : (
             <AreaTrend data={p.trend.map((t) => ({ ...t, label: tick(t.start, p.bucket) }))} x="label"
               series={[{ key: 'calls', name: 'Calls', color: C.forest }, { key: 'connects', name: 'Conversations', color: C.mint }]}
-              bars={[{ key: 'l1Booked', name: 'L1 booked', color: C.navy }, { key: 'l1Done', name: 'L1 done', color: C.sage }]} height={250} />
+              bars={[{ key: 'l1Booked', name: 'L1 booked', color: C.navy }]} height={250} />
           )}
         </ChartCard>
         <ChartCard title="Call outcomes" subtitle={k.calls ? `${k.calls} calls in the period` : 'What happened on each call'}>
