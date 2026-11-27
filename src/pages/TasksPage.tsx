@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
-import { Check, CheckSquare, Clock, ListTodo, Mail, Phone, Plus, RotateCw, Search, Users } from 'lucide-react';
+import { Check, CheckSquare, Clock, ListTodo, Mail, Pencil, Phone, Plus, RotateCw, Search, Users } from 'lucide-react';
 import { api } from '@/lib/api';
 import { isLeadership, useAuth } from '@/lib/auth';
 import { useAction } from '@/lib/hooks';
@@ -18,7 +18,7 @@ import { Modal } from '@/components/ui/overlay';
 
 type Bucket = 'Overdue' | 'Today' | 'Upcoming';
 
-/** Open tasks grouped by urgency. One click completes; snooze moves to tomorrow. */
+/** Open tasks grouped by urgency. One click completes; click a task to edit its text, type or date; snooze moves to tomorrow. */
 export default function TasksPage() {
   const { user } = useAuth();
   const leader = isLeadership(user?.role);
@@ -26,6 +26,7 @@ export default function TasksPage() {
   const [who, setWho] = useState('');
   const [status, setStatus] = useState<'OPEN' | 'DONE'>('OPEN');
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<TaskRow | null>(null);
   const { data, isLoading } = useQuery({
     queryKey: ['tasks', who, status], queryFn: () => api.get<TaskRow[]>('/api/tasks', { assigneeId: who || undefined, status }),
   });
@@ -112,7 +113,7 @@ export default function TasksPage() {
                         <TaskCheck state={finished.has(t.id) ? 'done' : complete.isPending && complete.variables?.id === t.id ? 'saving' : 'open'} onClick={() => complete.mutate(t)} />
                       ) : <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-forest text-white"><Check className="h-3.5 w-3.5" strokeWidth={3} /></span>}
                       <span className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-forest-50 text-brand-forest sm:flex"><I className="h-4 w-4" /></span>
-                      <div className="min-w-0 flex-1">
+                      <div className={cn('min-w-0 flex-1', status === 'OPEN' && 'cursor-pointer')} onClick={(e) => { if (status === 'OPEN' && !(e.target as HTMLElement).closest('a')) setEditing(t); }}>
                         <p className="text-[13.5px] font-semibold leading-snug"><span className={cn(status === 'DONE' && 'text-ink-muted line-through', finished.has(t.id) && 'strike-through text-ink-muted transition-colors')}>{t.title}</span></p>
                         <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-brand-forest/70">
                           <Link to={`/accounts/${t.accountId}${t.stakeholderId ? `?stakeholder=${t.stakeholderId}` : ''}`} className="font-medium text-brand-forest hover:underline">{t.accountName}</Link>
@@ -124,9 +125,14 @@ export default function TasksPage() {
                       <span className="hidden items-center gap-1.5 rounded-full bg-brand-forest-50 px-2.5 py-1 text-[11px] font-semibold text-brand-forest lg:inline-flex">{humanize(t.type)}</span>
                       <span className={cn('hidden w-36 items-center justify-end gap-1.5 text-right text-[12px] font-medium tabular-nums sm:flex', late ? 'text-brand-navy' : 'text-brand-forest/70')}>{late && <span className="rounded-full bg-brand-navy/10 px-1.5 text-[10px] font-bold uppercase tracking-wide">Late</span>}{fmtDateTime(t.dueAt)}</span>
                       {status === 'OPEN' && (
-                        <button onClick={() => snooze.mutate(t)} title="Move to tomorrow 10 AM" className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-line px-2.5 text-[11.5px] font-semibold text-brand-forest transition-all hover:border-brand-forest/30 hover:bg-brand-forest-50 lg:opacity-0 lg:group-hover:opacity-100">
-                          <Clock className="h-3.5 w-3.5" /><span className="hidden sm:inline">Tomorrow</span>
-                        </button>
+                        <>
+                          <button onClick={() => snooze.mutate(t)} title="Move to tomorrow 10 AM" className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-line px-2.5 text-[11.5px] font-semibold text-brand-forest transition-all hover:border-brand-forest/30 hover:bg-brand-forest-50">
+                            <Clock className="h-3.5 w-3.5" /><span className="hidden sm:inline">Tomorrow</span>
+                          </button>
+                          <button onClick={() => setEditing(t)} title="Edit text, type or date" className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-line px-2.5 text-[11.5px] font-semibold text-brand-forest transition-all hover:border-brand-forest/30 hover:bg-brand-forest-50">
+                            <Pencil className="h-3.5 w-3.5" /><span className="hidden sm:inline">Edit</span>
+                          </button>
+                        </>
                       )}
                     </li>
                   );
@@ -137,6 +143,7 @@ export default function TasksPage() {
         </div>
       )}
       <NewTaskModal open={adding} onClose={() => setAdding(false)} />
+      <EditTaskModal task={editing} onClose={() => setEditing(null)} />
     </div>
   );
 }
@@ -216,6 +223,42 @@ function NewTaskModal({ open, onClose }: { open: boolean; onClose: () => void })
         </Field>
         <Field label="Type"><Select value={type} onChange={(e) => setType(e.target.value as TaskType)}>{TYPES.map((t) => <option key={t} value={t}>{humanize(t)}</option>)}</Select></Field>
         <Field label="Due" required><Input type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} /></Field>
+      </div>
+    </Modal>
+  );
+}
+
+/** ISO time → the value a datetime-local input wants, in the browser's own time zone (same as saving). */
+function toLocalInput(iso: string) {
+  const d = new Date(iso);
+  const z = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`;
+}
+
+/** Edit an open task: what needs doing, its type, and when it's due. */
+function EditTaskModal({ task, onClose }: { task: TaskRow | null; onClose: () => void }) {
+  const [title, setTitle] = useState('');
+  const [type, setType] = useState<TaskType>('FOLLOW_UP');
+  const [due, setDue] = useState('');
+  useEffect(() => { if (task) { setTitle(task.title); setType(task.type); setDue(toLocalInput(task.dueAt)); } }, [task]);
+  const types = task && !TYPES.includes(task.type) ? [task.type, ...TYPES] : TYPES;
+  const at = (days: number, hh = 10) => `${addDaysISO(days)}T${String(hh).padStart(2, '0')}:00`;
+  const save = useAction(() => api.patch(`/api/tasks/${task!.id}`, { title: title.trim(), type, dueAt: new Date(due).toISOString(), assigneeId: null }), {
+    success: 'Task updated', invalidate: [['tasks'], ['my-day'], ['dashboard']], onSuccess: onClose,
+  });
+  const changed = !!task && (title.trim() !== task.title || type !== task.type || due !== toLocalInput(task.dueAt));
+  return (
+    <Modal open={!!task} onClose={onClose} title="Edit task" subtitle={task ? [task.accountName, task.stakeholderName].filter(Boolean).join(' · ') : undefined}
+      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" disabled={!title.trim() || !due || !changed} loading={save.isPending} onClick={() => save.mutate(undefined)}>Save</Button></>}>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="What needs doing" required className="col-span-2"><Input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
+        <Field label="Type"><Select value={type} onChange={(e) => setType(e.target.value as TaskType)}>{types.map((x) => <option key={x} value={x}>{humanize(x)}</option>)}</Select></Field>
+        <Field label="Due" required><Input type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} /></Field>
+        <div className="col-span-2 flex flex-wrap gap-1.5">
+          {([['Today 5 PM', at(0, 17)], ['Tomorrow 10 AM', at(1)], ['In 3 days', at(3)], ['Next week', at(7)]] as const).map(([label, v]) => (
+            <Button key={label} size="sm" variant="ghost" onClick={() => setDue(v)}>{label}</Button>
+          ))}
+        </div>
       </div>
     </Modal>
   );
